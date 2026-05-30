@@ -1,0 +1,3 @@
+[submodule "common-docs"]
+	path = common-docs
+	url = https://github.com/nohy6630/common-md-test.git
