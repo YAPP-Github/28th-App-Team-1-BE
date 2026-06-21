@@ -1,0 +1,32 @@
+name: Feature
+description: 새로운 기능 구현
+labels: ["feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        브랜치명: `feat/{이슈번호}-{기능명}`
+  - type: textarea
+    id: description
+    attributes:
+      label: 기능 설명
+      description: 구현할 기능을 설명해주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 구현 내용
+      description: 구현할 내용을 체크리스트로 작성해주세요.
+      placeholder: |
+        - [ ] 항목 1
+        - [ ] 항목 2
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고사항
+      description: 참고할 내용이 있으면 작성해주세요.
+    validations:
+      required: false
