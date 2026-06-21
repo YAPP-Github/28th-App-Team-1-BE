@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — 아키텍처 & 개발 규칙
 
-> Spring Boot + Java 기반 멀티모듈 프로젝트입니다.
-> 헥사고날 아키텍처(Ports and Adapters)를 적용하며, 향후 MSA 전환을 고려합니다.
+> Spring Boot + Java 기반 프로젝트입니다.
+> 헥사고날 아키텍처(Ports and Adapters)를 적용합니다.
 
 ---
 
@@ -17,42 +17,12 @@ Adapter → Application → Domain
 - Application Core(Application + Domain)는 외부 기술(Spring Web, AWS, Spring Security 등)을 직접 알면 안 됩니다.
 - Application은 반드시 Port(인터페이스)에만 의존하고, Adapter 구현체를 직접 참조하지 않습니다.
 
-### 모듈 의존 방향
-
-```
-app ──► domain-member
-app ──► domain-post
-domain-member ──► common
-domain-post   ──► common
-common        (아무것도 의존하지 않음)
-```
-
-- `common` 모듈은 다른 어떤 모듈에도 의존하지 않습니다.
-- 도메인 모듈 간 상호 의존은 금지합니다. (domain-member ↔ domain-post 불가)
-
 ---
 
-## 2. 멀티모듈 구조
+## 2. 패키지 구조
 
 ```
-root-project/
-├── build.gradle          # 모든 모듈의 공통 의존성 관리
-├── settings.gradle       # 하위 모듈 등록
-├── common/               # 공통 유틸리티 — 다른 모듈에 의존 안 함
-├── domain-member/        # 회원 도메인 모듈 — common만 의존
-├── domain-post/          # 게시글 도메인 모듈 — common만 의존
-└── app/                  # 실행 모듈 — 모든 도메인 모듈 조합, Spring Boot main 위치
-```
-
----
-
-## 3. 도메인 모듈 패키지 구조
-
-> 모든 도메인 모듈은 아래 구조를 동일하게 따릅니다. (`domain-member` 기준)
-
-```
-domain-{name}/
-└── src/main/java/com/example/{name}/
+src/main/java/com/example/{name}/
     ├── domain/                        # 헥사곤 내부 — 순수 비즈니스 모델 (JPA 어노테이션 없음)
     ├── application/
     │   ├── command/                   # Command 객체 (UseCase 진입 시 사용)
@@ -76,11 +46,10 @@ domain-{name}/
 
 ---
 
-## 4. Common 모듈 패키지 구조
+## 3. Common 패키지 구조
 
 ```
-common/
-└── src/main/java/com/example/common/
+src/main/java/com/example/common/
     ├── config/                        # 공통 설정 (AWS, 외부 기술 Config 클래스)
     ├── exception/
     │   ├── BusinessException.java     # 모든 도메인 예외의 기반 클래스
@@ -96,7 +65,7 @@ common/
 
 ---
 
-## 5. 파일명 규칙
+## 4. 파일명 규칙
 
 ### Domain (`domain/`)
 
@@ -140,7 +109,7 @@ common/
 
 ---
 
-## 6. 레이어별 책임 규칙
+## 5. 레이어별 책임 규칙
 
 ### Domain
 - 핵심 비즈니스 규칙과 상태만 담습니다.
@@ -177,7 +146,7 @@ common/
 
 ---
 
-## 7. DTO 위치 규칙
+## 6. DTO 위치 규칙
 
 | DTO 종류 | 위치 |
 |---|---|
@@ -192,7 +161,7 @@ common/
 
 ---
 
-## 8. 유효성 검증 규칙
+## 7. 유효성 검증 규칙
 
 - **HTTP DTO**: `@NotBlank`, `@Email` 등 Bean Validation 어노테이션으로 형식 검증
 - **Command 객체**: 생성자에서 비즈니스 제약 조건 강제 (null 체크, 길이 제한 등)
@@ -200,7 +169,7 @@ common/
 
 ---
 
-## 9. 접근 제어 규칙
+## 8. 접근 제어 규칙
 
 | 대상 | 접근 수준 |
 |---|---|
@@ -211,7 +180,7 @@ common/
 
 ---
 
-## 10. 자주 하는 실수 — 절대 하지 말 것
+## 9. 자주 하는 실수 — 절대 하지 말 것
 
 ```
 ❌ Controller에서 Domain 객체를 그대로 반환
@@ -249,14 +218,11 @@ common/
 
 ❌ Command 객체를 domain/ 패키지에 위치
    → application/command/에 위치
-
-❌ 도메인 모듈 간 상호 의존 (domain-member → domain-post)
-   → common만 의존 가능
 ```
 
 ---
 
-## 11. 요청 처리 흐름 요약
+## 10. 요청 처리 흐름 요약
 
 ```
 [HTTP 요청]

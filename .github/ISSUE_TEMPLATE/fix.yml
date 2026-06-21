@@ -1,0 +1,43 @@
+name: Fix
+description: 버그 수정
+title: "[fix] "
+labels: ["fix"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        브랜치명: `fix/{이슈번호}-{버그명}`
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 설명
+      description: 발생한 버그를 설명해주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 예상 동작
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: 참고사항
+    validations:
+      required: false
