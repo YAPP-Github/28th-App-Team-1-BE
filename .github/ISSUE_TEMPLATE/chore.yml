@@ -1,5 +1,6 @@
 name: Chore
 description: 빌드·설정·리팩토링·문서·테스트 등
+title: "[chore] "
 labels: ["chore"]
 body:
   - type: markdown

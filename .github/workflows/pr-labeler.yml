@@ -1,0 +1,32 @@
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Apply label based on branch name
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+            const labelMap = {
+              'feat/': 'feat',
+              'fix/':  'fix',
+              'chore/': 'chore',
+            };
+
+            const label = Object.entries(labelMap).find(([prefix]) => branch.startsWith(prefix))?.[1];
+            if (label) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: [label],
+              });
+            }

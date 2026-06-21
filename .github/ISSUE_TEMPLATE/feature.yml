@@ -1,5 +1,6 @@
 name: Feature
 description: 새로운 기능 구현
+title: "[feat] "
 labels: ["feat"]
 body:
   - type: markdown

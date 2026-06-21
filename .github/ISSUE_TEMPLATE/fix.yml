@@ -1,5 +1,6 @@
 name: Fix
 description: 버그 수정
+title: "[fix] "
 labels: ["fix"]
 body:
   - type: markdown
