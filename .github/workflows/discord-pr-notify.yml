@@ -3,8 +3,6 @@ name: Discord PR Notification
 on:
   pull_request:
     types: [opened, closed, review_requested]
-  pull_request_review:
-    types: [submitted]
 
 jobs:
   notify:
