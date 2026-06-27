@@ -1,0 +1,80 @@
+name: Discord Issue Notification
+
+on:
+  issues:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 이슈 생성 알림
+        if: github.event.action == 'opened'
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          AUTHOR_NAME: ${{ github.event.issue.user.login }}
+          AUTHOR_AVATAR: ${{ github.event.issue.user.avatar_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg title "이슈 생성: $ISSUE_TITLE" \
+            --arg url "$ISSUE_URL" \
+            --arg author "$AUTHOR_NAME" \
+            --arg author_url "https://github.com/$AUTHOR_NAME" \
+            --arg avatar "$AUTHOR_AVATAR" \
+            --arg repo "$REPO" \
+            --arg footer "Issue #$ISSUE_NUMBER" \
+            --argjson color 3447003 \
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                color: $color,
+                author: { name: $author, url: $author_url, icon_url: $avatar },
+                fields: [
+                  { name: "Repository", value: $repo, inline: true }
+                ],
+                footer: { text: $footer }
+              }]
+            }')
+          curl -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"
+
+      - name: 이슈 종료 알림
+        if: github.event.action == 'closed'
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          AUTHOR_NAME: ${{ github.event.issue.user.login }}
+          AUTHOR_AVATAR: ${{ github.event.issue.user.avatar_url }}
+          CLOSED_BY: ${{ github.event.sender.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg title "이슈 종료: $ISSUE_TITLE" \
+            --arg url "$ISSUE_URL" \
+            --arg author "$AUTHOR_NAME" \
+            --arg author_url "https://github.com/$AUTHOR_NAME" \
+            --arg avatar "$AUTHOR_AVATAR" \
+            --arg closed_by "$CLOSED_BY" \
+            --arg repo "$REPO" \
+            --arg footer "Issue #$ISSUE_NUMBER" \
+            --argjson color 9807270 \
+            '{
+              embeds: [{
+                title: $title,
+                url: $url,
+                color: $color,
+                author: { name: $author, url: $author_url, icon_url: $avatar },
+                fields: [
+                  { name: "Repository", value: $repo, inline: true },
+                  { name: "Closed by", value: $closed_by, inline: true }
+                ],
+                footer: { text: $footer }
+              }]
+            }')
+          curl -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL"
