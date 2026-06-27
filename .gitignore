@@ -1,0 +1,14 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Environment
+src/main/resources/application-local.yml
+
+# OS
+.DS_Store
