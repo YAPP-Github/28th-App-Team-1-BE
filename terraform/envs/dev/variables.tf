@@ -44,7 +44,7 @@ variable "root_volume_size" {
 
 variable "s3_bucket_suffix" {
   type    = string
-  default = "media"
+  default = "storage"
 }
 
 variable "s3_cors_allowed_origins" {
