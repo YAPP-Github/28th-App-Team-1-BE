@@ -3,18 +3,7 @@ spring:
     name: d14
 
   profiles:
-    active: local
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    open-in-view: false
+    active: dev
 
 server:
   port: 8080
-
-logging:
-  level:
-    root: INFO
-    com.yapp.d14: DEBUG

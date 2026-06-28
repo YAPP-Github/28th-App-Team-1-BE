@@ -8,7 +8,19 @@ build/
 out/
 
 # Environment
-src/main/resources/application-local.yml
+.env
+.env.*
+!.env.example
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+!terraform/*.tfvars.example
+terraform/.terraform.lock.hcl
+terraform/crash.log
+terraform/crash.*.log
 
 # OS
 .DS_Store
