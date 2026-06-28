@@ -19,7 +19,7 @@ variable "project_name" {
 variable "environment" {
   description = "환경 태그"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 variable "ec2_key_pair_name" {
