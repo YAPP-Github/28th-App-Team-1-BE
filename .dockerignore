@@ -1,0 +1,16 @@
+.git
+.gitignore
+.idea
+.vscode
+.gradle
+build
+out
+*.log
+*.md
+HELP.md
+ARCHITECTURE.md
+CLAUDE.md
+.github
+.env
+.env.*
+terraform
