@@ -5,7 +5,7 @@ build/
 # IntelliJ
 .idea/
 *.iml
-out/
+/out/
 
 # Environment
 .env
