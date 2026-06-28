@@ -13,12 +13,11 @@ out/
 !.env.example
 
 # Terraform
-terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.*
-terraform/*.tfvars
-!terraform/*.tfvars.example
-terraform/.terraform.lock.hcl
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+terraform/envs/**/*.tfvars
 terraform/crash.log
 terraform/crash.*.log
 
