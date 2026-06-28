@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - issue/5/infra
   workflow_dispatch:
 
 env:
