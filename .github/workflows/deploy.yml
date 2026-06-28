@@ -1,10 +1,9 @@
-name: Deploy to Production
+name: Deploy
 
 on:
   push:
     branches:
       - main
-      - issue/5/infra
   workflow_dispatch:
 
 env:

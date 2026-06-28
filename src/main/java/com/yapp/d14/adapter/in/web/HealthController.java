@@ -1,4 +1,4 @@
-package com.yapp.d14;
+package com.yapp.d14.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
