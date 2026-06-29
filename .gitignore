@@ -5,10 +5,21 @@ build/
 # IntelliJ
 .idea/
 *.iml
-out/
+/out/
 
 # Environment
-src/main/resources/application-local.yml
+.env
+.env.*
+!.env.example
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+terraform/envs/**/*.tfvars
+terraform/crash.log
+terraform/crash.*.log
 
 # OS
 .DS_Store
