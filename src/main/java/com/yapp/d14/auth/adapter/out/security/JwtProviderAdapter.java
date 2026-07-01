@@ -82,6 +82,8 @@ class JwtProviderAdapter implements JwtProvider {
             return new JwtClaims(userId, provider);
         } catch (AuthException e) {
             throw e;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            throw new AuthException(AuthErrorCode.TOKEN_EXPIRED);
         } catch (Exception e) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
