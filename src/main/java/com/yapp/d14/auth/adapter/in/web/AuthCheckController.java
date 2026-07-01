@@ -1,5 +1,6 @@
 package com.yapp.d14.auth.adapter.in.web;
 
+import com.yapp.d14.auth.adapter.in.web.response.AuthCheckHttpResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,8 +20,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthCheckController {
-
-    record AuthCheckResponse(String message, UUID userId) {}
 
     @Operation(
             summary = "인증 확인 (테스트용)",
@@ -54,7 +53,7 @@ class AuthCheckController {
             )
     })
     @GetMapping("/check")
-    public ResponseEntity<AuthCheckResponse> check(@Parameter(hidden = true) @CurrentUser UUID userId) {
-        return ResponseEntity.ok(new AuthCheckResponse("인증 성공", userId));
+    public ResponseEntity<AuthCheckHttpResponse> check(@Parameter(hidden = true) @CurrentUser UUID userId) {
+        return ResponseEntity.ok(new AuthCheckHttpResponse("인증 성공", userId));
     }
 }

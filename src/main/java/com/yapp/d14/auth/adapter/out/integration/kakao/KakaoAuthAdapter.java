@@ -1,5 +1,6 @@
 package com.yapp.d14.auth.adapter.out.integration.kakao;
 
+import com.yapp.d14.auth.application.port.out.KakaoSocialClient;
 import com.yapp.d14.auth.application.port.out.SocialUserInfo;
 import com.yapp.d14.auth.exception.AuthErrorCode;
 import com.yapp.d14.auth.exception.AuthException;
@@ -9,10 +10,11 @@ import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Component
-public class KakaoAuthAdapter {
+class KakaoAuthAdapter implements KakaoSocialClient {
 
     private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
 
+    @Override
     public SocialUserInfo getUserInfo(String accessToken) {
         try {
             KakaoProfileResponse response = RestClient.create()

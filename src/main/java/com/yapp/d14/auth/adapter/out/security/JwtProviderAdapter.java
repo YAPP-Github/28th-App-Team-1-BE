@@ -5,6 +5,8 @@ import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.exception.AuthErrorCode;
 import com.yapp.d14.auth.exception.AuthException;
 import com.yapp.d14.common.properties.JwtProperties;
+import com.yapp.d14.common.security.TokenParseException;
+import com.yapp.d14.common.security.TokenParser;
 import com.yapp.d14.user.domain.Provider;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -19,7 +21,7 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-class JwtProviderAdapter implements JwtProvider {
+class JwtProviderAdapter implements JwtProvider, TokenParser {
 
     private final JwtProperties jwtProperties;
 
@@ -86,6 +88,19 @@ class JwtProviderAdapter implements JwtProvider {
             throw new AuthException(AuthErrorCode.TOKEN_EXPIRED);
         } catch (Exception e) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+    }
+
+    @Override
+    public UUID parse(String token) {
+        try {
+            return parseAccessToken(token).userId();
+        } catch (AuthException e) {
+            throw new TokenParseException(
+                    e.getErrorCode().getHttpStatus().value(),
+                    e.getErrorCode().getCode(),
+                    e.getErrorCode().getMessage()
+            );
         }
     }
 

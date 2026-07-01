@@ -1,5 +1,6 @@
 package com.yapp.d14.auth.adapter.out.integration.apple;
 
+import com.yapp.d14.auth.application.port.out.AppleSocialClient;
 import com.yapp.d14.auth.application.port.out.SocialUserInfo;
 import com.yapp.d14.auth.exception.AuthErrorCode;
 import com.yapp.d14.auth.exception.AuthException;
@@ -22,7 +23,7 @@ import java.util.Date;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AppleAuthAdapter {
+class AppleAuthAdapter implements AppleSocialClient {
 
     private static final String APPLE_BASE_URL = "https://appleid.apple.com";
     private static final String APPLE_PUBLIC_KEY_URL = APPLE_BASE_URL + "/auth/keys";
@@ -30,6 +31,7 @@ public class AppleAuthAdapter {
 
     private final AppleProperties appleProperties;
 
+    @Override
     public SocialUserInfo getUserInfo(String authorizationCode) {
         AppleTokenResponse tokenResponse = exchangeAuthorizationCode(authorizationCode);
         Claims claims = verifyIdToken(tokenResponse.getIdToken());

@@ -1,10 +1,6 @@
 package com.yapp.d14.common.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yapp.d14.auth.application.port.out.JwtClaims;
-import com.yapp.d14.auth.application.port.out.JwtProvider;
-import com.yapp.d14.auth.exception.AuthErrorCode;
-import com.yapp.d14.auth.exception.AuthException;
 import com.yapp.d14.common.response.ErrorResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,13 +16,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtProvider jwtProvider;
+    private final TokenParser tokenParser;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -43,20 +40,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            JwtClaims claims = jwtProvider.parseAccessToken(token);
+            UUID userId = tokenParser.parse(token);
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(claims.userId(), null, List.of());
+                    new UsernamePasswordAuthenticationToken(userId, null, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
             filterChain.doFilter(request, response);
-        } catch (AuthException e) {
+        } catch (TokenParseException e) {
             SecurityContextHolder.clearContext();
-            writeErrorResponse(response, e.getErrorCode().getHttpStatus().value(),
-                    e.getErrorCode().getCode(), e.getErrorCode().getMessage());
+            writeErrorResponse(response, e.getStatus(), e.getCode(), e.getMessage());
         } catch (Exception e) {
             log.error("[JwtFilter] 예상치 못한 오류: {}", e.getMessage());
             SecurityContextHolder.clearContext();
-            writeErrorResponse(response, AuthErrorCode.INVALID_TOKEN.getHttpStatus().value(),
-                    AuthErrorCode.INVALID_TOKEN.getCode(), AuthErrorCode.INVALID_TOKEN.getMessage());
+            writeErrorResponse(response, 401, "INVALID_TOKEN", "유효하지 않은 토큰입니다.");
         }
     }
 
