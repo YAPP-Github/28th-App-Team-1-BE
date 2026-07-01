@@ -6,6 +6,7 @@ import com.yapp.d14.auth.adapter.in.web.response.AuthTokenHttpResponse;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -66,5 +67,5 @@ public interface AuthControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "로그아웃 성공", content = @Content),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content)
     })
-    ResponseEntity<Void> logout(@CurrentUser UUID userId);
+    ResponseEntity<Void> logout(@Parameter(hidden = true) @CurrentUser UUID userId);
 }
