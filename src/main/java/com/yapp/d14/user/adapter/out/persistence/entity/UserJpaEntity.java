@@ -21,7 +21,7 @@ import java.util.UUID;
         uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "provider_id"})
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-class UserJpaEntity {
+public class UserJpaEntity {
 
     @Id
     @Column(columnDefinition = "uuid")
@@ -44,7 +44,7 @@ class UserJpaEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    static UserJpaEntity from(User user) {
+    public static UserJpaEntity from(User user) {
         UserJpaEntity entity = new UserJpaEntity();
         entity.id = user.getId();
         entity.email = user.getEmail();
@@ -56,7 +56,7 @@ class UserJpaEntity {
         return entity;
     }
 
-    User toDomain() {
+    public User toDomain() {
         return User.of(id, email, name, provider, providerId, createdAt, updatedAt);
     }
 }

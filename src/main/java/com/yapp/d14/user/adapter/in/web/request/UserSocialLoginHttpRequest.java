@@ -5,12 +5,12 @@ import com.yapp.d14.user.domain.Provider;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-record UserSocialLoginHttpRequest(
+public record UserSocialLoginHttpRequest(
         @NotNull Provider provider,
         @NotBlank String credential
 ) {
 
-    UserSocialLoginCommand toCommand() {
+    public UserSocialLoginCommand toCommand() {
         return new UserSocialLoginCommand(provider, credential);
     }
 }

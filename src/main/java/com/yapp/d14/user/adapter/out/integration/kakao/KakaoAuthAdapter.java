@@ -9,11 +9,11 @@ import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Component
-class KakaoAuthAdapter {
+public class KakaoAuthAdapter {
 
     private static final String KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
 
-    SocialUserInfo getUserInfo(String accessToken) {
+    public SocialUserInfo getUserInfo(String accessToken) {
         try {
             KakaoProfileResponse response = RestClient.create()
                     .get()

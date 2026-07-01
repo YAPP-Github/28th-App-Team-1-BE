@@ -22,7 +22,7 @@ import java.util.Date;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-class AppleAuthAdapter {
+public class AppleAuthAdapter {
 
     private static final String APPLE_BASE_URL = "https://appleid.apple.com";
     private static final String APPLE_PUBLIC_KEY_URL = APPLE_BASE_URL + "/auth/keys";
@@ -30,7 +30,7 @@ class AppleAuthAdapter {
 
     private final AppleProperties appleProperties;
 
-    SocialUserInfo getUserInfo(String authorizationCode) {
+    public SocialUserInfo getUserInfo(String authorizationCode) {
         AppleTokenResponse tokenResponse = exchangeAuthorizationCode(authorizationCode);
         Claims claims = verifyIdToken(tokenResponse.getIdToken());
 
