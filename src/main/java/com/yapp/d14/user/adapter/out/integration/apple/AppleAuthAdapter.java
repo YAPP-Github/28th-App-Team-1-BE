@@ -1,6 +1,6 @@
 package com.yapp.d14.user.adapter.out.integration.apple;
 
-import com.yapp.d14.common.config.AppleProperties;
+import com.yapp.d14.common.properties.AppleProperties;
 import com.yapp.d14.user.application.port.out.SocialUserInfo;
 import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;

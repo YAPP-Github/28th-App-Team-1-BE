@@ -1,6 +1,6 @@
 package com.yapp.d14.user.adapter.out.security;
 
-import com.yapp.d14.common.config.JwtProperties;
+import com.yapp.d14.common.properties.JwtProperties;
 import com.yapp.d14.user.application.port.out.JwtClaims;
 import com.yapp.d14.user.application.port.out.JwtProvider;
 import com.yapp.d14.user.domain.Provider;

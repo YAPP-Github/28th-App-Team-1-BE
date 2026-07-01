@@ -1,4 +1,4 @@
-package com.yapp.d14.common.config;
+package com.yapp.d14.common.properties;
 
 import lombok.Getter;
 import lombok.Setter;
