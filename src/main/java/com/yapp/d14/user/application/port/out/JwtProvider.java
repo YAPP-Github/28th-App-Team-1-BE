@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface JwtProvider {
 
     String issueAccessToken(UUID userId, Provider provider);
+
+    JwtClaims parseAccessToken(String token);
 }

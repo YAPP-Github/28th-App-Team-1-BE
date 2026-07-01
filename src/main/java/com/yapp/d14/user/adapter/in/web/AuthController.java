@@ -14,13 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/social")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 class AuthController {
 
     private final UserSocialLoginUseCase userSocialLoginUseCase;
 
-    @PostMapping("/login")
+    @PostMapping("/social/login")
     ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> login(
             @Valid @RequestBody UserSocialLoginHttpRequest request
     ) {
