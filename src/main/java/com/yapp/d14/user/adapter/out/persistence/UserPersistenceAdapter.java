@@ -8,12 +8,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
 class UserPersistenceAdapter implements UserRepository {
 
     private final UserJpaRepository userJpaRepository;
+
+    @Override
+    public Optional<User> findById(UUID id) {
+        return userJpaRepository.findById(id).map(UserJpaEntity::toDomain);
+    }
 
     @Override
     public Optional<User> findByProviderAndProviderId(Provider provider, String providerId) {
