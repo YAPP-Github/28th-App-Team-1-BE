@@ -10,9 +10,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.yapp.d14.common.web.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.UUID;
 
 @Tag(name = "Auth", description = "인증 API")
 public interface AuthControllerDocs {
@@ -53,4 +56,15 @@ public interface AuthControllerDocs {
     })
     @SecurityRequirements
     ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> reissue(@Valid @RequestBody TokenReissueHttpRequest request);
+
+    @Operation(
+            summary = "로그아웃",
+            description = "Redis에서 Refresh Token을 삭제합니다.\n\n" +
+                    "- Access Token은 만료 시까지 유효하므로 클라이언트에서도 반드시 삭제해야 합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "로그아웃 성공", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content)
+    })
+    ResponseEntity<Void> logout(@CurrentUser UUID userId);
 }
