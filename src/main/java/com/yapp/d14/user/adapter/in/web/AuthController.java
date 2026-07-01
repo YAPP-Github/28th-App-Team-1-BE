@@ -16,12 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-class AuthController {
+class AuthController implements AuthControllerDocs {
 
     private final UserSocialLoginUseCase userSocialLoginUseCase;
 
+    @Override
     @PostMapping("/social/login")
-    ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> login(
+    public ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> login(
             @Valid @RequestBody UserSocialLoginHttpRequest request
     ) {
         AuthToken authToken = userSocialLoginUseCase.login(request.toCommand());
