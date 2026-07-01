@@ -13,4 +13,5 @@ public class JwtProperties {
 
     private String secretKey;
     private long accessTokenExpiryMs = 10_800_000L; // 3시간
+    private long refreshTokenExpiryMs = 604_800_000L; // 7일
 }

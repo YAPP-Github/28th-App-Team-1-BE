@@ -8,5 +8,9 @@ public interface JwtProvider {
 
     String issueAccessToken(UUID userId, Provider provider);
 
+    String issueRefreshToken(UUID userId, Provider provider);
+
     JwtClaims parseAccessToken(String token);
+
+    JwtClaims parseRefreshToken(String token);
 }

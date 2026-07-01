@@ -13,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 class UserSocialLoginService implements UserSocialLoginUseCase {
@@ -35,7 +33,7 @@ class UserSocialLoginService implements UserSocialLoginUseCase {
                 ));
 
         String accessToken = jwtProvider.issueAccessToken(user.getId(), user.getProvider());
-        String refreshToken = UUID.randomUUID().toString();
+        String refreshToken = jwtProvider.issueRefreshToken(user.getId(), user.getProvider());
         tokenRepository.save(user.getId(), refreshToken);
 
         return new AuthToken(accessToken, refreshToken);

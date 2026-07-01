@@ -1,6 +1,7 @@
 package com.yapp.d14.user.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
+import com.yapp.d14.user.adapter.in.web.request.TokenReissueHttpRequest;
 import com.yapp.d14.user.adapter.in.web.request.UserSocialLoginHttpRequest;
 import com.yapp.d14.user.adapter.in.web.response.UserSocialLoginHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,4 +34,19 @@ public interface AuthControllerDocs {
     })
     @SecurityRequirements
     ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> login(@Valid @RequestBody UserSocialLoginHttpRequest request);
+
+    @Operation(
+            summary = "토큰 재발급",
+            description = "Refresh Token을 사용해 Access Token과 Refresh Token을 재발급합니다. (Rotation 적용)"
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "재발급 성공",
+                    content = @Content(schema = @Schema(implementation = UserSocialLoginHttpResponse.class))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 리프레시 토큰", content = @Content)
+    })
+    @SecurityRequirements
+    ResponseEntity<ApiResponse<UserSocialLoginHttpResponse>> reissue(@Valid @RequestBody TokenReissueHttpRequest request);
 }
