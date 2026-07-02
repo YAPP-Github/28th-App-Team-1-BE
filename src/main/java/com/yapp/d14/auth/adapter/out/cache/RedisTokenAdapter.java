@@ -14,13 +14,17 @@ import java.util.UUID;
 class RedisTokenAdapter implements TokenRepository {
 
     private static final String KEY_PREFIX = "refresh:token:";
-    private static final Duration TTL = Duration.ofDays(7);
 
     private final StringRedisTemplate redisTemplate;
+    private final JwtProperties jwtProperties;
 
-    @Override
+    `@Override`
     public void save(UUID userId, String refreshToken) {
-        redisTemplate.opsForValue().set(key(userId), refreshToken, TTL);
+        redisTemplate.opsForValue().set(
+                key(userId),
+                refreshToken,
+                Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs())
+        );
     }
 
     @Override
