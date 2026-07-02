@@ -35,6 +35,9 @@ dependencies {
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
 
+    // .env 로컬 개발용
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
