@@ -44,15 +44,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            filterChain.doFilter(request, response);
         } catch (TokenParseException e) {
             SecurityContextHolder.clearContext();
             writeErrorResponse(response, e.getStatus(), e.getCode(), e.getMessage());
+            return;
         } catch (Exception e) {
             log.error("[JwtFilter] 예상치 못한 오류: {}", e.getMessage());
             SecurityContextHolder.clearContext();
             writeErrorResponse(response, 401, "INVALID_TOKEN", "유효하지 않은 토큰입니다.");
+            return;
         }
+
+        filterChain.doFilter(request, response);
     }
 
     private void writeErrorResponse(HttpServletResponse response, int status, String code, String message)
