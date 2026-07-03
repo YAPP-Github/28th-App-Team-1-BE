@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -44,7 +43,7 @@ class AppleAuthAdapter implements AppleSocialClient {
 
     private AppleTokenResponse exchangeAuthorizationCode(String authorizationCode) {
         try {
-            return WebClient.builder()
+            return RestClient.builder()
                     .baseUrl(APPLE_BASE_URL)
                     .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded;charset=utf-8")
                     .build()
@@ -57,8 +56,7 @@ class AppleAuthAdapter implements AppleSocialClient {
                             .build()
                     )
                     .retrieve()
-                    .bodyToMono(AppleTokenResponse.class)
-                    .block();
+                    .body(AppleTokenResponse.class);
         } catch (Exception e) {
             log.error("[APPLE LOGIN] authorization code 교환 실패", e);
             throw new AuthException(AuthErrorCode.SOCIAL_LOGIN_FAILED);
