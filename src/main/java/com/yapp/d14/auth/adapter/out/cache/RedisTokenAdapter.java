@@ -1,6 +1,7 @@
 package com.yapp.d14.auth.adapter.out.cache;
 
 import com.yapp.d14.auth.application.port.out.TokenRepository;
+import com.yapp.d14.common.properties.JwtProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -18,7 +19,7 @@ class RedisTokenAdapter implements TokenRepository {
     private final StringRedisTemplate redisTemplate;
     private final JwtProperties jwtProperties;
 
-    `@Override`
+    @Override
     public void save(UUID userId, String refreshToken) {
         redisTemplate.opsForValue().set(
                 key(userId),
