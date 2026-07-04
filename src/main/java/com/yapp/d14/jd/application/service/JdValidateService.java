@@ -4,8 +4,8 @@ import com.yapp.d14.jd.application.command.JdValidateCommand;
 import com.yapp.d14.jd.application.port.in.JdCrawlResult;
 import com.yapp.d14.jd.application.port.in.JdValidateUseCase;
 import com.yapp.d14.jd.application.port.in.JdValidationFailureReason;
-import com.yapp.d14.jd.application.port.out.JdContentCache;
 import com.yapp.d14.jd.application.port.out.JdContentFetcher;
+import com.yapp.d14.jd.application.port.out.JdContentRepository;
 import com.yapp.d14.jd.exception.JdCrawlingFailedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ class JdValidateService implements JdValidateUseCase {
     private static final int MIN_CONTENT_LENGTH = 200;
 
     private final JdContentFetcher jdContentFetcher;
-    private final JdContentCache jdContentCache;
+    private final JdContentRepository jdContentRepository;
 
     @Override
     public JdCrawlResult validate(JdValidateCommand command) {
@@ -32,7 +32,7 @@ class JdValidateService implements JdValidateUseCase {
             return JdCrawlResult.failure(JdValidationFailureReason.CONTENT_TOO_SHORT);
         }
 
-        jdContentCache.save(command.userId(), command.jdUrl(), content);
+        jdContentRepository.save(command.userId(), command.jdUrl(), content);
         return JdCrawlResult.success(content);
     }
 }

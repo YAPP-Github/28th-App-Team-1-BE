@@ -1,6 +1,6 @@
 package com.yapp.d14.jd.adapter.out.cache;
 
-import com.yapp.d14.jd.application.port.out.JdContentCache;
+import com.yapp.d14.jd.application.port.out.JdContentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
-class RedisJdContentCacheAdapter implements JdContentCache {
+class RedisJdContentAdapter implements JdContentRepository {
 
     private static final String KEY_PREFIX = "jd:";
     private static final Duration TTL = Duration.ofHours(6);
