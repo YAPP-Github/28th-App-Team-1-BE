@@ -49,6 +49,9 @@ dependencies {
     // .env 로컬 개발용
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
+    // JD 크롤링
+    implementation 'org.jsoup:jsoup:1.18.3'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
