@@ -22,8 +22,8 @@ public interface JdControllerDocs {
 
     @Operation(
             summary = "JD URL 유효성 검증",
-            description = "JD URL을 크롤링해 텍스트를 추출하고 Redis에 캐싱합니다.\n\n" +
-                    "크롤링에 실패했거나 추출된 본문이 200자 미만이면 `data.valid: false`로 응답합니다. " +
+            description = "JD URL을 크롤링하고 OpenAI로 핵심 JD 내용을 정제해 Redis에 캐싱합니다.\n\n" +
+                    "크롤링 실패, 추출된 본문 200자 미만, AI 정제 실패 중 하나라도 해당하면 `data.valid: false`로 응답합니다. " +
                     "이 경우 클라이언트는 JD 본문 직접 입력으로 폴백해야 합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
@@ -57,6 +57,16 @@ public interface JdControllerDocs {
                                                 "valid": false,
                                                 "reason": "CONTENT_TOO_SHORT",
                                                 "message": "공고 내용을 충분히 가져오지 못했어요. 공고 내용을 직접 붙여넣어 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "AI 정제 실패", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "valid": false,
+                                                "reason": "EXTRACTION_FAILED",
+                                                "message": "공고 내용을 정리하는 데 실패했어요. 공고 내용을 직접 붙여넣어 주세요."
                                               }
                                             }
                                             """)

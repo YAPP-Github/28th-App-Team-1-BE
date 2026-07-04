@@ -36,6 +36,9 @@ apple:
   key-id: ${APPLE_KEY_ID}
   private-key: ${APPLE_PRIVATE_KEY}
 
+openai:
+  api-key: ${OPENAI_API_KEY}
+
 springdoc:
   swagger-ui:
     enabled: true
