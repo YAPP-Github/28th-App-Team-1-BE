@@ -1,6 +1,6 @@
 package com.yapp.d14.portfolio.adapter.in.web.response;
 
-import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 
 import java.util.UUID;

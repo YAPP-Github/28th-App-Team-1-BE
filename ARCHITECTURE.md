@@ -28,6 +28,7 @@ src/main/java/com/example/{name}/
     │   ├── command/                   # Command 객체 (UseCase 진입 시 사용)
     │   ├── port/
     │   │   ├── in/                    # Port(in): 외부 → 헥사곤 진입점 인터페이스
+    │   │   │   └── result/            # UseCase 반환값 객체 (Result, Summary 등)
     │   │   └── out/                   # Port(out): 헥사곤 → 외부 요청 인터페이스
     │   └── service/                   # Port(in) 구현체 (유스케이스 로직)
     ├── exception/                     # 도메인 전용 예외
@@ -81,6 +82,7 @@ src/main/java/com/example/common/
 |---|---|---|
 | 커맨드 객체 (`command/`) | `{명사}{동작}Command.java` | `MemberRegisterCommand.java` |
 | Port(in) 인터페이스 | `{명사}{동작}UseCase.java` | `MemberRegisterUseCase.java` |
+| Port(in) 반환값 객체 (`port/in/result/`) | `{명사}{동작}Result.java` | `MemberRegisterResult.java` |
 | Port(out) 저장소 인터페이스 | `{명사}Repository.java` | `MemberRepository.java` |
 | Port(out) 외부 기능 인터페이스 | `{기능명}.java` | `EmailSender.java`, `PasswordEncoder.java` |
 | 서비스 구현체 (커맨드) | `{명사}{동작}Service.java` | `MemberRegisterService.java` |
@@ -153,6 +155,7 @@ src/main/java/com/example/common/
 | HTTP 요청 DTO | `adapter/in/web/request/` |
 | HTTP 응답 DTO | `adapter/in/web/response/` |
 | 커맨드 객체 | `application/command/` |
+| Port(in) 반환값 객체 | `application/port/in/result/` |
 | JPA 엔티티 | `adapter/out/persistence/entity/` |
 | QueryDSL Projection DTO | `adapter/out/persistence/` |
 | 외부 시스템 연동 DTO | `adapter/out/integration/` |

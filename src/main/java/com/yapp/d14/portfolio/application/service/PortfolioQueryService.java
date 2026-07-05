@@ -1,9 +1,9 @@
 package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
-import com.yapp.d14.portfolio.application.port.in.PortfolioStatusResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
-import com.yapp.d14.portfolio.application.port.in.PortfolioSummary;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;

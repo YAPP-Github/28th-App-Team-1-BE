@@ -1,5 +1,7 @@
 package com.yapp.d14.portfolio.application.port.in;
 
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
+
 import java.util.List;
 import java.util.UUID;
 

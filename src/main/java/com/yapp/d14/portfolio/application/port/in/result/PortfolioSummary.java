@@ -1,4 +1,4 @@
-package com.yapp.d14.portfolio.application.port.in;
+package com.yapp.d14.portfolio.application.port.in.result;
 
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 

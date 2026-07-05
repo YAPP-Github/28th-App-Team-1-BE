@@ -3,7 +3,7 @@ package com.yapp.d14.portfolio.application.service;
 import com.yapp.d14.common.util.S3Directory;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
-import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.out.PdfMetadataReader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioProcessor;

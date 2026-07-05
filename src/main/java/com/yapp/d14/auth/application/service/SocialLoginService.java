@@ -1,7 +1,7 @@
 package com.yapp.d14.auth.application.service;
 
 import com.yapp.d14.auth.application.command.SocialLoginCommand;
-import com.yapp.d14.auth.application.port.in.AuthToken;
+import com.yapp.d14.auth.application.port.in.result.AuthToken;
 import com.yapp.d14.auth.application.port.in.SocialLoginUseCase;
 import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.application.port.out.SocialAuthClient;

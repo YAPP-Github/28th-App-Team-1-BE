@@ -1,6 +1,6 @@
 package com.yapp.d14.portfolio.adapter.in.web.response;
 
-import com.yapp.d14.portfolio.application.port.in.PortfolioSummary;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 
 import java.util.List;
 

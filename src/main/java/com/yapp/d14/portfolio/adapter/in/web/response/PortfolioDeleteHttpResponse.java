@@ -1,6 +1,6 @@
 package com.yapp.d14.portfolio.adapter.in.web.response;
 
-import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioDeleteResult;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

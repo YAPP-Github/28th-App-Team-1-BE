@@ -1,6 +1,6 @@
 package com.yapp.d14.portfolio.application.service;
 
-import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioDeleteResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteUseCase;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
