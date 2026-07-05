@@ -2,6 +2,7 @@ package com.yapp.d14.portfolio.adapter.in.web;
 
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -87,5 +88,36 @@ public interface PortfolioControllerDocs {
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "업로드할 PDF 파일") MultipartFile file,
             @Valid PortfolioRegisterHttpRequest request
+    );
+
+    @Operation(
+            summary = "포트폴리오 처리 상태 조회",
+            description = "포트폴리오 등록 후 처리 상태를 폴링으로 조회합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 3~5초 간격으로 폴링하며 `PROCESSING`(계속) / `READY`(완료) / `FAILED_FILE`·`FAILED_SYSTEM`(실패)을 응답합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "포트폴리오가 존재하지 않거나 본인 소유가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "PORTFOLIO_NOT_FOUND",
+                                      "message": "포트폴리오를 찾을 수 없어요."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<ApiResponse<PortfolioStatusHttpResponse>> getStatus(
+            @Parameter(hidden = true) @CurrentUser UUID userId,
+            @Parameter(description = "포트폴리오 ID") UUID portfolioId
     );
 }

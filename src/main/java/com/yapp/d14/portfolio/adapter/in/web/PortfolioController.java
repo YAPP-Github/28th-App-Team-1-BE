@@ -4,14 +4,19 @@ import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
+import com.yapp.d14.portfolio.application.port.in.PortfolioStatusResult;
+import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -26,6 +31,7 @@ import java.util.UUID;
 class PortfolioController implements PortfolioControllerDocs {
 
     private final PortfolioRegisterUseCase portfolioRegisterUseCase;
+    private final PortfolioStatusUseCase portfolioStatusUseCase;
 
     @Override
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -37,5 +43,15 @@ class PortfolioController implements PortfolioControllerDocs {
         PortfolioRegisterResult result = portfolioRegisterUseCase.register(request.toCommand(userId, file));
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.ok(PortfolioRegisterHttpResponse.from(result)));
+    }
+
+    @Override
+    @GetMapping("/{portfolioId}/status")
+    public ResponseEntity<ApiResponse<PortfolioStatusHttpResponse>> getStatus(
+            @CurrentUser UUID userId,
+            @PathVariable UUID portfolioId
+    ) {
+        PortfolioStatusResult result = portfolioStatusUseCase.getStatus(userId, portfolioId);
+        return ResponseEntity.ok(ApiResponse.ok(PortfolioStatusHttpResponse.from(result)));
     }
 }
