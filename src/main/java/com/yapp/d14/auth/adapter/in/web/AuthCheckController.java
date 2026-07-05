@@ -1,12 +1,12 @@
 package com.yapp.d14.auth.adapter.in.web;
 
 import com.yapp.d14.auth.adapter.in.web.response.AuthCheckHttpResponse;
+import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
@@ -27,8 +27,8 @@ class AuthCheckController {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "인증 성공"),
-            @ApiResponse(
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "유효하지 않은 Access Token",
                     content = @Content(
@@ -53,7 +53,7 @@ class AuthCheckController {
             )
     })
     @GetMapping("/check")
-    public ResponseEntity<AuthCheckHttpResponse> check(@Parameter(hidden = true) @CurrentUser UUID userId) {
-        return ResponseEntity.ok(new AuthCheckHttpResponse("인증 성공", userId));
+    public ResponseEntity<ApiResponse<AuthCheckHttpResponse>> check(@Parameter(hidden = true) @CurrentUser UUID userId) {
+        return ResponseEntity.ok(ApiResponse.ok(new AuthCheckHttpResponse("인증 성공", userId)));
     }
 }
