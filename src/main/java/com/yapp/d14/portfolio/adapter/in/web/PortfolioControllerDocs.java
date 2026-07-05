@@ -1,6 +1,7 @@
 package com.yapp.d14.portfolio.adapter.in.web;
 
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioListHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
 import com.yapp.d14.common.response.ApiResponse;
@@ -119,5 +120,21 @@ public interface PortfolioControllerDocs {
     ResponseEntity<ApiResponse<PortfolioStatusHttpResponse>> getStatus(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "포트폴리오 ID") UUID portfolioId
+    );
+
+    @Operation(
+            summary = "내 포트폴리오 목록 조회",
+            description = "로그인한 사용자가 등록한 포트폴리오 목록을 조회합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공"
+            )
+    })
+    ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(
+            @Parameter(hidden = true) @CurrentUser UUID userId
     );
 }

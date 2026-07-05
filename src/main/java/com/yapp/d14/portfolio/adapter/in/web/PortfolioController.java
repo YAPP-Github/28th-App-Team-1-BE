@@ -3,12 +3,15 @@ package com.yapp.d14.portfolio.adapter.in.web;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioListHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
+import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
+import com.yapp.d14.portfolio.application.port.in.PortfolioSummary;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +36,7 @@ class PortfolioController implements PortfolioControllerDocs {
 
     private final PortfolioRegisterUseCase portfolioRegisterUseCase;
     private final PortfolioStatusUseCase portfolioStatusUseCase;
+    private final PortfolioListUseCase portfolioListUseCase;
 
     @Override
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -53,5 +58,12 @@ class PortfolioController implements PortfolioControllerDocs {
     ) {
         PortfolioStatusResult result = portfolioStatusUseCase.getStatus(userId, portfolioId);
         return ResponseEntity.ok(ApiResponse.ok(PortfolioStatusHttpResponse.from(result)));
+    }
+
+    @Override
+    @GetMapping
+    public ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(@CurrentUser UUID userId) {
+        List<PortfolioSummary> summaries = portfolioListUseCase.getList(userId);
+        return ResponseEntity.ok(ApiResponse.ok(PortfolioListHttpResponse.from(summaries)));
     }
 }
