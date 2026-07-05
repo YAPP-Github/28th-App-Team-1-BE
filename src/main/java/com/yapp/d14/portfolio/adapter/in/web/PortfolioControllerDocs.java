@@ -1,6 +1,7 @@
 package com.yapp.d14.portfolio.adapter.in.web;
 
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioDeleteHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioListHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
@@ -136,5 +137,35 @@ public interface PortfolioControllerDocs {
     })
     ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(
             @Parameter(hidden = true) @CurrentUser UUID userId
+    );
+
+    @Operation(
+            summary = "포트폴리오 삭제",
+            description = "포트폴리오를 삭제합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "삭제 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "포트폴리오가 존재하지 않거나 본인 소유가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "PORTFOLIO_NOT_FOUND",
+                                      "message": "포트폴리오를 찾을 수 없어요."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<ApiResponse<PortfolioDeleteHttpResponse>> delete(
+            @Parameter(hidden = true) @CurrentUser UUID userId,
+            @Parameter(description = "포트폴리오 ID") UUID portfolioId
     );
 }

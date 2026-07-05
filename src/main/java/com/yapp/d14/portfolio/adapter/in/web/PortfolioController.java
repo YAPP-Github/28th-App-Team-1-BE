@@ -3,9 +3,12 @@ package com.yapp.d14.portfolio.adapter.in.web;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioDeleteHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioListHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
+import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteResult;
+import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
@@ -17,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,6 +41,7 @@ class PortfolioController implements PortfolioControllerDocs {
     private final PortfolioRegisterUseCase portfolioRegisterUseCase;
     private final PortfolioStatusUseCase portfolioStatusUseCase;
     private final PortfolioListUseCase portfolioListUseCase;
+    private final PortfolioDeleteUseCase portfolioDeleteUseCase;
 
     @Override
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -65,5 +70,15 @@ class PortfolioController implements PortfolioControllerDocs {
     public ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(@CurrentUser UUID userId) {
         List<PortfolioSummary> summaries = portfolioListUseCase.getList(userId);
         return ResponseEntity.ok(ApiResponse.ok(PortfolioListHttpResponse.from(summaries)));
+    }
+
+    @Override
+    @DeleteMapping("/{portfolioId}")
+    public ResponseEntity<ApiResponse<PortfolioDeleteHttpResponse>> delete(
+            @CurrentUser UUID userId,
+            @PathVariable UUID portfolioId
+    ) {
+        PortfolioDeleteResult result = portfolioDeleteUseCase.delete(userId, portfolioId);
+        return ResponseEntity.ok(ApiResponse.ok(PortfolioDeleteHttpResponse.from(result)));
     }
 }
