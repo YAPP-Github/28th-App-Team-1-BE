@@ -34,7 +34,7 @@ public class PortfolioJpaEntity {
 
     private Integer pageCount;
 
-    @Column(nullable = false)
+    @Column(name = "s3_key", nullable = false)
     private String s3Key;
 
     @Enumerated(EnumType.STRING)

@@ -22,6 +22,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public boolean existsByUserId(UUID userId) {
+        return portfolioJpaRepository.existsByUserId(userId);
+    }
+
+    @Override
     public Optional<Portfolio> findById(UUID id) {
         return portfolioJpaRepository.findById(id).map(PortfolioJpaEntity::toDomain);
     }

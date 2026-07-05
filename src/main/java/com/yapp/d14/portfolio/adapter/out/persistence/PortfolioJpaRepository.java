@@ -9,4 +9,6 @@ import java.util.UUID;
 interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID> {
 
     List<PortfolioJpaEntity> findAllByUserId(UUID userId);
+
+    boolean existsByUserId(UUID userId);
 }

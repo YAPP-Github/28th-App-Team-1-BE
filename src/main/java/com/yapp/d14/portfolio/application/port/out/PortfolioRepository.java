@@ -10,6 +10,8 @@ public interface PortfolioRepository {
 
     Portfolio save(Portfolio portfolio);
 
+    boolean existsByUserId(UUID userId);
+
     Optional<Portfolio> findById(UUID id);
 
     List<Portfolio> findAllByUserId(UUID userId);

@@ -46,15 +46,16 @@ public class Portfolio {
         this.uploadedAt = uploadedAt;
     }
 
-    public static Portfolio create(UUID userId, String fileName, long fileSize, String s3Key) {
+    public static Portfolio create(UUID id, UUID userId, String fileName, long fileSize, int pageCount, String s3Key) {
         return Portfolio.builder()
-                .id(UUID.randomUUID())
+                .id(id)
                 .userId(userId)
                 .fileName(fileName)
                 .fileSize(fileSize)
+                .pageCount(pageCount)
                 .s3Key(s3Key)
-                .status(PortfolioStatus.PENDING)
-                .message("포트폴리오를 처리 중입니다.")
+                .status(PortfolioStatus.PROCESSING)
+                .message("포트폴리오를 분석하고 있어요.")
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -85,9 +86,8 @@ public class Portfolio {
                 .build();
     }
 
-    public void ready(int pageCount) {
+    public void ready() {
         this.status = PortfolioStatus.READY;
-        this.pageCount = pageCount;
         this.uploadedAt = LocalDateTime.now();
         this.message = "포트폴리오 처리가 완료되었습니다.";
     }
