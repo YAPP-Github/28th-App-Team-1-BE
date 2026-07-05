@@ -9,12 +9,13 @@ import java.util.UUID;
 
 @Slf4j
 @Component
-class PortfolioAsyncProcessorAdapter implements PortfolioProcessor {
+class AsyncPortfolioProcessorAdapter implements PortfolioProcessor {
 
     @Override
     @Async("portfolioTaskExecutor")
     public void process(UUID portfolioId) {
-        // S3 업로드 → Tika 파싱 → 임베딩 파이프라인은 별도 이슈에서 구현 예정
+        // TODO:: S3 업로드 → Tika 파싱 → 임베딩 파이프라인은 별도 이슈에서 구현 예정
+
         log.info("portfolio async processing triggered: portfolioId={}", portfolioId);
     }
 }

@@ -30,12 +30,10 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
         }
 
-        PortfolioFileValidator.validateContentType(command.contentType());
-        PortfolioFileValidator.validateFileSize(command.fileContent().length);
-        PortfolioFileValidator.validatePageCount(command.declaredPageCount());
-
         int pageCount = pdfMetadataReader.countPages(command.fileContent());
-        PortfolioFileValidator.validatePageCount(pageCount);
+        if (pageCount > PortfolioRegisterCommand.MAX_PAGE_COUNT) {
+            throw new PortfolioException(PortfolioErrorCode.PAGE_COUNT_EXCEEDED);
+        }
 
         UUID portfolioId = UUID.randomUUID();
         String s3Key = S3KeyGenerator.generate(S3Directory.PORTFOLIOS, command.userId(), portfolioId, "pdf");
