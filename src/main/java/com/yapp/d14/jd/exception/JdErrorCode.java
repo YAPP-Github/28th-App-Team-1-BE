@@ -1,4 +1,4 @@
-package com.yapp.d14.user.exception;
+package com.yapp.d14.jd.exception;
 
 import com.yapp.d14.common.exception.ErrorCode;
 import lombok.Getter;
@@ -7,9 +7,9 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum UserErrorCode implements ErrorCode {
+public enum JdErrorCode implements ErrorCode {
 
-    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "존재하지 않는 사용자입니다.");
+    INVALID_JD_URL(HttpStatus.BAD_REQUEST, "INVALID_JD_URL", "올바른 URL 형식이 아니에요.");
 
     private final HttpStatus httpStatus;
     private final String code;
