@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
         log.warn("[MaxUploadSizeExceededException] {}", e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of("FILE_TOO_LARGE", "파일이 너무 커요. 20MB 이하 PDF로 올려주세요"));
+                .body(ErrorResponse.of("FILE_TOO_LARGE", "파일이 너무 커요. 20MB 이하 파일로 올려주세요"));
     }
 
     @ExceptionHandler(Exception.class)
