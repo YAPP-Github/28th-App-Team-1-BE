@@ -1,0 +1,186 @@
+# 꼬리질문 생성 원칙 (P1~P24)
+# 용도: run_live_turn의 시스템 프롬프트에 고정 삽입 (probe_text 생성 전술 참고자료).
+#       P1~P20은 전 직군 공통. P21~P24는 job_role_profiles로 직군별 필수/권장 차등 적용.
+# 세션 시작 시 jobRole로 job_role_profiles를 1회 조회해 시스템 프롬프트에 포함,
+# 이후 매 턴 재사용 (세션 내내 안 바뀌는 캐싱 영역).
+# 출처: PRD 3장, 3-1
+# 범위: MVP 6직군만 포함 (BACKEND, FRONTEND, IOS, ANDROID, DATA_ENGINEER, INFRA_SRE)
+
+common_principles:  # P1~P20, 전 직군 공통 도구
+  - id: P1
+    axis: depth
+    name: "무엇 → 왜/어떻게 전환"
+    example: "왜 그 컬럼에 인덱스가 효과적이라 판단했죠? 카디널리티는 봤나요?"
+
+  - id: P2
+    axis: depth
+    name: "근본원인까지 반복 추궁 (5 Whys)"
+    example: "서버가 죽었다 → 왜? → 메모리 → 왜? → 그 코드는 왜 그렇게 짜였죠?"
+
+  - id: P3
+    axis: depth
+    name: "구체 행동으로 환원 (STAR)"
+    example: "'품질을 개선했다'를 상황·당신의 행동·수치 결과로 쪼개주세요."
+
+  - id: P4
+    axis: depth
+    name: "비전문가에게 설명시키기 (파인만)"
+    example: "이 개념을 기획자에게 비유로 설명한다면?"
+
+  - id: P5
+    axis: boundary
+    name: "반사실적 조건 주입"
+    example: "트래픽 100배 + 갱신주기 1초면, 그 전략 유지하나요? 뭐가 바뀌죠?"
+
+  - id: P6
+    axis: boundary
+    name: "능력 가장자리까지 난이도 상승"
+    example: "TCP 핸드셰이크 → TIME_WAIT 폭증 → 커널 파라미터 레벨 대응은?"
+
+  - id: P7
+    axis: boundary
+    name: "실패 모드 강제"
+    example: "정상은 됐다 치고, 장애 시 가장 먼저 무너지는 곳과 임계 수치는?"
+
+  - id: P8
+    axis: connection
+    name: "So-what 래더링"
+    example: "응답속도 200ms 단축 → 그래서 전환율/이탈률/CS는? 어떻게 측정했죠?"
+
+  - id: P9
+    axis: connection
+    name: "파급효과 추적"
+    example: "그 변경이 팀 밖(운영·CS·매출)에 만든 2차 효과는?"
+
+  - id: P10
+    axis: connection
+    name: "이해관계자 매핑"
+    example: "그 결정으로 누가 이득을 보고 누가 비용을 떠안았나요?"
+
+  - id: P11
+    axis: tradeoff
+    name: "트레이드오프 강제"
+    example: "왜 굳이 Kafka였죠? Kafka를 택해 포기한 것은?"
+
+  - id: P12
+    axis: tradeoff
+    name: "반대 입장 옹호시키기"
+    example: "B를 옹호하는 사람이라면 뭐라 반박할까요? 거기에 어떻게 답하죠?"
+
+  - id: P13
+    axis: tradeoff
+    name: "자기 결정 비판"
+    example: "그 결정을 지금 다시 깐다면 가장 약한 부분은?"
+
+  - id: P14
+    axis: conflict
+    name: "상대의 이해관계 읽기"
+    example: "상대는 왜 반대했나요? 표면 주장 말고 진짜 우려는?"
+
+  - id: P15
+    axis: conflict
+    name: "설득 수단·교환 확인"
+    example: "직책 권한이 없었을 텐데, 무엇으로 그를 움직였나요?"
+
+  - id: P16
+    axis: conflict
+    name: "갈등 대응 모드 적합성"
+    example: "왜 타협이 아니라 관철이었죠? 물러섰어야 할 상황은 아니었나요?"
+
+  - id: P17
+    axis: conflict
+    name: "사안 vs 인신 분리"
+    example: "그 마찰로 관계가 상하진 않았나요? 어떻게 관리했죠?"
+
+  - id: P18
+    axis: resilience
+    name: "폐기한 신념 묻기"
+    example: "당시엔 옳다 믿었지만 지금은 틀렸다 보는 판단은? 뭐가 생각을 바꿨죠?"
+
+  - id: P19
+    axis: resilience
+    name: "낯선 영역 학습 속도"
+    example: "전혀 모르던 기술을 단기간에 익혀야 했던 때, 어떻게 접근했나요?"
+
+  - id: P20
+    axis: resilience
+    name: "실패의 일반화"
+    example: "그 장애에서 얻은 교훈을 설계 원칙으로 일반화하면?"
+
+new_principles:  # P21~P24, 직군별 차등 적용 (job_role_profiles 참고)
+  - id: P21
+    axis: boundary
+    name: "규모·일반화 탐침"
+    example_dev: "지금 규모에선 통했는데, 사용자가 10배가 되면 가장 먼저 깨지는 지점은? 그 임계점을 숫자로 어림해 본다면?"
+    example_non_dev: "그 프로세스를 팀 1개가 아니라 3개 팀이 같이 쓰게 되면, 무엇부터 다시 설계해야 하나요?"
+    judgement: "스스로 깨질 지점을 지목=4점 신호, 조건을 줘야 따라옴=3점, 조건을 줘도 동일=1~2점"
+
+  - id: P22
+    axis: tradeoff
+    name: "강제 삭감"
+    example: "일정이 절반이었다면 무엇을 버렸겠어요? 그걸 버려도 되는 이유는요?"
+    followup: "지금 말한 결과물 중 하나만 남겨야 한다면?"
+    judgement: "버릴 항목을 고르는 것 자체가 아니라, 버리는 기준이 가치·제약과 연결되는가. '다 중요해서 못 버린다'는 1점 신호"
+
+  - id: P23
+    axis: resilience
+    name: "피벗 추적"
+    example: "결과가 가설과 다르게 나온 걸 확인한 직후 일주일 동안, 실제로 무엇을 했나요?"
+    followup: "방향을 바꾸자고 누구를 어떻게 설득했나요? (⑤ 갈등과 연결)"
+    judgement: "태도('멘탈을 다잡았다')가 아니라 행동(데이터 재확인·가설 수정·이해관계자 공유)을 묻는다. 행동 공백이면 1~2점"
+
+  - id: P24
+    axis: tradeoff
+    name: "비용 청구서"
+    example: "그 선택이 청구한 비용은 뭐였나요? 잃은 게 정말 없었다면, 왜 모든 팀이 그렇게 하지 않죠?"
+    judgement: "비용을 한 건도 인정 못 하면 '무결점 서사' 레드플래그로 넘어감"
+    note: "직무 역량이 아니라 답변의 신뢰도를 검증하는 장치. 전 직군 공통 필수(위험 신호와 직결)"
+
+job_role_profiles:  # MVP 6직군만. REQUIRED | RECOMMENDED
+  BACKEND:
+    P21: { level: REQUIRED }
+    P22: { level: RECOMMENDED }
+    P23: { level: RECOMMENDED }
+    P24: { level: REQUIRED }
+
+  FRONTEND:
+    P21: { level: RECOMMENDED, note: "성능·디바이스 관점" }
+    P22: { level: RECOMMENDED }
+    P23: { level: RECOMMENDED }
+    P24: { level: REQUIRED }
+
+  IOS:
+    P21: { level: RECOMMENDED, note: "OS·기기 파편화 관점" }
+    P22: { level: RECOMMENDED }
+    P23: { level: RECOMMENDED }
+    P24: { level: REQUIRED }
+
+  ANDROID:
+    P21: { level: RECOMMENDED, note: "OS·기기 파편화 관점" }
+    P22: { level: RECOMMENDED }
+    P23: { level: RECOMMENDED }
+    P24: { level: REQUIRED }
+
+  DATA_ENGINEER:
+    P21: { level: REQUIRED, note: "볼륨 관점" }
+    P22: { level: RECOMMENDED }
+    P23: { level: RECOMMENDED }
+    P24: { level: REQUIRED }
+
+  INFRA_SRE:
+    P21: { level: REQUIRED }
+    P22: { level: RECOMMENDED }
+    P23: { level: REQUIRED, note: "장애복구 관점" }
+    P24: { level: REQUIRED }
+
+application_rule: >
+  테스트 진입 시, 직군 프로파일의 REQUIRED 원칙을 먼저 소진한 뒤 RECOMMENDED 원칙으로 확장한다.
+
+question_writing_rules:
+  - "대본을 읽지 말고 직전 답변의 실마리에서 질문을 만든다."
+  - "막히면 압박하지 말고 한 단계 낮춰 재탐침한다."
+  - "인격이 아니라 사고를 시험한다."
+  - "진입(첫) 질문은 포트폴리오에서 생성한 질문을 쓰고, P1~P24는 그 뒤 꼬리질문 생성에 쓴다."
+
+design_note: >
+  모든 질문은 한 번에 하나의 변수만 검증한다 (인지부하 통제).

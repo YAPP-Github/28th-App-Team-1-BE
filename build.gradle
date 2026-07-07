@@ -51,6 +51,8 @@ dependencies {
 
     // PDF 페이지 수 검증
     implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    // JD 크롤링
+    implementation 'org.jsoup:jsoup:1.18.3'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'

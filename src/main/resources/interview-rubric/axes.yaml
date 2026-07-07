@@ -1,0 +1,41 @@
+# 6대 평가 항목 정의
+# 용도: run_live_turn(캐물지점 추출/천장 판별), preload_probe_pool(axis 태깅)의
+#       시스템 프롬프트에 고정 삽입. 세션 시작 시 1회 캐싱, 매 턴 재사용.
+# 출처: PRD 6.1
+
+axes:
+  depth:
+    label: "① 깊이"
+    perspective: "한 주제·결정을 원인과 작동 원리까지 얼마나 팠나"
+    verification_question: "진짜 자기 경험인가, 표면·암기인가?"
+
+  boundary:
+    label: "② 경계·규모"
+    perspective: "다룬 규모와 한계·예외를 얼마나 의식하나"
+    verification_question: "조건·규모가 바뀌면 판단이 무너지는 지점은?"
+
+  connection:
+    label: "③ 연결"
+    perspective: "한 결정이 다른 부분(시스템·팀·지표)과 어떻게 얽히는지 파급을 보나"
+    verification_question: "기술 작업을 비즈니스·조직 가치로 잇는가?"
+
+  tradeoff:
+    label: "④ 대안·우선순위"
+    perspective: "다른 선택지를 보고 왜 이걸 골랐나, 무엇을 먼저 두었나"
+    verification_question: "왜 A인가? 트레이드오프를 봤나? 무엇부터 버릴 수 있나?"
+
+  conflict:
+    label: "⑤ 갈등"
+    perspective: "이해·입장 충돌을 어떻게 다뤘나"
+    verification_question: "조직 내 이견을 어떻게 다루고 영향력을 행사했나?"
+
+  resilience:
+    label: "⑥ 성장·복원력"
+    perspective: "실패·역경에서 무엇을 배우고 어떻게 회복했나"
+    verification_question: "신념을 내려놓고 학습하는가? 예상 밖 결과에서 회복·피벗하는가?"
+
+# verification_question 출처: 채점 루브릭 원문 §2 (구 문서, 단일 출처)
+# perspective 출처: Part 2 PRD §6.1 (운영 문서)
+# 두 필드는 같은 축을 다른 각도로 설명한다 - perspective는 "무엇을 관찰하는가",
+# verification_question은 "결국 확인하려는 게 뭔가"에 가깝다. run_live_turn의
+# axis 판별·캐물지점 추출 시 함께 참고한다.
