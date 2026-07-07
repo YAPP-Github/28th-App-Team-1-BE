@@ -9,7 +9,7 @@ public interface QuestionCandidateRepository {
 
     QuestionCandidate save(QuestionCandidate questionCandidate);
 
-    Optional<QuestionCandidate> findById(String id);
+    Optional<QuestionCandidate> findById(Long id);
 
     List<QuestionCandidate> findAllBySessionId(Long sessionId);
 }

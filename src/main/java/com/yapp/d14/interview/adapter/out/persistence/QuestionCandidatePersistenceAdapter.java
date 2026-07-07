@@ -21,7 +21,7 @@ class QuestionCandidatePersistenceAdapter implements QuestionCandidateRepository
     }
 
     @Override
-    public Optional<QuestionCandidate> findById(String id) {
+    public Optional<QuestionCandidate> findById(Long id) {
         return questionCandidateJpaRepository.findById(id).map(QuestionCandidateJpaEntity::toDomain);
     }
 

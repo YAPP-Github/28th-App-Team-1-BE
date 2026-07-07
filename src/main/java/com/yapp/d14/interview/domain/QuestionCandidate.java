@@ -5,12 +5,11 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Getter
 public class QuestionCandidate {
 
-    private final String id;
+    private final Long id;
     private final Long sessionId;
     private final QuestionCandidateSource source;
     private final String sourceRef;
@@ -27,7 +26,7 @@ public class QuestionCandidate {
 
     @Builder(access = AccessLevel.PRIVATE)
     private QuestionCandidate(
-            String id,
+            Long id,
             Long sessionId,
             QuestionCandidateSource source,
             String sourceRef,
@@ -70,7 +69,6 @@ public class QuestionCandidate {
             QuestionCandidateStrength strength
     ) {
         return QuestionCandidate.builder()
-                .id(UUID.randomUUID().toString())
                 .sessionId(sessionId)
                 .source(source)
                 .sourceRef(sourceRef)
@@ -86,7 +84,7 @@ public class QuestionCandidate {
     }
 
     public static QuestionCandidate of(
-            String id,
+            Long id,
             Long sessionId,
             QuestionCandidateSource source,
             String sourceRef,

@@ -12,12 +12,16 @@ public class Question {
     private final Long id;
     private final Long sessionId;
     private final String content;
+
     // 세션 전체 기준 질문 순서
     private final Integer indexLevel;
+
     // 같은 testType 내에서의 질문 순서(꼬리 질문 깊이)
     private final Integer depthLevel;
+
     private final TestType testType;
     private final String appliedPrinciple;
+
     // 질문 음성이 영상에서 시작/종료된 시점(초)
     private final Float questionStartSec;
     private final Float questionEndSec;

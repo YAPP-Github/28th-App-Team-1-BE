@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-interface QuestionCandidateJpaRepository extends JpaRepository<QuestionCandidateJpaEntity, String> {
+interface QuestionCandidateJpaRepository extends JpaRepository<QuestionCandidateJpaEntity, Long> {
 
     List<QuestionCandidateJpaEntity> findAllBySessionId(Long sessionId);
 }
