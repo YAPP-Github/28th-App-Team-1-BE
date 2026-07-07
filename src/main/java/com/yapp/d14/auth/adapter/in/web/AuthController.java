@@ -4,7 +4,7 @@ import com.yapp.d14.auth.adapter.in.web.request.SocialLoginHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.request.TokenReissueHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.response.AuthTokenHttpResponse;
 import com.yapp.d14.auth.application.command.LogoutCommand;
-import com.yapp.d14.auth.application.port.in.AuthToken;
+import com.yapp.d14.auth.application.port.in.result.AuthToken;
 import com.yapp.d14.auth.application.port.in.LogoutUseCase;
 import com.yapp.d14.auth.application.port.in.SocialLoginUseCase;
 import com.yapp.d14.auth.application.port.in.TokenReissueUseCase;

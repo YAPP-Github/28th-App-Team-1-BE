@@ -1,7 +1,7 @@
 package com.yapp.d14.auth.application.service;
 
 import com.yapp.d14.auth.application.command.TokenReissueCommand;
-import com.yapp.d14.auth.application.port.in.AuthToken;
+import com.yapp.d14.auth.application.port.in.result.AuthToken;
 import com.yapp.d14.auth.application.port.in.TokenReissueUseCase;
 import com.yapp.d14.auth.application.port.out.JwtClaims;
 import com.yapp.d14.auth.application.port.out.JwtProvider;

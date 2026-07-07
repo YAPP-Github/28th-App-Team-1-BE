@@ -1,6 +1,6 @@
 package com.yapp.d14.auth.adapter.in.web.response;
 
-import com.yapp.d14.auth.application.port.in.AuthToken;
+import com.yapp.d14.auth.application.port.in.result.AuthToken;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record AuthTokenHttpResponse(
