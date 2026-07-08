@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 public class InterviewAxisPlan {
 
     private final Long id;
-    private final Long interviewSessionId;
-    private final TestType axis;
+    private final Long sessionId;
+    private final TestType testType;
     private final AxisTier tier;
     private final Integer budget;
     private Integer usedCount;
@@ -20,16 +20,16 @@ public class InterviewAxisPlan {
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewAxisPlan(
             Long id,
-            Long interviewSessionId,
-            TestType axis,
+            Long sessionId,
+            TestType testType,
             AxisTier tier,
             Integer budget,
             Integer usedCount,
             LocalDateTime createdAt
     ) {
         this.id = id;
-        this.interviewSessionId = interviewSessionId;
-        this.axis = axis;
+        this.sessionId = sessionId;
+        this.testType = testType;
         this.tier = tier;
         this.budget = budget;
         this.usedCount = usedCount;
@@ -37,14 +37,14 @@ public class InterviewAxisPlan {
     }
 
     public static InterviewAxisPlan create(
-            Long interviewSessionId,
-            TestType axis,
+            Long sessionId,
+            TestType testType,
             AxisTier tier,
             Integer budget
     ) {
         return InterviewAxisPlan.builder()
-                .interviewSessionId(interviewSessionId)
-                .axis(axis)
+                .sessionId(sessionId)
+                .testType(testType)
                 .tier(tier)
                 .budget(budget)
                 .usedCount(0)
@@ -54,8 +54,8 @@ public class InterviewAxisPlan {
 
     public static InterviewAxisPlan of(
             Long id,
-            Long interviewSessionId,
-            TestType axis,
+            Long sessionId,
+            TestType testType,
             AxisTier tier,
             Integer budget,
             Integer usedCount,
@@ -63,8 +63,8 @@ public class InterviewAxisPlan {
     ) {
         return InterviewAxisPlan.builder()
                 .id(id)
-                .interviewSessionId(interviewSessionId)
-                .axis(axis)
+                .sessionId(sessionId)
+                .testType(testType)
                 .tier(tier)
                 .budget(budget)
                 .usedCount(usedCount)

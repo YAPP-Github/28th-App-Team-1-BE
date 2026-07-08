@@ -34,13 +34,13 @@ public class AnswerJpaEntity {
     private String sttText;
 
     @Column(name = "answer_start_sec")
-    private Integer answerStartSec;
+    private Float answerStartSec;
 
     @Column(name = "answer_end_sec")
-    private Integer answerEndSec;
+    private Float answerEndSec;
 
     @Column(name = "answer_duration")
-    private Integer answerDuration;
+    private Float answerDuration;
 
     @Column(name = "is_skipped")
     private Boolean isSkipped;

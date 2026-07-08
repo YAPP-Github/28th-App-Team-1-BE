@@ -11,5 +11,5 @@ public interface InterviewAxisPlanRepository {
 
     Optional<InterviewAxisPlan> findById(Long id);
 
-    List<InterviewAxisPlan> findAllByInterviewSessionId(Long interviewSessionId);
+    List<InterviewAxisPlan> findAllBySessionId(Long sessionId);
 }

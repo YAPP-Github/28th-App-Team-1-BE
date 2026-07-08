@@ -25,12 +25,12 @@ public class InterviewAxisPlanJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "interview_session_id", nullable = false)
-    private Long interviewSessionId;
+    @Column(name = "session_id", nullable = false)
+    private Long sessionId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "axis")
-    private TestType axis;
+    @Column(name = "test_type")
+    private TestType testType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "tier")
@@ -48,8 +48,8 @@ public class InterviewAxisPlanJpaEntity {
     public static InterviewAxisPlanJpaEntity from(InterviewAxisPlan interviewAxisPlan) {
         InterviewAxisPlanJpaEntity entity = new InterviewAxisPlanJpaEntity();
         entity.id = interviewAxisPlan.getId();
-        entity.interviewSessionId = interviewAxisPlan.getInterviewSessionId();
-        entity.axis = interviewAxisPlan.getAxis();
+        entity.sessionId = interviewAxisPlan.getSessionId();
+        entity.testType = interviewAxisPlan.getTestType();
         entity.tier = interviewAxisPlan.getTier();
         entity.budget = interviewAxisPlan.getBudget();
         entity.usedCount = interviewAxisPlan.getUsedCount();
@@ -60,8 +60,8 @@ public class InterviewAxisPlanJpaEntity {
     public InterviewAxisPlan toDomain() {
         return InterviewAxisPlan.of(
                 id,
-                interviewSessionId,
-                axis,
+                sessionId,
+                testType,
                 tier,
                 budget,
                 usedCount,

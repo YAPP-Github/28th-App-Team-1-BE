@@ -39,12 +39,12 @@ public class QuestionCandidateJpaEntity {
     private String sourceRef;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "axis")
-    private TestType axis;
+    @Column(name = "test_type")
+    private TestType testType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "secondary_axis")
-    private TestType secondaryAxis;
+    @Column(name = "secondary_test_type")
+    private TestType secondaryTestType;
 
     @Column(name = "probe_text", columnDefinition = "TEXT")
     private String probeText;
@@ -79,8 +79,8 @@ public class QuestionCandidateJpaEntity {
         entity.sessionId = questionCandidate.getSessionId();
         entity.source = questionCandidate.getSource();
         entity.sourceRef = questionCandidate.getSourceRef();
-        entity.axis = questionCandidate.getAxis();
-        entity.secondaryAxis = questionCandidate.getSecondaryAxis();
+        entity.testType = questionCandidate.getTestType();
+        entity.secondaryTestType = questionCandidate.getSecondaryTestType();
         entity.probeText = questionCandidate.getProbeText();
         entity.echoQuote = questionCandidate.getEchoQuote();
         entity.jdMatch = questionCandidate.getJdMatch();
@@ -98,8 +98,8 @@ public class QuestionCandidateJpaEntity {
                 sessionId,
                 source,
                 sourceRef,
-                axis,
-                secondaryAxis,
+                testType,
+                secondaryTestType,
                 probeText,
                 echoQuote,
                 jdMatch,

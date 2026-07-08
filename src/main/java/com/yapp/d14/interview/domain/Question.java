@@ -14,7 +14,7 @@ public class Question {
     private final String content;
 
     // 세션 전체 기준 질문 순서
-    private final Integer indexLevel;
+    private final Integer turnLevel;
 
     // 같은 testType 내에서의 질문 순서(꼬리 질문 깊이)
     private final Integer depthLevel;
@@ -25,6 +25,7 @@ public class Question {
     // 질문 음성이 영상에서 시작/종료된 시점(초)
     private final Float questionStartSec;
     private final Float questionEndSec;
+    private final String aiVoiceS3Key;
     private final LocalDateTime createdAt;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -32,30 +33,32 @@ public class Question {
             Long id,
             Long sessionId,
             String content,
-            Integer indexLevel,
+            Integer turnLevel,
             Integer depthLevel,
             TestType testType,
             String appliedPrinciple,
             Float questionStartSec,
             Float questionEndSec,
+            String aiVoiceS3Key,
             LocalDateTime createdAt
     ) {
         this.id = id;
         this.sessionId = sessionId;
         this.content = content;
-        this.indexLevel = indexLevel;
+        this.turnLevel = turnLevel;
         this.depthLevel = depthLevel;
         this.testType = testType;
         this.appliedPrinciple = appliedPrinciple;
         this.questionStartSec = questionStartSec;
         this.questionEndSec = questionEndSec;
+        this.aiVoiceS3Key = aiVoiceS3Key;
         this.createdAt = createdAt;
     }
 
     public static Question create(
             Long sessionId,
             String content,
-            Integer indexLevel,
+            Integer turnLevel,
             Integer depthLevel,
             TestType testType,
             String appliedPrinciple
@@ -63,7 +66,7 @@ public class Question {
         return Question.builder()
                 .sessionId(sessionId)
                 .content(content)
-                .indexLevel(indexLevel)
+                .turnLevel(turnLevel)
                 .depthLevel(depthLevel)
                 .testType(testType)
                 .appliedPrinciple(appliedPrinciple)
@@ -75,24 +78,26 @@ public class Question {
             Long id,
             Long sessionId,
             String content,
-            Integer indexLevel,
+            Integer turnLevel,
             Integer depthLevel,
             TestType testType,
             String appliedPrinciple,
             Float questionStartSec,
             Float questionEndSec,
+            String aiVoiceS3Key,
             LocalDateTime createdAt
     ) {
         return Question.builder()
                 .id(id)
                 .sessionId(sessionId)
                 .content(content)
-                .indexLevel(indexLevel)
+                .turnLevel(turnLevel)
                 .depthLevel(depthLevel)
                 .testType(testType)
                 .appliedPrinciple(appliedPrinciple)
                 .questionStartSec(questionStartSec)
                 .questionEndSec(questionEndSec)
+                .aiVoiceS3Key(aiVoiceS3Key)
                 .createdAt(createdAt)
                 .build();
     }

@@ -30,7 +30,7 @@ public class InterviewSessionJpaEntity {
     @Column(name = "user_id", columnDefinition = "uuid", nullable = false)
     private UUID userId;
 
-    @Column(name = "portfolio_id", columnDefinition = "uuid", nullable = false)
+    @Column(name = "portfolio_id", columnDefinition = "uuid")
     private UUID portfolioId;
 
     @Enumerated(EnumType.STRING)

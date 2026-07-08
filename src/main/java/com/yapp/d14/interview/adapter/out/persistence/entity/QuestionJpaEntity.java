@@ -31,8 +31,8 @@ public class QuestionJpaEntity {
     private String content;
 
     // 세션 전체 기준 질문 순서
-    @Column(name = "index_level")
-    private Integer indexLevel;
+    @Column(name = "turn_level")
+    private Integer turnLevel;
 
     // 같은 testType 내에서의 질문 순서(꼬리 질문 깊이)
     @Column(name = "depth_level")
@@ -52,6 +52,9 @@ public class QuestionJpaEntity {
     @Column(name = "question_end_sec")
     private Float questionEndSec;
 
+    @Column(name = "ai_voice_s3_key")
+    private String aiVoiceS3Key;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -60,12 +63,13 @@ public class QuestionJpaEntity {
         entity.id = question.getId();
         entity.sessionId = question.getSessionId();
         entity.content = question.getContent();
-        entity.indexLevel = question.getIndexLevel();
+        entity.turnLevel = question.getTurnLevel();
         entity.depthLevel = question.getDepthLevel();
         entity.testType = question.getTestType();
         entity.appliedPrinciple = question.getAppliedPrinciple();
         entity.questionStartSec = question.getQuestionStartSec();
         entity.questionEndSec = question.getQuestionEndSec();
+        entity.aiVoiceS3Key = question.getAiVoiceS3Key();
         entity.createdAt = question.getCreatedAt();
         return entity;
     }
@@ -75,12 +79,13 @@ public class QuestionJpaEntity {
                 id,
                 sessionId,
                 content,
-                indexLevel,
+                turnLevel,
                 depthLevel,
                 testType,
                 appliedPrinciple,
                 questionStartSec,
                 questionEndSec,
+                aiVoiceS3Key,
                 createdAt
         );
     }

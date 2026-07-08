@@ -13,9 +13,9 @@ public class Answer {
     private final Long sessionId;
     private final Long questionId;
     private final String sttText;
-    private final Integer answerStartSec;
-    private final Integer answerEndSec;
-    private final Integer answerDuration;
+    private final Float answerStartSec;
+    private final Float answerEndSec;
+    private final Float answerDuration;
     private final Boolean isSkipped;
     private final Float sttFailureRatio;
     private final String evidenceSummary;
@@ -32,9 +32,9 @@ public class Answer {
             Long sessionId,
             Long questionId,
             String sttText,
-            Integer answerStartSec,
-            Integer answerEndSec,
-            Integer answerDuration,
+            Float answerStartSec,
+            Float answerEndSec,
+            Float answerDuration,
             Boolean isSkipped,
             Float sttFailureRatio,
             String evidenceSummary,
@@ -67,9 +67,9 @@ public class Answer {
             Long sessionId,
             Long questionId,
             String sttText,
-            Integer answerStartSec,
-            Integer answerEndSec,
-            Integer answerDuration,
+            Float answerStartSec,
+            Float answerEndSec,
+            Float answerDuration,
             Boolean isSkipped,
             Float sttFailureRatio,
             String evidenceSummary,
@@ -103,9 +103,9 @@ public class Answer {
             Long sessionId,
             Long questionId,
             String sttText,
-            Integer answerStartSec,
-            Integer answerEndSec,
-            Integer answerDuration,
+            Float answerStartSec,
+            Float answerEndSec,
+            Float answerDuration,
             Boolean isSkipped,
             Float sttFailureRatio,
             String evidenceSummary,

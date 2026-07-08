@@ -26,8 +26,8 @@ class InterviewAxisPlanPersistenceAdapter implements InterviewAxisPlanRepository
     }
 
     @Override
-    public List<InterviewAxisPlan> findAllByInterviewSessionId(Long interviewSessionId) {
-        return interviewAxisPlanJpaRepository.findAllByInterviewSessionId(interviewSessionId).stream()
+    public List<InterviewAxisPlan> findAllBySessionId(Long sessionId) {
+        return interviewAxisPlanJpaRepository.findAllBySessionId(sessionId).stream()
                 .map(InterviewAxisPlanJpaEntity::toDomain)
                 .toList();
     }

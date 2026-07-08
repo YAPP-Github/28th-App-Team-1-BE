@@ -7,5 +7,5 @@ import java.util.List;
 
 interface InterviewAxisPlanJpaRepository extends JpaRepository<InterviewAxisPlanJpaEntity, Long> {
 
-    List<InterviewAxisPlanJpaEntity> findAllByInterviewSessionId(Long interviewSessionId);
+    List<InterviewAxisPlanJpaEntity> findAllBySessionId(Long sessionId);
 }

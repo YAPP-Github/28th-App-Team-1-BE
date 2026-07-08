@@ -13,8 +13,8 @@ public class QuestionCandidate {
     private final Long sessionId;
     private final QuestionCandidateSource source;
     private final String sourceRef;
-    private final TestType axis;
-    private final TestType secondaryAxis;
+    private final TestType testType;
+    private final TestType secondaryTestType;
     private final String probeText;
     private final String echoQuote;
     private final String jdMatch;
@@ -30,8 +30,8 @@ public class QuestionCandidate {
             Long sessionId,
             QuestionCandidateSource source,
             String sourceRef,
-            TestType axis,
-            TestType secondaryAxis,
+            TestType testType,
+            TestType secondaryTestType,
             String probeText,
             String echoQuote,
             String jdMatch,
@@ -45,8 +45,8 @@ public class QuestionCandidate {
         this.sessionId = sessionId;
         this.source = source;
         this.sourceRef = sourceRef;
-        this.axis = axis;
-        this.secondaryAxis = secondaryAxis;
+        this.testType = testType;
+        this.secondaryTestType = secondaryTestType;
         this.probeText = probeText;
         this.echoQuote = echoQuote;
         this.jdMatch = jdMatch;
@@ -61,8 +61,8 @@ public class QuestionCandidate {
             Long sessionId,
             QuestionCandidateSource source,
             String sourceRef,
-            TestType axis,
-            TestType secondaryAxis,
+            TestType testType,
+            TestType secondaryTestType,
             String probeText,
             String echoQuote,
             String jdMatch,
@@ -72,8 +72,8 @@ public class QuestionCandidate {
                 .sessionId(sessionId)
                 .source(source)
                 .sourceRef(sourceRef)
-                .axis(axis)
-                .secondaryAxis(secondaryAxis)
+                .testType(testType)
+                .secondaryTestType(secondaryTestType)
                 .probeText(probeText)
                 .echoQuote(echoQuote)
                 .jdMatch(jdMatch)
@@ -88,8 +88,8 @@ public class QuestionCandidate {
             Long sessionId,
             QuestionCandidateSource source,
             String sourceRef,
-            TestType axis,
-            TestType secondaryAxis,
+            TestType testType,
+            TestType secondaryTestType,
             String probeText,
             String echoQuote,
             String jdMatch,
@@ -104,8 +104,8 @@ public class QuestionCandidate {
                 .sessionId(sessionId)
                 .source(source)
                 .sourceRef(sourceRef)
-                .axis(axis)
-                .secondaryAxis(secondaryAxis)
+                .testType(testType)
+                .secondaryTestType(secondaryTestType)
                 .probeText(probeText)
                 .echoQuote(echoQuote)
                 .jdMatch(jdMatch)
