@@ -10,6 +10,8 @@ import java.util.UUID;
 @Getter
 public class Portfolio {
 
+    private static final int MIN_EXTRACTED_TEXT_LENGTH = 30;
+
     private final UUID id;
     private final UUID userId;
     private final String fileName;
@@ -84,6 +86,10 @@ public class Portfolio {
                 .createdAt(createdAt)
                 .uploadedAt(uploadedAt)
                 .build();
+    }
+
+    public boolean hasEnoughExtractedText(String extractedText) {
+        return extractedText.trim().length() >= MIN_EXTRACTED_TEXT_LENGTH;
     }
 
     public void ready() {

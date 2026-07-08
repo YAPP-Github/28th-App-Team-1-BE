@@ -20,7 +20,6 @@ import java.util.UUID;
 class PortfolioProcessService implements PortfolioProcessUseCase {
 
     private static final String CONTENT_TYPE = "application/pdf";
-    private static final int MIN_EXTRACTED_TEXT_LENGTH = 30;
 
     private final PortfolioRepository portfolioRepository;
     private final PortfolioFileUploader portfolioFileUploader;
@@ -54,7 +53,7 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             return;
         }
 
-        if (extractedText.trim().length() < MIN_EXTRACTED_TEXT_LENGTH) {
+        if (!portfolio.hasEnoughExtractedText(extractedText)) {
             log.warn("[PORTFOLIO PROCESS] 추출된 텍스트가 너무 짧음: portfolioId={}, length={}",
                     portfolioId, extractedText.trim().length());
             portfolio.failFile("텍스트를 인식할 수 없어요. 스캔본이 아닌 PDF 파일로 다시 업로드해 주세요.");
