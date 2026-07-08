@@ -4,5 +4,5 @@ import java.util.UUID;
 
 public interface PortfolioProcessUseCase {
 
-    void process(UUID portfolioId, byte[] fileContent);
+    void process(UUID userId, UUID portfolioId, byte[] fileContent);
 }

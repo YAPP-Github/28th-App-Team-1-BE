@@ -4,8 +4,6 @@ import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
-import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
-import com.yapp.d14.portfolio.exception.PortfolioException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -25,11 +23,10 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
 
     @Override
     @Async("portfolioTaskExecutor")
-    public void process(UUID portfolioId, byte[] fileContent) {
+    public void process(UUID userId, UUID portfolioId, byte[] fileContent) {
         log.info("portfolio async processing triggered: portfolioId={}", portfolioId);
 
-        Portfolio portfolio = portfolioRepository.findById(portfolioId)
-                .orElseThrow(() -> new PortfolioException(PortfolioErrorCode.PORTFOLIO_NOT_FOUND));
+        Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
 
         try {
             portfolioFileUploader.upload(portfolio.getS3Key(), fileContent, CONTENT_TYPE);
