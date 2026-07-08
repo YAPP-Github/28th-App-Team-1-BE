@@ -2,6 +2,7 @@ package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
 import com.yapp.d14.portfolio.application.port.out.PdfTextExtractor;
+import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
@@ -24,6 +25,7 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
     private final PortfolioRepository portfolioRepository;
     private final PortfolioFileUploader portfolioFileUploader;
     private final PdfTextExtractor pdfTextExtractor;
+    private final PortfolioEmbeddingStore portfolioEmbeddingStore;
 
     @Override
     @Async("portfolioTaskExecutor")
@@ -61,6 +63,18 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             return;
         }
 
-        // TODO: 임베딩은 후속 단계에서 구현
+        try {
+            portfolioEmbeddingStore.save(portfolio.getId(), portfolio.getUserId(), portfolio.getFileName(), extractedText);
+        } catch (Exception e) {
+            log.error("[PORTFOLIO PROCESS] 임베딩 실패: portfolioId={}", portfolioId, e);
+            portfolio.failSystem("포트폴리오 분석에 실패했어요. 잠시 후 다시 시도해 주세요.");
+            portfolioRepository.save(portfolio);
+            portfolioEmbeddingStore.deleteByPortfolioId(portfolio.getId());
+            portfolioFileUploader.delete(portfolio.getS3Key());
+            return;
+        }
+
+        portfolio.ready();
+        portfolioRepository.save(portfolio);
     }
 }

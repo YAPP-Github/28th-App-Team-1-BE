@@ -27,6 +27,19 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
 

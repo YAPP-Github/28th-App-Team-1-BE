@@ -7,6 +7,10 @@ plugins {
 group = 'com.yapp'
 version = '0.0.1-SNAPSHOT'
 
+ext {
+    set('springAiVersion', '1.0.3')
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -61,8 +65,18 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.46.18')
     implementation 'software.amazon.awssdk:s3'
 
+    // 포트폴리오 청크 임베딩/pgvector 저장
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
 }
 
 tasks.named('test') {

@@ -1,6 +1,7 @@
 package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.portfolio.application.port.out.PdfTextExtractor;
+import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
@@ -36,6 +37,9 @@ class PortfolioProcessServiceTest {
 
     @Mock
     private PdfTextExtractor pdfTextExtractor;
+
+    @Mock
+    private PortfolioEmbeddingStore portfolioEmbeddingStore;
 
     @InjectMocks
     private PortfolioProcessService portfolioProcessService;
@@ -104,15 +108,33 @@ class PortfolioProcessServiceTest {
     }
 
     @Test
-    void 추출된_텍스트가_충분하면_실패_처리하지_않는다() {
+    void 임베딩에_실패하면_FAILED_SYSTEM으로_전환하고_벡터와_S3_파일을_롤백_삭제한다() {
+        String extractedText = "이 정도 길이면 30자를 충분히 넘기는 추출된 포트폴리오 텍스트입니다.";
         given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
-        given(pdfTextExtractor.extractText(fileContent))
-                .willReturn("이 정도 길이면 30자를 충분히 넘기는 추출된 포트폴리오 텍스트입니다.");
+        given(pdfTextExtractor.extractText(fileContent)).willReturn(extractedText);
+        doThrow(new RuntimeException("임베딩 API 장애"))
+                .when(portfolioEmbeddingStore)
+                .save(portfolio.getId(), userId, portfolio.getFileName(), extractedText);
 
         portfolioProcessService.process(userId, portfolio.getId(), fileContent);
 
-        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.PROCESSING);
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
+        verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
+        verify(portfolioFileUploader).delete(portfolio.getS3Key());
+    }
+
+    @Test
+    void 임베딩까지_성공하면_READY로_전환한다() {
+        String extractedText = "이 정도 길이면 30자를 충분히 넘기는 추출된 포트폴리오 텍스트입니다.";
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(pdfTextExtractor.extractText(fileContent)).willReturn(extractedText);
+
+        portfolioProcessService.process(userId, portfolio.getId(), fileContent);
+
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.READY);
+        verify(portfolioEmbeddingStore).save(portfolio.getId(), userId, portfolio.getFileName(), extractedText);
+        verify(portfolioRepository).save(portfolio);
         verify(portfolioFileUploader, never()).delete(any());
-        verify(portfolioRepository, never()).save(any());
+        verify(portfolioEmbeddingStore, never()).deleteByPortfolioId(any());
     }
 }
