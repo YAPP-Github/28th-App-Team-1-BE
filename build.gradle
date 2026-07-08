@@ -49,8 +49,8 @@ dependencies {
     // .env 로컬 개발용
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
-    // PDF 페이지 수 검증
-    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    // PDF 페이지 수 검증 (Tika가 요구하는 pdfbox 버전과 맞춤)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.5'
     // PDF 텍스트 추출/검증
     implementation 'org.apache.tika:tika-core:3.2.3'
     implementation 'org.apache.tika:tika-parser-pdf-module:3.2.3'
