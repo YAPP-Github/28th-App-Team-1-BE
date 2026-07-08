@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -89,7 +90,7 @@ public interface PortfolioControllerDocs {
     ResponseEntity<ApiResponse<PortfolioRegisterHttpResponse>> register(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "업로드할 PDF 파일") MultipartFile file,
-            @Valid PortfolioRegisterHttpRequest request
+            @Valid @ParameterObject PortfolioRegisterHttpRequest request
     );
 
     @Operation(
