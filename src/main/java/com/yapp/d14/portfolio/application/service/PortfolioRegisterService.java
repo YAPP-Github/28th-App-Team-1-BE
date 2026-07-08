@@ -12,10 +12,13 @@ import com.yapp.d14.portfolio.domain.Portfolio;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
+import java.util.concurrent.RejectedExecutionException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class PortfolioRegisterService implements PortfolioRegisterUseCase {
@@ -47,7 +50,13 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
         );
         Portfolio saved = portfolioRepository.save(portfolio);
 
-        portfolioProcessUseCase.process(command.userId(), saved.getId(), command.fileContent());
+        try {
+            portfolioProcessUseCase.process(command.userId(), saved.getId(), command.fileContent());
+        } catch (RejectedExecutionException e) {
+            log.error("[PORTFOLIO REGISTER] 비동기 처리 큐가 가득 찼어요: portfolioId={}", saved.getId(), e);
+            saved.failSystem("현재 요청이 많아 처리가 지연되고 있어요. 잠시 후 다시 시도해 주세요.");
+            saved = portfolioRepository.save(saved);
+        }
 
         return new PortfolioRegisterResult(saved.getId(), saved.getStatus(), saved.getMessage());
     }
