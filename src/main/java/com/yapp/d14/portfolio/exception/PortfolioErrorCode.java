@@ -12,7 +12,8 @@ public enum PortfolioErrorCode implements ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "INVALID_FILE_TYPE", "PDF 파일만 올릴 수 있어요"),
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "FILE_TOO_LARGE", "파일이 너무 커요. 20MB 이하 PDF로 올려주세요"),
     PAGE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "PAGE_COUNT_EXCEEDED", "페이지가 너무 많아요. 30페이지 이하 PDF로 올려주세요"),
-    INVALID_PDF_FILE(HttpStatus.BAD_REQUEST, "INVALID_PDF_FILE", "파일이 손상된 것 같아요. 파일을 확인하고 다시 시도해 주세요");
+    INVALID_PDF_FILE(HttpStatus.BAD_REQUEST, "INVALID_PDF_FILE", "파일이 손상된 것 같아요. 파일을 확인하고 다시 시도해 주세요"),
+    PDF_PARSING_BUSY(HttpStatus.SERVICE_UNAVAILABLE, "PDF_PARSING_BUSY", "지금 요청이 많아요. 잠시 후 다시 시도해 주세요");
 
     private final HttpStatus httpStatus;
     private final String code;
