@@ -37,7 +37,6 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             log.error("[PORTFOLIO PROCESS] S3 업로드 실패: portfolioId={}", portfolioId, e);
             portfolio.failSystem("파일 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.");
             portfolioRepository.save(portfolio);
-            return;
         }
 
         // TODO: Tika 파싱/검증, 임베딩은 후속 단계에서 구현

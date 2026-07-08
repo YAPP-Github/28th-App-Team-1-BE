@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Slf4j
@@ -39,5 +40,17 @@ class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
             }
         }
         throw lastException;
+    }
+
+    @Override
+    public void delete(String key) {
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(s3Properties.getBucket())
+                    .key(key)
+                    .build());
+        } catch (SdkException e) {
+            log.error("[S3 DELETE] 삭제 실패, 고아 파일로 남을 수 있음: key={}", key, e);
+        }
     }
 }

@@ -8,7 +8,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class S3KeyGenerator {
 
-    public static String generate(S3Directory directory, UUID ownerId, UUID id, String extension) {
-        return "%s/%s/%s.%s".formatted(directory.getPath(), ownerId, id, extension);
+    public static String generate(S3Directory directory, UUID userId, UUID entityId, String fileName) {
+        return "users/%s/%s/%s/%s".formatted(userId, directory.getPath(), entityId, fileName);
     }
 }

@@ -20,6 +20,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 class PortfolioRegisterService implements PortfolioRegisterUseCase {
 
+    private static final String ORIGINAL_FILE_NAME = "original.pdf";
+
     private final PortfolioRepository portfolioRepository;
     private final PdfMetadataReader pdfMetadataReader;
     private final PortfolioProcessUseCase portfolioProcessUseCase;
@@ -36,7 +38,7 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
         }
 
         UUID portfolioId = UUID.randomUUID();
-        String s3Key = S3KeyGenerator.generate(S3Directory.PORTFOLIOS, command.userId(), portfolioId, "pdf");
+        String s3Key = S3KeyGenerator.generate(S3Directory.PORTFOLIOS, command.userId(), portfolioId, ORIGINAL_FILE_NAME);
         Portfolio portfolio = Portfolio.create(
                 portfolioId,
                 command.userId(),
