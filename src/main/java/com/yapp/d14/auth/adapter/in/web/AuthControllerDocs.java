@@ -3,6 +3,7 @@ package com.yapp.d14.auth.adapter.in.web;
 import com.yapp.d14.auth.adapter.in.web.request.SocialLoginHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.request.TokenReissueHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.response.AuthTokenHttpResponse;
+import com.yapp.d14.auth.adapter.in.web.response.TestTokenIssueHttpResponse;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
