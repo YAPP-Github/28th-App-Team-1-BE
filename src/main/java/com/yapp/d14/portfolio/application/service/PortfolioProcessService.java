@@ -1,9 +1,11 @@
 package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
+import com.yapp.d14.portfolio.application.port.out.PdfTextExtractor;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
+import com.yapp.d14.portfolio.exception.PortfolioException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -17,9 +19,11 @@ import java.util.UUID;
 class PortfolioProcessService implements PortfolioProcessUseCase {
 
     private static final String CONTENT_TYPE = "application/pdf";
+    private static final int MIN_EXTRACTED_TEXT_LENGTH = 30;
 
     private final PortfolioRepository portfolioRepository;
     private final PortfolioFileUploader portfolioFileUploader;
+    private final PdfTextExtractor pdfTextExtractor;
 
     @Override
     @Async("portfolioTaskExecutor")
@@ -34,8 +38,29 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             log.error("[PORTFOLIO PROCESS] S3 업로드 실패: portfolioId={}", portfolioId, e);
             portfolio.failSystem("파일 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.");
             portfolioRepository.save(portfolio);
+            return;
         }
 
-        // TODO: Tika 파싱/검증, 임베딩은 후속 단계에서 구현
+        String extractedText;
+        try {
+            extractedText = pdfTextExtractor.extractText(fileContent);
+        } catch (PortfolioException e) {
+            log.error("[PORTFOLIO PROCESS] 텍스트 추출 실패: portfolioId={}", portfolioId, e);
+            portfolio.failFile("파일이 손상되었거나 암호로 보호되어 있어요. 다시 업로드해 주세요.");
+            portfolioRepository.save(portfolio);
+            portfolioFileUploader.delete(portfolio.getS3Key());
+            return;
+        }
+
+        if (extractedText.trim().length() < MIN_EXTRACTED_TEXT_LENGTH) {
+            log.warn("[PORTFOLIO PROCESS] 추출된 텍스트가 너무 짧음: portfolioId={}, length={}",
+                    portfolioId, extractedText.trim().length());
+            portfolio.failFile("텍스트를 인식할 수 없어요. 스캔본이 아닌 PDF 파일로 다시 업로드해 주세요.");
+            portfolioRepository.save(portfolio);
+            portfolioFileUploader.delete(portfolio.getS3Key());
+            return;
+        }
+
+        // TODO: 임베딩은 후속 단계에서 구현
     }
 }
