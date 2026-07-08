@@ -4,9 +4,9 @@ import com.yapp.d14.common.util.S3Directory;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
+import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.out.PdfMetadataReader;
-import com.yapp.d14.portfolio.application.port.out.PortfolioProcessor;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
@@ -22,7 +22,7 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
 
     private final PortfolioRepository portfolioRepository;
     private final PdfMetadataReader pdfMetadataReader;
-    private final PortfolioProcessor portfolioProcessor;
+    private final PortfolioProcessUseCase portfolioProcessUseCase;
 
     @Override
     public PortfolioRegisterResult register(PortfolioRegisterCommand command) {
@@ -47,7 +47,7 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
         );
         Portfolio saved = portfolioRepository.save(portfolio);
 
-        portfolioProcessor.process(saved.getId());
+        portfolioProcessUseCase.process(saved.getId(), command.fileContent());
 
         return new PortfolioRegisterResult(saved.getId(), saved.getStatus(), saved.getMessage());
     }

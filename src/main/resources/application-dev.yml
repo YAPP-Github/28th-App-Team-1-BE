@@ -39,6 +39,13 @@ apple:
 openai:
   api-key: ${OPENAI_API_KEY}
 
+aws:
+  s3:
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_REGION:ap-northeast-2}
+    bucket: ${AWS_S3_BUCKET}
+
 springdoc:
   swagger-ui:
     enabled: true

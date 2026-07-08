@@ -54,6 +54,10 @@ dependencies {
     // JD 크롤링
     implementation 'org.jsoup:jsoup:1.18.3'
 
+    // AWS S3
+    implementation platform('software.amazon.awssdk:bom:2.46.18')
+    implementation 'software.amazon.awssdk:s3'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
