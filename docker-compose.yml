@@ -56,6 +56,15 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      # TODO: OpenAI/Apple 시크릿 등록 후 주석 해제
+      # OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
+      # APPLE_TEAM_ID: ${APPLE_TEAM_ID}
+      # APPLE_KEY_ID: ${APPLE_KEY_ID}
+      # APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
     depends_on:
       postgres:
         condition: service_healthy
