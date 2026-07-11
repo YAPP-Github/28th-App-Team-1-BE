@@ -7,6 +7,10 @@ plugins {
 group = 'com.yapp'
 version = '0.0.1-SNAPSHOT'
 
+ext {
+    set('springAiVersion', '1.0.3')
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -49,15 +53,59 @@ dependencies {
     // .env 로컬 개발용
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
-    // PDF 페이지 수 검증
-    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
+    // PDF 페이지 수 검증 (Tika가 요구하는 pdfbox 버전과 맞춤)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.5'
+    // PDF 텍스트 추출/검증
+    implementation 'org.apache.tika:tika-core:3.2.3'
+    implementation 'org.apache.tika:tika-parser-pdf-module:3.2.3'
     // JD 크롤링
     implementation 'org.jsoup:jsoup:1.18.3'
+
+    // AWS S3
+    implementation platform('software.amazon.awssdk:bom:2.46.18')
+    implementation 'software.amazon.awssdk:s3'
+
+    // 포트폴리오 청크 임베딩/pgvector 저장
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+tasks.register('issueTestToken', JavaExec) {
+    group = 'application'
+    description = '테스트용 JWT 액세스 토큰을 발급합니다. (-PuserId, -Pprovider, -PexpiryMs)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.yapp.d14.auth.adapter.out.security.TestTokenCli'
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        def envVars = [:]
+        envFile.eachLine { line ->
+            line = line.trim()
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def (key, value) = line.split('=', 2)
+                envVars[key.trim()] = value.trim()
+            }
+        }
+        environment envVars
+    }
+
+    def cliArgs = []
+    if (project.hasProperty('userId')) cliArgs << "--userId=${project.property('userId')}"
+    if (project.hasProperty('provider')) cliArgs << "--provider=${project.property('provider')}"
+    if (project.hasProperty('expiryMs')) cliArgs << "--expiryMs=${project.property('expiryMs')}"
+    args = cliArgs
 }

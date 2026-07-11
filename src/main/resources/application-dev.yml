@@ -27,6 +27,19 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
 
@@ -38,6 +51,13 @@ apple:
 
 openai:
   api-key: ${OPENAI_API_KEY}
+
+aws:
+  s3:
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_REGION:ap-northeast-2}
+    bucket: ${AWS_S3_BUCKET}
 
 springdoc:
   swagger-ui:
