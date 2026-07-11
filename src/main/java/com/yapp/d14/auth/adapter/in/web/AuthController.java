@@ -3,13 +3,10 @@ package com.yapp.d14.auth.adapter.in.web;
 import com.yapp.d14.auth.adapter.in.web.request.SocialLoginHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.request.TokenReissueHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.response.AuthTokenHttpResponse;
-import com.yapp.d14.auth.adapter.in.web.response.TestTokenIssueHttpResponse;
 import com.yapp.d14.auth.application.command.LogoutCommand;
 import com.yapp.d14.auth.application.port.in.result.AuthToken;
-import com.yapp.d14.auth.application.port.in.result.TestTokenIssueResult;
 import com.yapp.d14.auth.application.port.in.LogoutUseCase;
 import com.yapp.d14.auth.application.port.in.SocialLoginUseCase;
-import com.yapp.d14.auth.application.port.in.TestTokenIssueUseCase;
 import com.yapp.d14.auth.application.port.in.TokenReissueUseCase;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
@@ -34,7 +31,6 @@ class AuthController implements AuthControllerDocs {
     private final SocialLoginUseCase socialLoginUseCase;
     private final TokenReissueUseCase tokenReissueUseCase;
     private final LogoutUseCase logoutUseCase;
-    private final TestTokenIssueUseCase testTokenIssueUseCase;
 
     @Override
     @PostMapping("/social/login")
@@ -59,11 +55,5 @@ class AuthController implements AuthControllerDocs {
     public ResponseEntity<Void> logout(@CurrentUser UUID userId) {
         logoutUseCase.logout(new LogoutCommand(userId));
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/test-token")
-    public ResponseEntity<ApiResponse<TestTokenIssueHttpResponse>> issueTestToken() {
-        TestTokenIssueResult result = testTokenIssueUseCase.issue();
-        return ResponseEntity.ok(ApiResponse.ok(TestTokenIssueHttpResponse.from(result)));
     }
 }
