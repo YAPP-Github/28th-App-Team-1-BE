@@ -32,12 +32,16 @@ class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
     @Override
     public List<String> extractKeywords(String jdText) {
         try {
-            return chatClient.prompt()
+            List<String> keywords = chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(jdText)
                     .call()
                     .entity(new ParameterizedTypeReference<List<String>>() {
                     });
+            if (keywords == null) {
+                throw new IllegalStateException("JD 키워드 추출 응답이 비어있어요.");
+            }
+            return keywords;
         } catch (Exception e) {
             log.error("[JD KEYWORD EXTRACT] OpenAI 호출/파싱 실패", e);
             throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);
