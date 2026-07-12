@@ -3,6 +3,7 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
@@ -22,7 +23,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class InterviewSessionStatusQueryServiceTest {
@@ -32,6 +36,9 @@ class InterviewSessionStatusQueryServiceTest {
 
     @Mock
     private QuestionRepository questionRepository;
+
+    @Mock
+    private InterviewVoiceStorage interviewVoiceStorage;
 
     @InjectMocks
     private InterviewSessionStatusQueryService service;
@@ -76,15 +83,31 @@ class InterviewSessionStatusQueryServiceTest {
                 10L, 1L, "요약 질문", 0, 0, null, null, null, null, "s3-key", LocalDateTime.now()
         );
         given(questionRepository.findBySessionIdAndTurnLevel(1L, 0)).willReturn(Optional.of(question));
+        given(interviewVoiceStorage.readBase64("s3-key")).willReturn("base64-audio");
 
         InterviewSessionStatusResult result = service.getStatus(userId, 1L);
 
         assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.READY);
         assertThat(result.startedAt()).isEqualTo(startedAt);
         assertThat(result.summaryQuestion().questionId()).isEqualTo(10L);
-        assertThat(result.summaryQuestion().ttsAudio()).isEqualTo("s3-key");
+        assertThat(result.summaryQuestion().ttsAudio()).isEqualTo("base64-audio");
         assertThat(result.summaryQuestion().turnLevel()).isZero();
         assertThat(result.summaryQuestion().depthLevel()).isZero();
+    }
+
+    @Test
+    void 요약질문에_음성이_없으면_ttsAudio는_null이고_S3를_조회하지_않는다() {
+        given(interviewSessionRepository.findById(1L))
+                .willReturn(Optional.of(sessionWithStatus(InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now())));
+        Question question = Question.of(
+                10L, 1L, "요약 질문", 0, 0, null, null, null, null, null, LocalDateTime.now()
+        );
+        given(questionRepository.findBySessionIdAndTurnLevel(1L, 0)).willReturn(Optional.of(question));
+
+        InterviewSessionStatusResult result = service.getStatus(userId, 1L);
+
+        assertThat(result.summaryQuestion().ttsAudio()).isNull();
+        verify(interviewVoiceStorage, never()).readBase64(any());
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollSta
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult.SummaryQuestion;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
@@ -23,6 +24,7 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final QuestionRepository questionRepository;
+    private final InterviewVoiceStorage interviewVoiceStorage;
 
     @Override
     public InterviewSessionStatusResult getStatus(UUID userId, Long sessionId) {
@@ -44,9 +46,13 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
     }
 
     private SummaryQuestion toSummaryQuestion(Question question) {
+        String ttsAudio = question.getAiVoiceS3Key() != null
+                ? interviewVoiceStorage.readBase64(question.getAiVoiceS3Key())
+                : null;
+
         return new SummaryQuestion(
                 question.getId(),
-                question.getAiVoiceS3Key(),
+                ttsAudio,
                 question.getTurnLevel(),
                 question.getDepthLevel()
         );

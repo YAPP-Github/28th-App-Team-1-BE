@@ -33,6 +33,10 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
+      audio:
+        speech:
+          options:
+            voice: ${OPENAI_TTS_VOICE:alloy}
     vectorstore:
       pgvector:
         initialize-schema: true

@@ -28,7 +28,7 @@ public record InterviewSessionStatusHttpResponse(
             @Schema(description = "질문 ID")
             Long questionId,
 
-            @Schema(description = "TTS 음성 S3 키 (추후 재생 URL로 대체 예정)")
+            @Schema(description = "Base64 인코딩된 mp3 바이너리")
             String ttsAudio,
 
             @Schema(description = "턴 정보")

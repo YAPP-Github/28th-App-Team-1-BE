@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
@@ -60,6 +61,9 @@ class InterviewSessionPreloadServiceTest {
     private TextToSpeechSynthesizer textToSpeechSynthesizer;
 
     @Mock
+    private InterviewVoiceStorage interviewVoiceStorage;
+
+    @Mock
     private QuestionCandidateRepository questionCandidateRepository;
 
     @Mock
@@ -94,11 +98,29 @@ class InterviewSessionPreloadServiceTest {
 
         verify(jdKeywordExtractor, never()).extractKeywords(any());
         verify(questionRepository).save(any());
+        verify(interviewVoiceStorage, never()).upload(any(), any(), anyInt(), any());
         verify(interviewPreloadFailureHandler, never()).markFailed(any());
 
         ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
         verify(interviewSessionRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(InterviewSessionStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void TTS_합성_결과가_있으면_S3에_업로드하고_그_key를_질문에_저장한다() {
+        byte[] audioBytes = {1, 2, 3};
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn(audioBytes);
+        given(interviewVoiceStorage.upload(userId, 1L, 0, audioBytes)).willReturn("users/x/sessions/1/questions/0.mp3");
+        given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        service.preload(1L);
+
+        ArgumentCaptor<Question> captor = ArgumentCaptor.forClass(Question.class);
+        verify(questionRepository).save(captor.capture());
+        assertThat(captor.getValue().getAiVoiceS3Key()).isEqualTo("users/x/sessions/1/questions/0.mp3");
     }
 
     @Test

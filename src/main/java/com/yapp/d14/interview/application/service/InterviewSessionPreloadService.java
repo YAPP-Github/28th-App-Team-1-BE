@@ -2,6 +2,7 @@ package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
@@ -40,6 +41,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     private final JdKeywordExtractor jdKeywordExtractor;
     private final ProbeCandidateExtractor probeCandidateExtractor;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
+    private final InterviewVoiceStorage interviewVoiceStorage;
     private final QuestionCandidateRepository questionCandidateRepository;
     private final QuestionRepository questionRepository;
     private final InterviewPreloadFailureHandler interviewPreloadFailureHandler;
@@ -61,7 +63,10 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             saveQuestionCandidates(session, chunks, jdKeywords);
 
             String questionText = buildSummaryQuestionText(session.getFocusProject());
-            String aiVoiceS3Key = textToSpeechSynthesizer.synthesize(questionText);
+            byte[] audioContent = textToSpeechSynthesizer.synthesize(questionText);
+            String aiVoiceS3Key = audioContent != null
+                    ? interviewVoiceStorage.upload(session.getUserId(), sessionId, SUMMARY_TURN_LEVEL, audioContent)
+                    : null;
             questionRepository.save(Question.create(
                     sessionId, questionText, SUMMARY_TURN_LEVEL, SUMMARY_DEPTH_LEVEL, null, null, aiVoiceS3Key
             ));

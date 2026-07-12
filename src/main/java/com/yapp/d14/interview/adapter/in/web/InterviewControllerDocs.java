@@ -175,7 +175,7 @@ public interface InterviewControllerDocs {
                                                 "startedAt": "2026-07-06T10:00:04",
                                                 "summaryQuestion": {
                                                   "questionId": 1,
-                                                  "ttsAudio": null,
+                                                  "ttsAudio": "//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8...",
                                                   "turn": { "turnLevel": 0, "depthLevel": 0 }
                                                 }
                                               }
