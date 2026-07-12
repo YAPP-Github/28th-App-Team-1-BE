@@ -36,10 +36,11 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
     // 실제 포트폴리오 데이터로 검증된 값이 아닌 초기 추정치 — 추후 조정이 필요할 수 있다.
     private static final double SIMILARITY_THRESHOLD = 0.75;
 
-    // PDF 추출 과정에서 뒤섞인 줄바꿈을 되돌리기 위해 공백을 하나로 정규화한다.
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-    // 정규화된 텍스트를 문장 단위(.!? 뒤 공백)로 분리한다. 완벽한 문장 경계 인식기는 아니다.
-    private static final Pattern SENTENCE_BOUNDARY = Pattern.compile("(?<=[.!?])\\s+");
+    // 줄바꿈은 문장 경계로 쓰이므로 보존하고, 문장 내부의 탭/공백만 하나로 정규화한다.
+    private static final Pattern INLINE_WHITESPACE = Pattern.compile("[\\t\\x0B\\f\\r ]+");
+    // 문장 단위(.!? 뒤 공백), 줄바꿈, 불릿(•●▪) 앞을 경계로 분리한다. 완벽한 문장 경계 인식기는 아니다.
+    private static final Pattern SENTENCE_BOUNDARY =
+            Pattern.compile("(?<=[.!?])\\s+|\\n+|(?=[•●▪])");
 
     private final VectorStore vectorStore;
     private final EmbeddingModel embeddingModel;
@@ -66,7 +67,7 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
     }
 
     private List<String> splitIntoSections(String text) {
-        String normalized = WHITESPACE.matcher(text.trim()).replaceAll(" ").trim();
+        String normalized = INLINE_WHITESPACE.matcher(text.trim()).replaceAll(" ").trim();
         if (normalized.isEmpty()) {
             return List.of();
         }

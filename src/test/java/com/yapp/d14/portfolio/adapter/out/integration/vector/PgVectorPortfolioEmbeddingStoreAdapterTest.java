@@ -36,6 +36,9 @@ class PgVectorPortfolioEmbeddingStoreAdapterTest {
     @Captor
     private ArgumentCaptor<List<Document>> documentsCaptor;
 
+    @Captor
+    private ArgumentCaptor<List<String>> sentencesCaptor;
+
     private static float[] vector(float... values) {
         return values;
     }
@@ -160,6 +163,41 @@ class PgVectorPortfolioEmbeddingStoreAdapterTest {
         List<Document> chunks = documentsCaptor.getValue();
         assertThat(chunks.size()).isGreaterThan(1);
         verify(embeddingModel, never()).embed(anyList());
+    }
+
+    @Test
+    void 줄바꿈으로_구분된_문장부호_없는_제목_불릿_텍스트도_문장_경계로_인식한다() {
+        UUID portfolioId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String line1 = "프로젝트 개요";
+        String line2 = "담당 업무 요약";
+        String text = line1 + "\n" + line2;
+
+        when(embeddingModel.embed(sentencesCaptor.capture())).thenReturn(List.of(
+                vector(1f, 0f, 0f),
+                vector(0f, 1f, 0f)
+        ));
+
+        adapter.save(portfolioId, userId, "resume.pdf", text);
+
+        assertThat(sentencesCaptor.getValue()).containsExactly(line1, line2);
+    }
+
+    @Test
+    void 불릿_기호_앞도_문장_경계로_인식한다() {
+        UUID portfolioId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String text = "핵심 역량•백엔드 설계•성능 최적화";
+
+        when(embeddingModel.embed(sentencesCaptor.capture())).thenReturn(List.of(
+                vector(1f, 0f, 0f),
+                vector(0f, 1f, 0f),
+                vector(0f, 0f, 1f)
+        ));
+
+        adapter.save(portfolioId, userId, "resume.pdf", text);
+
+        assertThat(sentencesCaptor.getValue()).containsExactly("핵심 역량", "•백엔드 설계", "•성능 최적화");
     }
 
     @Test
