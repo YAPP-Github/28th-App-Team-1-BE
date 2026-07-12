@@ -20,10 +20,11 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/interview/sessions")
 @RequiredArgsConstructor
-class InterviewController {
+class InterviewController implements InterviewControllerDocs {
 
     private final InterviewSessionCreateUseCase interviewSessionCreateUseCase;
 
+    @Override
     @PostMapping
     public ResponseEntity<ApiResponse<InterviewSessionCreateHttpResponse>> create(
             @CurrentUser UUID userId,
