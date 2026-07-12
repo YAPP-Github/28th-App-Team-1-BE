@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
+import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.out.InterviewAxisPlanRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
@@ -52,6 +53,12 @@ class InterviewSessionCreateServiceTest {
 
     @Mock
     private InterviewAxisPlanRepository interviewAxisPlanRepository;
+
+    @Mock
+    private InterviewSessionPreloadUseCase interviewSessionPreloadUseCase;
+
+    @Mock
+    private InterviewPreloadFailureHandler interviewPreloadFailureHandler;
 
     @InjectMocks
     private InterviewSessionCreateService service;

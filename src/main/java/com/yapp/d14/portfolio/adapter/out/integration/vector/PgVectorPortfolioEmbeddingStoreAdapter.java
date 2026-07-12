@@ -108,4 +108,18 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
         List<Document> results = vectorStore.similaritySearch(searchRequest);
         return results.isEmpty() ? Optional.empty() : Optional.ofNullable(results.get(0).getScore());
     }
+
+    @Override
+    public List<String> findTopChunks(UUID portfolioId, String queryText, int topK) {
+        FilterExpressionBuilder filterBuilder = new FilterExpressionBuilder();
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query(queryText)
+                .topK(topK)
+                .filterExpression(filterBuilder.eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build())
+                .build();
+
+        return vectorStore.similaritySearch(searchRequest).stream()
+                .map(Document::getText)
+                .toList();
+    }
 }

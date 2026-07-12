@@ -92,6 +92,15 @@ public class InterviewSession {
                 .build();
     }
 
+    public void markReady() {
+        this.status = InterviewSessionStatus.IN_PROGRESS;
+        this.startedAt = LocalDateTime.now();
+    }
+
+    public void markPreloadFailed() {
+        this.status = InterviewSessionStatus.PRELOAD_FAILED;
+    }
+
     public void assignWeights(Map<TestType, Integer> weights) {
         this.weightDepth = weights.get(TestType.DEPTH);
         this.weightBoundary = weights.get(TestType.BOUNDARY);

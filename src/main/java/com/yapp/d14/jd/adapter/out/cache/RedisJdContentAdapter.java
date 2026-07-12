@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -24,6 +25,11 @@ class RedisJdContentAdapter implements JdContentRepository {
     @Override
     public boolean exists(String jdUrl) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key(jdUrl)));
+    }
+
+    @Override
+    public Optional<String> get(String jdUrl) {
+        return Optional.ofNullable(redisTemplate.opsForValue().get(key(jdUrl)));
     }
 
     private String key(String jdUrl) {

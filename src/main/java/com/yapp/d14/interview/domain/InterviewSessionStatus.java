@@ -11,7 +11,8 @@ public enum InterviewSessionStatus {
     IN_PROGRESS("진행중"),
     COMPLETED("완료"),
     ABANDONED("중단"),
-    INVALID("무효");
+    INVALID("무효"),
+    PRELOAD_FAILED("실패");
 
     private final String label;
 }

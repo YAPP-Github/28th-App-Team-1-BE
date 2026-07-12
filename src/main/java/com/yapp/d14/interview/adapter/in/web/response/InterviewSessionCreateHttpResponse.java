@@ -1,7 +1,7 @@
 package com.yapp.d14.interview.adapter.in.web.response;
 
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
-import com.yapp.d14.interview.domain.InterviewSessionStatus;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record InterviewSessionCreateHttpResponse(
@@ -18,16 +18,8 @@ public record InterviewSessionCreateHttpResponse(
     public static InterviewSessionCreateHttpResponse from(InterviewSessionCreateResult result) {
         return new InterviewSessionCreateHttpResponse(
                 result.sessionId(),
-                toWireStatus(result.status()),
+                InterviewSessionPollStatus.from(result.status()).name(),
                 "/api/v1/interview/sessions/%d/status".formatted(result.sessionId())
         );
-    }
-
-    private static String toWireStatus(InterviewSessionStatus status) {
-        return switch (status) {
-            case PREPARING -> "PROCESSING";
-            case IN_PROGRESS -> "READY";
-            default -> status.name();
-        };
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -29,5 +30,10 @@ class TicketReservationPersistenceAdapter implements TicketReservationRepository
                 ).stream()
                 .map(TicketReservationJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Optional<TicketReservation> findBySessionId(Long sessionId) {
+        return ticketReservationJpaRepository.findBySessionId(sessionId).map(TicketReservationJpaEntity::toDomain);
     }
 }

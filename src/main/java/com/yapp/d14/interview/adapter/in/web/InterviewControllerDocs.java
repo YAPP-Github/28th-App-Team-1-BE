@@ -4,6 +4,7 @@ import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewSessionCreateHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionCreateHttpResponse;
+import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionStatusHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
@@ -141,5 +143,70 @@ public interface InterviewControllerDocs {
     ResponseEntity<ApiResponse<InterviewSessionCreateHttpResponse>> create(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Valid @RequestBody InterviewSessionCreateHttpRequest request
+    );
+
+    @Operation(
+            summary = "면접 세션 준비 상태 조회",
+            description = "세션 생성 후 백그라운드에서 진행되는 Preload·요약 질문 준비 상태를 조회합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 3~5초 간격으로 폴링합니다.\n" +
+                    "- `PROCESSING`: 아직 준비 중이에요. 계속 폴링해 주세요.\n" +
+                    "- `READY`: 준비가 끝났어요. `startedAt`과 `summaryQuestion`(요약 질문 TTS)이 함께 내려옵니다.\n" +
+                    "- `FAILED`: Preload가 실패했어요. 이용권은 자동으로 환불됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "준비 중", value = """
+                                            {
+                                              "success": true,
+                                              "data": { "status": "PROCESSING", "startedAt": null, "summaryQuestion": null }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "준비 완료", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "status": "READY",
+                                                "startedAt": "2026-07-06T10:00:04",
+                                                "summaryQuestion": {
+                                                  "questionId": 1,
+                                                  "ttsAudio": null,
+                                                  "turn": { "turnLevel": 0, "depthLevel": 0 }
+                                                }
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "준비 실패", value = """
+                                            {
+                                              "success": true,
+                                              "data": { "status": "FAILED", "startedAt": null, "summaryQuestion": null }
+                                            }
+                                            """)
+                            }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "세션이 존재하지 않거나 본인 소유가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "INTERVIEW_SESSION_NOT_FOUND",
+                                      "message": "면접 세션을 찾을 수 없어요."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<ApiResponse<InterviewSessionStatusHttpResponse>> getStatus(
+            @Parameter(hidden = true) @CurrentUser UUID userId,
+            @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId
     );
 }

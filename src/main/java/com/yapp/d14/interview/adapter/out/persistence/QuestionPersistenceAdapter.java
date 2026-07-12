@@ -31,4 +31,9 @@ class QuestionPersistenceAdapter implements QuestionRepository {
                 .map(QuestionJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public Optional<Question> findBySessionIdAndTurnLevel(Long sessionId, int turnLevel) {
+        return questionJpaRepository.findBySessionIdAndTurnLevel(sessionId, turnLevel).map(QuestionJpaEntity::toDomain);
+    }
 }

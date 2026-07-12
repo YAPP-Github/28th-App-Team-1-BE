@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.common.exception.GlobalExceptionHandler;
 import com.yapp.d14.common.web.CurrentUserArgumentResolver;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
@@ -23,12 +26,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +44,9 @@ class InterviewControllerTest {
     @Mock
     private InterviewSessionCreateUseCase interviewSessionCreateUseCase;
 
+    @Mock
+    private InterviewSessionStatusUseCase interviewSessionStatusUseCase;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final UUID userId = UUID.randomUUID();
@@ -46,7 +54,7 @@ class InterviewControllerTest {
 
     @BeforeEach
     void setUp() {
-        InterviewController controller = new InterviewController(interviewSessionCreateUseCase);
+        InterviewController controller = new InterviewController(interviewSessionCreateUseCase, interviewSessionStatusUseCase);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new CurrentUserArgumentResolver())
@@ -152,5 +160,52 @@ class InterviewControllerTest {
                         .content(validRequestBody()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PORTFOLIO_NOT_FOUND"));
+    }
+
+    @Test
+    void 상태조회_PROCESSING이면_200과_함께_상태만_반환한다() throws Exception {
+        given(interviewSessionStatusUseCase.getStatus(userId, 1L))
+                .willReturn(new InterviewSessionStatusResult(InterviewSessionPollStatus.PROCESSING, null, null));
+
+        mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PROCESSING"))
+                .andExpect(jsonPath("$.data.summaryQuestion").doesNotExist());
+    }
+
+    @Test
+    void 상태조회_READY이면_요약질문을_포함해_반환한다() throws Exception {
+        LocalDateTime startedAt = LocalDateTime.now();
+        InterviewSessionStatusResult.SummaryQuestion summaryQuestion =
+                new InterviewSessionStatusResult.SummaryQuestion(10L, null, 0, 0);
+        given(interviewSessionStatusUseCase.getStatus(userId, 1L))
+                .willReturn(new InterviewSessionStatusResult(InterviewSessionPollStatus.READY, startedAt, summaryQuestion));
+
+        mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("READY"))
+                .andExpect(jsonPath("$.data.summaryQuestion.questionId").value(10))
+                .andExpect(jsonPath("$.data.summaryQuestion.turn.turnLevel").value(0))
+                .andExpect(jsonPath("$.data.summaryQuestion.turn.depthLevel").value(0));
+    }
+
+    @Test
+    void 상태조회_FAILED이면_200과_함께_상태만_반환한다() throws Exception {
+        given(interviewSessionStatusUseCase.getStatus(userId, 1L))
+                .willReturn(new InterviewSessionStatusResult(InterviewSessionPollStatus.FAILED, null, null));
+
+        mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("FAILED"));
+    }
+
+    @Test
+    void 상태조회_세션이_없으면_404() throws Exception {
+        given(interviewSessionStatusUseCase.getStatus(userId, 1L))
+                .willThrow(new InterviewException(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("INTERVIEW_SESSION_NOT_FOUND"));
     }
 }
