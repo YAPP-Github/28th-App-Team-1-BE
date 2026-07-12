@@ -46,6 +46,7 @@ spring:
       chat:
         options:
           model: ${ANTHROPIC_MODEL:claude-sonnet-5}
+          max-tokens: 8192
     vectorstore:
       pgvector:
         initialize-schema: true

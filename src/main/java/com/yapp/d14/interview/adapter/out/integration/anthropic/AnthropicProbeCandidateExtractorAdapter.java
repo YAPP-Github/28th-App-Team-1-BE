@@ -1,6 +1,5 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
@@ -9,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -46,12 +46,10 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
             """;
 
     private final ChatClient chatClient;
-    private final ObjectMapper objectMapper;
     private final String systemPrompt;
 
-    AnthropicProbeCandidateExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
+    AnthropicProbeCandidateExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
         this.chatClient = ChatClient.builder(chatModel).build();
-        this.objectMapper = objectMapper;
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml());
     }
 
@@ -59,25 +57,17 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
     public List<ProbeCandidateDraft> extract(List<String> portfolioChunks, List<String> jdKeywords) {
         String userMessage = buildUserMessage(portfolioChunks, jdKeywords);
 
-        String responseText;
+        List<ProbeCandidateLlmEntry> entries;
         try {
-            responseText = chatClient.prompt()
+            entries = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .call()
-                    .content();
+                    .entity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
+                    });
         } catch (Exception e) {
-            log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출 실패", e);
+            log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("캐물지점 추출에 실패했어요.", e);
-        }
-
-        List<ProbeCandidateLlmEntry> entries;
-        try {
-            entries = objectMapper.readValue(responseText, objectMapper.getTypeFactory()
-                    .constructCollectionType(List.class, ProbeCandidateLlmEntry.class));
-        } catch (Exception e) {
-            log.error("[PROBE CANDIDATE EXTRACT] 응답 파싱 실패: {}", responseText, e);
-            throw new RuntimeException("캐물지점 추출 응답 파싱에 실패했어요.", e);
         }
 
         return entries.stream().map(this::toDraft).toList();
