@@ -5,8 +5,6 @@ import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
-import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
-import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
@@ -35,7 +33,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,10 +57,7 @@ class InterviewSessionPreloadServiceTest {
     private InterviewVoiceStorage interviewVoiceStorage;
 
     @Mock
-    private QuestionCandidateRepository questionCandidateRepository;
-
-    @Mock
-    private QuestionRepository questionRepository;
+    private InterviewPreloadResultPersister interviewPreloadResultPersister;
 
     @Mock
     private InterviewPreloadFailureHandler interviewPreloadFailureHandler;
@@ -83,23 +77,18 @@ class InterviewSessionPreloadServiceTest {
     }
 
     @Test
-    void JD_freeText_모두_없으면_JD_키워드_추출_없이_요약_질문을_생성하고_세션을_READY로_전환한다() {
+    void JD_freeText_모두_없으면_JD_키워드_추출_없이_요약_질문을_생성하고_persist를_호출한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
-        given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         service.preload(1L);
 
         verify(jdKeywordExtractor, never()).extractKeywords(any());
-        verify(questionRepository).save(any());
         verify(interviewVoiceStorage, never()).upload(any(), any(), anyInt(), any());
         verify(interviewPreloadFailureHandler, never()).markFailed(any());
-
-        ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
-        verify(interviewSessionRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(InterviewSessionStatus.IN_PROGRESS);
+        verify(interviewPreloadResultPersister).persist(any(), eq(List.of()), any());
     }
 
     @Test
@@ -110,12 +99,11 @@ class InterviewSessionPreloadServiceTest {
         given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(audioBytes);
         given(interviewVoiceStorage.upload(userId, 1L, 0, audioBytes)).willReturn("users/x/sessions/1/questions/0.mp3");
-        given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         service.preload(1L);
 
         ArgumentCaptor<Question> captor = ArgumentCaptor.forClass(Question.class);
-        verify(questionRepository).save(captor.capture());
+        verify(interviewPreloadResultPersister).persist(any(), any(), captor.capture());
         assertThat(captor.getValue().getAiVoiceS3Key()).isEqualTo("users/x/sessions/1/questions/0.mp3");
     }
 
@@ -127,7 +115,6 @@ class InterviewSessionPreloadServiceTest {
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
-        given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         service.preload(1L);
 
@@ -136,7 +123,7 @@ class InterviewSessionPreloadServiceTest {
     }
 
     @Test
-    void 추출된_캐물지점_후보를_모두_저장한다() {
+    void 추출된_캐물지점_후보를_모두_persist에_전달한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, "결제 시스템")));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), eq("결제 시스템"), anyInt()))
                 .willReturn(List.of(new PortfolioChunkResult("청크1")));
@@ -145,13 +132,13 @@ class InterviewSessionPreloadServiceTest {
                 new ProbeCandidateDraft(TestType.CONFLICT, null, "probe2", "echo2", "키워드", QuestionCandidateStrength.MID)
         ));
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
-        given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         service.preload(1L);
 
-        ArgumentCaptor<QuestionCandidate> captor = ArgumentCaptor.forClass(QuestionCandidate.class);
-        verify(questionCandidateRepository, times(2)).save(captor.capture());
-        assertThat(captor.getAllValues())
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<QuestionCandidate>> captor = ArgumentCaptor.forClass(List.class);
+        verify(interviewPreloadResultPersister).persist(any(), captor.capture(), any());
+        assertThat(captor.getValue())
                 .extracting(QuestionCandidate::getSource)
                 .containsExactly(QuestionCandidateSource.PORTFOLIO, QuestionCandidateSource.JD);
     }
@@ -165,7 +152,7 @@ class InterviewSessionPreloadServiceTest {
         service.preload(1L);
 
         verify(interviewPreloadFailureHandler).markFailed(1L);
-        verify(questionRepository, never()).save(any());
+        verify(interviewPreloadResultPersister, never()).persist(any(), any(), any());
     }
 
     @Test
@@ -175,6 +162,6 @@ class InterviewSessionPreloadServiceTest {
         service.preload(1L);
 
         verify(interviewPreloadFailureHandler, never()).markFailed(any());
-        verify(questionRepository, never()).save(any());
+        verify(interviewPreloadResultPersister, never()).persist(any(), any(), any());
     }
 }

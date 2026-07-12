@@ -6,8 +6,6 @@ import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
-import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
-import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
@@ -40,8 +38,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     private final ProbeCandidateExtractor probeCandidateExtractor;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
-    private final QuestionCandidateRepository questionCandidateRepository;
-    private final QuestionRepository questionRepository;
+    private final InterviewPreloadResultPersister interviewPreloadResultPersister;
     private final InterviewPreloadFailureHandler interviewPreloadFailureHandler;
 
     @Override
@@ -58,7 +55,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         try {
             List<String> chunks = searchPortfolioChunks(session);
             List<String> jdKeywords = extractJdKeywords(session);
-            saveQuestionCandidates(session, chunks, jdKeywords);
+            List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords);
 
             String questionText = buildSummaryQuestionText(session.getFocusProject());
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 합성 시작: sessionId={}", sessionId);
@@ -68,13 +65,11 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                     : null;
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 처리 완료: sessionId={}, uploaded={}", sessionId, aiVoiceS3Key != null);
 
-            questionRepository.save(Question.create(
+            Question summaryQuestion = Question.create(
                     sessionId, questionText, SUMMARY_TURN_LEVEL, SUMMARY_DEPTH_LEVEL, null, null, aiVoiceS3Key
-            ));
-            log.info("[INTERVIEW PRELOAD] 요약 질문 저장 완료: sessionId={}", sessionId);
+            );
 
-            session.markReady();
-            interviewSessionRepository.save(session);
+            interviewPreloadResultPersister.persist(session, candidates, summaryQuestion);
             log.info("[INTERVIEW PRELOAD] 처리 완료, 세션 READY 전환: sessionId={}", sessionId);
         } catch (Exception e) {
             log.error("[INTERVIEW PRELOAD] 처리 실패: sessionId={}", sessionId, e);
@@ -107,30 +102,31 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         return jdKeywords;
     }
 
-    private void saveQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
+    private List<QuestionCandidate> buildQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 시작: sessionId={}, chunkCount={}, jdKeywordCount={}",
                 session.getId(), chunks.size(), jdKeywords.size());
         List<ProbeCandidateDraft> drafts = callWithRetry(() -> probeCandidateExtractor.extract(chunks, jdKeywords));
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}", session.getId(), drafts.size());
 
-        for (ProbeCandidateDraft draft : drafts) {
-            QuestionCandidateSource source = StringUtils.hasText(draft.jdMatch())
-                    ? QuestionCandidateSource.JD
-                    : QuestionCandidateSource.PORTFOLIO;
+        return drafts.stream()
+                .map(draft -> {
+                    QuestionCandidateSource source = StringUtils.hasText(draft.jdMatch())
+                            ? QuestionCandidateSource.JD
+                            : QuestionCandidateSource.PORTFOLIO;
 
-            questionCandidateRepository.save(QuestionCandidate.create(
-                    session.getId(),
-                    source,
-                    null,
-                    draft.testType(),
-                    draft.secondaryTestType(),
-                    draft.probeText(),
-                    draft.echoQuote(),
-                    draft.jdMatch(),
-                    draft.strength()
-            ));
-        }
-        log.info("[INTERVIEW PRELOAD] 캐물지점 저장 완료: sessionId={}, savedCount={}", session.getId(), drafts.size());
+                    return QuestionCandidate.create(
+                            session.getId(),
+                            source,
+                            null,
+                            draft.testType(),
+                            draft.secondaryTestType(),
+                            draft.probeText(),
+                            draft.echoQuote(),
+                            draft.jdMatch(),
+                            draft.strength()
+                    );
+                })
+                .toList();
     }
 
     private String buildSummaryQuestionText(String focusProject) {
