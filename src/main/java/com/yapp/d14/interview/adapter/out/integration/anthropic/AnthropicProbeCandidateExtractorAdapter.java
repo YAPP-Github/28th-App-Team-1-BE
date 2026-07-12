@@ -57,20 +57,18 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
     public List<ProbeCandidateDraft> extract(List<String> portfolioChunks, List<String> jdKeywords) {
         String userMessage = buildUserMessage(portfolioChunks, jdKeywords);
 
-        List<ProbeCandidateLlmEntry> entries;
         try {
-            entries = chatClient.prompt()
+            List<ProbeCandidateLlmEntry> entries = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .call()
                     .entity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
                     });
+            return entries.stream().map(this::toDraft).toList();
         } catch (Exception e) {
             log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("캐물지점 추출에 실패했어요.", e);
         }
-
-        return entries.stream().map(this::toDraft).toList();
     }
 
     private String buildUserMessage(List<String> portfolioChunks, List<String> jdKeywords) {
