@@ -6,21 +6,26 @@ import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateR
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.JobType;
+import com.yapp.d14.interview.exception.InterviewException;
+import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketAvailabilityCheckUseCase;
 import com.yapp.d14.ticket.exception.TicketErrorCode;
 import com.yapp.d14.ticket.exception.TicketException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -45,6 +50,9 @@ class InterviewSessionCreateServiceTest {
     @Mock
     private InterviewPreloadFailureHandler interviewPreloadFailureHandler;
 
+    @Mock
+    private JdContentQueryUseCase jdContentQueryUseCase;
+
     @InjectMocks
     private InterviewSessionCreateService service;
 
@@ -63,7 +71,7 @@ class InterviewSessionCreateServiceTest {
 
     @Test
     void 정상_흐름이면_이용권확인_검증_저장_preload_순서로_실행된다() {
-        given(interviewSessionPersister.persist(any(), any(), any())).willReturn(sessionWithId(1L));
+        given(interviewSessionPersister.persist(any(), any(), any(), any())).willReturn(sessionWithId(1L));
 
         InterviewSessionCreateResult result = service.create(command);
 
@@ -76,7 +84,7 @@ class InterviewSessionCreateServiceTest {
         );
         inOrder.verify(ticketAvailabilityCheckUseCase).checkAvailable(userId);
         inOrder.verify(interviewSessionCreateValidator).validate(command);
-        inOrder.verify(interviewSessionPersister).persist(any(), any(), any());
+        inOrder.verify(interviewSessionPersister).persist(any(), any(), any(), any());
         inOrder.verify(interviewSessionPreloadUseCase).preload(1L);
     }
 
@@ -88,7 +96,7 @@ class InterviewSessionCreateServiceTest {
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(TicketException.class);
 
         verify(interviewSessionCreateValidator, never()).validate(any());
-        verify(interviewSessionPersister, never()).persist(any(), any(), any());
+        verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());
     }
 
@@ -98,17 +106,46 @@ class InterviewSessionCreateServiceTest {
 
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(RuntimeException.class);
 
-        verify(interviewSessionPersister, never()).persist(any(), any(), any());
+        verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());
     }
 
     @Test
     void 저장이_실패하면_예외가_전파되고_preload는_실행되지_않는다() {
         doThrow(new TicketException(TicketErrorCode.NO_REMAINING_TICKET))
-                .when(interviewSessionPersister).persist(any(), any(), any());
+                .when(interviewSessionPersister).persist(any(), any(), any(), any());
 
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(TicketException.class);
 
+        verify(interviewSessionPreloadUseCase, never()).preload(any());
+    }
+
+    @Test
+    void jdUrl이_입력되면_캐싱된_내용을_jdText로_저장한다() {
+        String jdUrl = "https://example.com/jd";
+        String cachedJdText = "캐싱된 JD 원문";
+        InterviewSessionCreateCommand commandWithJdUrl =
+                new InterviewSessionCreateCommand(userId, portfolioId, JobType.BACKEND, 8, jdUrl, null, null);
+        given(jdContentQueryUseCase.getContent(jdUrl)).willReturn(Optional.of(cachedJdText));
+        given(interviewSessionPersister.persist(any(), any(), any(), any())).willReturn(sessionWithId(1L));
+
+        service.create(commandWithJdUrl);
+
+        ArgumentCaptor<String> jdTextCaptor = ArgumentCaptor.forClass(String.class);
+        verify(interviewSessionPersister).persist(eq(commandWithJdUrl), jdTextCaptor.capture(), any(), any());
+        assertThat(jdTextCaptor.getValue()).isEqualTo(cachedJdText);
+    }
+
+    @Test
+    void jdUrl의_캐시가_만료되면_예외가_발생하고_저장은_실행되지_않는다() {
+        String jdUrl = "https://example.com/jd";
+        InterviewSessionCreateCommand commandWithJdUrl =
+                new InterviewSessionCreateCommand(userId, portfolioId, JobType.BACKEND, 8, jdUrl, null, null);
+        given(jdContentQueryUseCase.getContent(jdUrl)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.create(commandWithJdUrl)).isInstanceOf(InterviewException.class);
+
+        verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());
     }
 }

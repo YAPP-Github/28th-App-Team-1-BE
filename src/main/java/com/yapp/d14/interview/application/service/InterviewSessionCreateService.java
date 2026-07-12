@@ -8,10 +8,14 @@ import com.yapp.d14.interview.domain.AxisWeightCalculator;
 import com.yapp.d14.interview.domain.AxisWeightCalculator.AxisAssignment;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
+import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketAvailabilityCheckUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
@@ -26,6 +30,7 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
     private final InterviewSessionPersister interviewSessionPersister;
     private final InterviewSessionPreloadUseCase interviewSessionPreloadUseCase;
     private final InterviewPreloadFailureHandler interviewPreloadFailureHandler;
+    private final JdContentQueryUseCase jdContentQueryUseCase;
 
     @Override
     public InterviewSessionCreateResult create(InterviewSessionCreateCommand command) {
@@ -33,14 +38,26 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
 
         interviewSessionCreateValidator.validate(command);
 
+        String jdText = resolveJdText(command);
+
         Map<TestType, Integer> weights = AxisWeightCalculator.compute(command.jobRole(), command.careerYears());
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
-        InterviewSession session = interviewSessionPersister.persist(command, weights, assignments);
+        InterviewSession session = interviewSessionPersister.persist(command, jdText, weights, assignments);
 
         triggerPreload(session.getId());
 
         return new InterviewSessionCreateResult(session.getId(), session.getStatus());
+    }
+
+    private String resolveJdText(InterviewSessionCreateCommand command) {
+        if (!StringUtils.hasText(command.jdUrl())) {
+            return command.jdText();
+        }
+
+        return jdContentQueryUseCase.getContent(command.jdUrl())
+                .filter(StringUtils::hasText)
+                .orElseThrow(() -> new InterviewException(InterviewErrorCode.JD_CONTENT_NOT_FOUND));
     }
 
     private void triggerPreload(Long sessionId) {

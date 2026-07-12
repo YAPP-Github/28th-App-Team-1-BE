@@ -80,7 +80,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        persister.persist(command, weights, assignments);
+        persister.persist(command, command.jdText(), weights, assignments);
 
         ArgumentCaptor<InterviewAxisPlan> captor = ArgumentCaptor.forClass(InterviewAxisPlan.class);
         verify(interviewAxisPlanRepository, times(6)).save(captor.capture());
@@ -103,7 +103,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        InterviewSession session = persister.persist(command, weights, assignments);
+        InterviewSession session = persister.persist(command, command.jdText(), weights, assignments);
 
         assertThat(session.getId()).isEqualTo(1L);
         verify(ticketHoldUseCase).hold(userId, 1L);
@@ -118,7 +118,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        assertThatThrownBy(() -> persister.persist(command, weights, assignments))
+        assertThatThrownBy(() -> persister.persist(command, command.jdText(), weights, assignments))
                 .isInstanceOf(TicketException.class);
     }
 }
