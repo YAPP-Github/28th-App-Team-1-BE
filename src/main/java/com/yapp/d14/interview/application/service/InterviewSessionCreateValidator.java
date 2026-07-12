@@ -44,6 +44,10 @@ class InterviewSessionCreateValidator {
     }
 
     private void validateJd(InterviewSessionCreateCommand command) {
+        if (StringUtils.hasText(command.jdUrl()) && StringUtils.hasText(command.jdText())) {
+            throw new InterviewException(InterviewErrorCode.JD_URL_AND_TEXT_BOTH_PROVIDED);
+        }
+
         if (StringUtils.hasText(command.jdUrl())) {
             if (!jdValidationCheckUseCase.isValidated(command.jdUrl())) {
                 throw new InterviewException(InterviewErrorCode.JD_NOT_VALIDATED);

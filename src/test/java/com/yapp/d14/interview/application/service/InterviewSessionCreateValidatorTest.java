@@ -121,6 +121,16 @@ class InterviewSessionCreateValidatorTest {
     }
 
     @Test
+    void jdUrl과_jdText가_함께_있으면_JD_URL_AND_TEXT_BOTH_PROVIDED() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+
+        assertThatThrownBy(() -> validator.validate(command("https://example.com/jd", "가".repeat(200), null)))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.JD_URL_AND_TEXT_BOTH_PROVIDED);
+    }
+
+    @Test
     void jdText가_200자_미만이면_INVALID_JD_LENGTH() {
         givenPortfolioStatus(PortfolioStatus.READY);
 
