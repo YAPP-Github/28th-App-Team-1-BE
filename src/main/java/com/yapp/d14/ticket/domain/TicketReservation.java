@@ -13,10 +13,10 @@ public class TicketReservation {
     private final Long id;
     private final UUID userId;
     private final Long sessionId;
-    private TicketReservationStatus status;
-    private String outcomeReason;
+    private final TicketReservationStatus status;
+    private final String outcomeReason;
     private final LocalDateTime heldAt;
-    private LocalDateTime resolvedAt;
+    private final LocalDateTime resolvedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
     private TicketReservation(
@@ -64,11 +64,5 @@ public class TicketReservation {
                 .heldAt(heldAt)
                 .resolvedAt(resolvedAt)
                 .build();
-    }
-
-    public void release(String outcomeReason) {
-        this.status = TicketReservationStatus.RELEASED;
-        this.outcomeReason = outcomeReason;
-        this.resolvedAt = LocalDateTime.now();
     }
 }

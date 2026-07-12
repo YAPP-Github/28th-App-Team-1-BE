@@ -36,4 +36,9 @@ class TicketReservationPersistenceAdapter implements TicketReservationRepository
     public Optional<TicketReservation> findBySessionId(Long sessionId) {
         return ticketReservationJpaRepository.findBySessionId(sessionId).map(TicketReservationJpaEntity::toDomain);
     }
+
+    @Override
+    public int releaseIfHeld(Long id, String outcomeReason) {
+        return ticketReservationJpaRepository.releaseIfHeld(id, outcomeReason);
+    }
 }

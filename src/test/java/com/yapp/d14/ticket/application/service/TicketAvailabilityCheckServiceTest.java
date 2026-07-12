@@ -78,18 +78,34 @@ class TicketAvailabilityCheckServiceTest {
     }
 
     @Test
-    void 만료된_HELD_예약이_있으면_RELEASED로_전환하고_remaining을_복구한다() {
-        TicketReservation expired = TicketReservation.hold(userId, 1L);
+    void 만료된_HELD_예약이_있으면_원자적으로_RELEASED로_전환하고_remaining을_복구한다() {
+        TicketReservation expired = TicketReservation.of(
+                10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
+        );
         given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of(expired));
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
+        given(ticketReservationRepository.releaseIfHeld(10L, "HOLD_EXPIRED")).willReturn(1);
 
         service.checkAvailable(userId);
 
-        ArgumentCaptor<TicketReservation> captor = ArgumentCaptor.forClass(TicketReservation.class);
-        verify(ticketReservationRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(TicketReservationStatus.RELEASED);
+        verify(ticketReservationRepository).releaseIfHeld(10L, "HOLD_EXPIRED");
         verify(userTicketRepository, times(1)).increment(userId);
+    }
+
+    @Test
+    void 다른_트랜잭션이_이미_만료_예약을_처리했으면_increment하지_않는다() {
+        TicketReservation expired = TicketReservation.of(
+                10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
+        );
+        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of(expired));
+        given(userTicketRepository.findByUserId(userId))
+                .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
+        given(ticketReservationRepository.releaseIfHeld(10L, "HOLD_EXPIRED")).willReturn(0);
+
+        service.checkAvailable(userId);
+
+        verify(userTicketRepository, never()).increment(any());
     }
 
     @Test
@@ -100,7 +116,7 @@ class TicketAvailabilityCheckServiceTest {
 
         service.checkAvailable(userId);
 
-        verify(ticketReservationRepository, never()).save(any());
+        verify(ticketReservationRepository, never()).releaseIfHeld(any(), any());
         verify(userTicketRepository, never()).increment(any());
     }
 }

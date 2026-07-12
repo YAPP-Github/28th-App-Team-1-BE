@@ -14,4 +14,6 @@ public interface TicketReservationRepository {
     List<TicketReservation> findExpiredHeld(UUID userId, LocalDateTime heldBefore);
 
     Optional<TicketReservation> findBySessionId(Long sessionId);
+
+    int releaseIfHeld(Long id, String outcomeReason);
 }

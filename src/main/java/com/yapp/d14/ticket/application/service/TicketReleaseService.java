@@ -26,8 +26,12 @@ class TicketReleaseService implements TicketReleaseUseCase {
             return;
         }
 
-        reservation.release(outcomeReason);
-        ticketReservationRepository.save(reservation);
+        int released = ticketReservationRepository.releaseIfHeld(reservation.getId(), outcomeReason);
+        if (released == 0) {
+            log.info("[TICKET RELEASE] 이미 처리된 예약이라 건너뜁니다: sessionId={}", sessionId);
+            return;
+        }
+
         userTicketRepository.increment(reservation.getUserId());
     }
 }

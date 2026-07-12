@@ -6,15 +6,14 @@ import com.yapp.d14.ticket.domain.TicketReservation;
 import com.yapp.d14.ticket.domain.TicketReservationStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -34,19 +33,31 @@ class TicketReleaseServiceTest {
 
     private final UUID userId = UUID.randomUUID();
 
+    private TicketReservation heldReservation() {
+        return TicketReservation.of(
+                10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
+        );
+    }
+
     @Test
-    void 예약이_있으면_release하고_잔여를_되돌린다() {
-        TicketReservation reservation = TicketReservation.hold(userId, 1L);
-        given(ticketReservationRepository.findBySessionId(1L)).willReturn(Optional.of(reservation));
-        given(ticketReservationRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+    void 예약이_있으면_원자적으로_release하고_잔여를_되돌린다() {
+        given(ticketReservationRepository.findBySessionId(1L)).willReturn(Optional.of(heldReservation()));
+        given(ticketReservationRepository.releaseIfHeld(10L, "PRELOAD_FAILED")).willReturn(1);
 
         service.release(1L, "PRELOAD_FAILED");
 
-        ArgumentCaptor<TicketReservation> captor = ArgumentCaptor.forClass(TicketReservation.class);
-        verify(ticketReservationRepository).save(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(TicketReservationStatus.RELEASED);
-        assertThat(captor.getValue().getOutcomeReason()).isEqualTo("PRELOAD_FAILED");
+        verify(ticketReservationRepository).releaseIfHeld(10L, "PRELOAD_FAILED");
         verify(userTicketRepository).increment(userId);
+    }
+
+    @Test
+    void 이미_다른_트랜잭션이_release했으면_increment하지_않는다() {
+        given(ticketReservationRepository.findBySessionId(1L)).willReturn(Optional.of(heldReservation()));
+        given(ticketReservationRepository.releaseIfHeld(10L, "PRELOAD_FAILED")).willReturn(0);
+
+        service.release(1L, "PRELOAD_FAILED");
+
+        verify(userTicketRepository, never()).increment(any());
     }
 
     @Test
@@ -55,7 +66,7 @@ class TicketReleaseServiceTest {
 
         service.release(1L, "PRELOAD_FAILED");
 
-        verify(ticketReservationRepository, never()).save(any());
+        verify(ticketReservationRepository, never()).releaseIfHeld(any(), any());
         verify(userTicketRepository, never()).increment(any());
     }
 }

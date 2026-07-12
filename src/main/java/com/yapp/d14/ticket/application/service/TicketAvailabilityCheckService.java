@@ -45,9 +45,10 @@ class TicketAvailabilityCheckService implements TicketAvailabilityCheckUseCase {
         );
 
         for (TicketReservation reservation : expiredHolds) {
-            reservation.release(OUTCOME_HOLD_EXPIRED);
-            ticketReservationRepository.save(reservation);
-            userTicketRepository.increment(userId);
+            int released = ticketReservationRepository.releaseIfHeld(reservation.getId(), OUTCOME_HOLD_EXPIRED);
+            if (released == 1) {
+                userTicketRepository.increment(userId);
+            }
         }
     }
 }
