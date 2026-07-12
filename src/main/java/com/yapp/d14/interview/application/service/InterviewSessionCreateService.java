@@ -95,7 +95,7 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
 
     private void validateJd(InterviewSessionCreateCommand command) {
         if (StringUtils.hasText(command.jdUrl())) {
-            if (!jdContentRepository.exists(command.userId(), command.jdUrl())) {
+            if (!jdContentRepository.exists(command.jdUrl())) {
                 throw new InterviewException(InterviewErrorCode.JD_NOT_VALIDATED);
             }
             return;
