@@ -51,12 +51,17 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     @Override
     public String readBase64(String s3Key) {
-        byte[] content = s3Client.getObjectAsBytes(GetObjectRequest.builder()
-                        .bucket(s3Properties.getBucket())
-                        .key(s3Key)
-                        .build())
-                .asByteArray();
-        return Base64.getEncoder().encodeToString(content);
+        try {
+            byte[] content = s3Client.getObjectAsBytes(GetObjectRequest.builder()
+                            .bucket(s3Properties.getBucket())
+                            .key(s3Key)
+                            .build())
+                    .asByteArray();
+            return Base64.getEncoder().encodeToString(content);
+        } catch (SdkException e) {
+            log.warn("[INTERVIEW VOICE READ] S3 조회 실패: key={}", s3Key, e);
+            return null;
+        }
     }
 
     private String buildKey(UUID userId, Long sessionId, int turnLevel) {
