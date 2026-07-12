@@ -1,4 +1,4 @@
-package com.yapp.d14.interview.adapter.out.integration.anthropic;
+package com.yapp.d14.interview.adapter.out.integration.openai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
@@ -12,7 +12,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-class AnthropicJdKeywordExtractorAdapter implements JdKeywordExtractor {
+class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
 
     private static final String SYSTEM_PROMPT = """
             당신은 채용공고(JD)에서 핵심 기술·역량 키워드만 뽑는 역할입니다.
@@ -26,7 +26,7 @@ class AnthropicJdKeywordExtractorAdapter implements JdKeywordExtractor {
     private final ChatClient chatClient;
     private final ObjectMapper objectMapper;
 
-    AnthropicJdKeywordExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
+    OpenAiJdKeywordExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.objectMapper = objectMapper;
     }
@@ -41,7 +41,7 @@ class AnthropicJdKeywordExtractorAdapter implements JdKeywordExtractor {
                     .call()
                     .content();
         } catch (Exception e) {
-            log.error("[JD KEYWORD EXTRACT] Anthropic 호출 실패", e);
+            log.error("[JD KEYWORD EXTRACT] OpenAI 호출 실패", e);
             throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);
         }
 
