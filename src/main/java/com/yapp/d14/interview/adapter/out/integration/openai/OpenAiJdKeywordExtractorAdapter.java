@@ -1,11 +1,11 @@
 package com.yapp.d14.interview.adapter.out.integration.openai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -24,33 +24,23 @@ class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
             """;
 
     private final ChatClient chatClient;
-    private final ObjectMapper objectMapper;
 
-    OpenAiJdKeywordExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
+    OpenAiJdKeywordExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel) {
         this.chatClient = ChatClient.builder(chatModel).build();
-        this.objectMapper = objectMapper;
     }
 
     @Override
     public List<String> extractKeywords(String jdText) {
-        String responseText;
         try {
-            responseText = chatClient.prompt()
+            return chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(jdText)
                     .call()
-                    .content();
+                    .entity(new ParameterizedTypeReference<List<String>>() {
+                    });
         } catch (Exception e) {
-            log.error("[JD KEYWORD EXTRACT] OpenAI 호출 실패", e);
+            log.error("[JD KEYWORD EXTRACT] OpenAI 호출/파싱 실패", e);
             throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);
-        }
-
-        try {
-            return objectMapper.readValue(responseText, objectMapper.getTypeFactory()
-                    .constructCollectionType(List.class, String.class));
-        } catch (Exception e) {
-            log.error("[JD KEYWORD EXTRACT] 응답 파싱 실패: {}", responseText, e);
-            throw new RuntimeException("JD 키워드 추출 응답 파싱에 실패했어요.", e);
         }
     }
 }
