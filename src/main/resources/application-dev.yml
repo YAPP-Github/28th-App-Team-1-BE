@@ -30,6 +30,10 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          temperature: 0.3
+          max-tokens: 1000
       embedding:
         options:
           model: text-embedding-3-small
@@ -52,9 +56,6 @@ apple:
   team-id: ${APPLE_TEAM_ID}
   key-id: ${APPLE_KEY_ID}
   private-key: ${APPLE_PRIVATE_KEY}
-
-openai:
-  api-key: ${OPENAI_API_KEY}
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}
