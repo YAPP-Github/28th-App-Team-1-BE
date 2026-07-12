@@ -2,15 +2,16 @@ package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 class AnthropicJdKeywordExtractorAdapter implements JdKeywordExtractor {
 
     private static final String SYSTEM_PROMPT = """
@@ -22,12 +23,27 @@ class AnthropicJdKeywordExtractorAdapter implements JdKeywordExtractor {
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 예: ["대용량 트래픽", "MSA", "Kafka"]
             """;
 
-    private final AnthropicClient anthropicClient;
+    private final ChatClient chatClient;
     private final ObjectMapper objectMapper;
+
+    AnthropicJdKeywordExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
+        this.chatClient = ChatClient.builder(chatModel).build();
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public List<String> extractKeywords(String jdText) {
-        String responseText = anthropicClient.complete(SYSTEM_PROMPT, jdText);
+        String responseText;
+        try {
+            responseText = chatClient.prompt()
+                    .system(SYSTEM_PROMPT)
+                    .user(jdText)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("[JD KEYWORD EXTRACT] Anthropic 호출 실패", e);
+            throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);
+        }
 
         try {
             return objectMapper.readValue(responseText, objectMapper.getTypeFactory()

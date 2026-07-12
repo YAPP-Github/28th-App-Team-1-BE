@@ -6,6 +6,9 @@ import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -42,12 +45,12 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
             strength(high/mid/low 중 하나).
             """;
 
-    private final AnthropicClient anthropicClient;
+    private final ChatClient chatClient;
     private final ObjectMapper objectMapper;
     private final String systemPrompt;
 
-    AnthropicProbeCandidateExtractorAdapter(AnthropicClient anthropicClient, ObjectMapper objectMapper) {
-        this.anthropicClient = anthropicClient;
+    AnthropicProbeCandidateExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel, ObjectMapper objectMapper) {
+        this.chatClient = ChatClient.builder(chatModel).build();
         this.objectMapper = objectMapper;
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml());
     }
@@ -55,7 +58,18 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
     @Override
     public List<ProbeCandidateDraft> extract(List<String> portfolioChunks, List<String> jdKeywords) {
         String userMessage = buildUserMessage(portfolioChunks, jdKeywords);
-        String responseText = anthropicClient.complete(systemPrompt, userMessage);
+
+        String responseText;
+        try {
+            responseText = chatClient.prompt()
+                    .system(systemPrompt)
+                    .user(userMessage)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출 실패", e);
+            throw new RuntimeException("캐물지점 추출에 실패했어요.", e);
+        }
 
         List<ProbeCandidateLlmEntry> entries;
         try {
