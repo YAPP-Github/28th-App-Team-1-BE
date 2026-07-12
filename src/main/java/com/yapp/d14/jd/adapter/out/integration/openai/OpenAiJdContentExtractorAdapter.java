@@ -7,6 +7,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
@@ -31,8 +32,9 @@ class OpenAiJdContentExtractorAdapter implements JdContentExtractor {
 
     @Override
     public String extract(String rawText) {
+        String content;
         try {
-            return chatClient.prompt()
+            content = chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(rawText)
                     .call()
@@ -41,5 +43,11 @@ class OpenAiJdContentExtractorAdapter implements JdContentExtractor {
             log.error("[JD EXTRACT] OpenAI 호출 실패", e);
             throw new JdExtractionFailedException("AI 처리 중 오류가 발생했습니다.", e);
         }
+
+        if (!StringUtils.hasText(content)) {
+            log.warn("[JD EXTRACT] OpenAI 응답이 비어있어요");
+            throw new JdExtractionFailedException("AI가 JD 내용을 추출하지 못했어요.");
+        }
+        return content;
     }
 }
