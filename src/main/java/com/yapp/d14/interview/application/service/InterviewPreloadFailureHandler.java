@@ -1,6 +1,8 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
+import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,8 @@ class InterviewPreloadFailureHandler {
     private static final String OUTCOME_PRELOAD_FAILED = "PRELOAD_FAILED";
 
     private final InterviewSessionRepository interviewSessionRepository;
+    private final QuestionCandidateRepository questionCandidateRepository;
+    private final QuestionRepository questionRepository;
     private final TicketReleaseUseCase ticketReleaseUseCase;
 
     @Transactional
@@ -26,8 +30,16 @@ class InterviewPreloadFailureHandler {
             return;
         }
 
+        questionCandidateRepository.deleteBySessionId(sessionId);
+        questionRepository.deleteBySessionId(sessionId);
+
         session.markPreloadFailed();
         interviewSessionRepository.save(session);
-        ticketReleaseUseCase.release(sessionId, OUTCOME_PRELOAD_FAILED);
+
+        try {
+            ticketReleaseUseCase.release(sessionId, OUTCOME_PRELOAD_FAILED);
+        } catch (Exception e) {
+            log.error("[INTERVIEW PRELOAD] 이용권 release 실패, 세션은 FAILED로 유지: sessionId={}", sessionId, e);
+        }
     }
 }

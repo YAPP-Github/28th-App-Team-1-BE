@@ -14,4 +14,6 @@ public interface QuestionRepository {
     List<Question> findAllBySessionId(Long sessionId);
 
     Optional<Question> findBySessionIdAndTurnLevel(Long sessionId, int turnLevel);
+
+    void deleteBySessionId(Long sessionId);
 }

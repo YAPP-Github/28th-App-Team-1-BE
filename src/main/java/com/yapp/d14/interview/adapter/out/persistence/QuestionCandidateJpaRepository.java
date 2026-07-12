@@ -8,4 +8,6 @@ import java.util.List;
 interface QuestionCandidateJpaRepository extends JpaRepository<QuestionCandidateJpaEntity, Long> {
 
     List<QuestionCandidateJpaEntity> findAllBySessionId(Long sessionId);
+
+    void deleteAllBySessionId(Long sessionId);
 }
