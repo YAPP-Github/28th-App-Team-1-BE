@@ -5,4 +5,6 @@ import java.util.UUID;
 public interface JdContentRepository {
 
     void save(UUID userId, String jdUrl, String content);
+
+    boolean exists(UUID userId, String jdUrl);
 }

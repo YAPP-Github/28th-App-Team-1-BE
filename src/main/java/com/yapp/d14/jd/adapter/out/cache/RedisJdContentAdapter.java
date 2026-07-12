@@ -22,6 +22,11 @@ class RedisJdContentAdapter implements JdContentRepository {
         redisTemplate.opsForValue().set(key(userId, jdUrl), content, TTL);
     }
 
+    @Override
+    public boolean exists(UUID userId, String jdUrl) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key(userId, jdUrl)));
+    }
+
     private String key(UUID userId, String jdUrl) {
         return KEY_PREFIX + userId + ":" + jdUrl;
     }

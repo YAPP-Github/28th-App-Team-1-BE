@@ -4,6 +4,7 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -92,5 +94,18 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
     public void deleteByPortfolioId(UUID portfolioId) {
         FilterExpressionBuilder filterBuilder = new FilterExpressionBuilder();
         vectorStore.delete(filterBuilder.eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build());
+    }
+
+    @Override
+    public Optional<Double> findTopSimilarityScore(UUID portfolioId, String queryText) {
+        FilterExpressionBuilder filterBuilder = new FilterExpressionBuilder();
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query(queryText)
+                .topK(1)
+                .filterExpression(filterBuilder.eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build())
+                .build();
+
+        List<Document> results = vectorStore.similaritySearch(searchRequest);
+        return results.isEmpty() ? Optional.empty() : Optional.ofNullable(results.get(0).getScore());
     }
 }

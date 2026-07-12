@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -89,6 +90,15 @@ public class InterviewSession {
                 .focusProject(focusProject)
                 .status(InterviewSessionStatus.PREPARING)
                 .build();
+    }
+
+    public void assignWeights(Map<TestType, Integer> weights) {
+        this.weightDepth = weights.get(TestType.DEPTH);
+        this.weightBoundary = weights.get(TestType.BOUNDARY);
+        this.weightConnection = weights.get(TestType.CONNECTION);
+        this.weightTradeoff = weights.get(TestType.TRADEOFF);
+        this.weightConflict = weights.get(TestType.CONFLICT);
+        this.weightResilience = weights.get(TestType.RESILIENCE);
     }
 
     public static InterviewSession of(
