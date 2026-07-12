@@ -13,7 +13,6 @@ import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.QuestionCandidateSource;
-import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +36,6 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
-    private final JdContentQueryUseCase jdContentQueryUseCase;
     private final JdKeywordExtractor jdKeywordExtractor;
     private final ProbeCandidateExtractor probeCandidateExtractor;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
@@ -90,14 +88,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     }
 
     private List<String> extractJdKeywords(InterviewSession session) {
-        if (!StringUtils.hasText(session.getJdUrl()) && !StringUtils.hasText(session.getJdText())) {
-            return List.of();
-        }
-
-        String jdText = StringUtils.hasText(session.getJdUrl())
-                ? jdContentQueryUseCase.getContent(session.getJdUrl()).orElse(null)
-                : session.getJdText();
-
+        String jdText = session.getJdText();
         if (!StringUtils.hasText(jdText)) {
             return List.of();
         }

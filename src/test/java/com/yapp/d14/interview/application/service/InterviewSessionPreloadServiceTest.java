@@ -16,7 +16,6 @@ import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.QuestionCandidateSource;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
-import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import org.junit.jupiter.api.Test;
@@ -47,9 +46,6 @@ class InterviewSessionPreloadServiceTest {
 
     @Mock
     private PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
-
-    @Mock
-    private JdContentQueryUseCase jdContentQueryUseCase;
 
     @Mock
     private JdKeywordExtractor jdKeywordExtractor;
@@ -124,11 +120,10 @@ class InterviewSessionPreloadServiceTest {
     }
 
     @Test
-    void jdUrl이_있으면_캐시된_원문으로_JD_키워드를_추출한다() {
+    void jdText가_있으면_JD_키워드를_추출한다() {
         given(interviewSessionRepository.findById(1L))
-                .willReturn(Optional.of(session("https://example.com/jd", null, null)));
+                .willReturn(Optional.of(session(null, "JD 원문", null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(jdContentQueryUseCase.getContent("https://example.com/jd")).willReturn(Optional.of("JD 원문"));
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
