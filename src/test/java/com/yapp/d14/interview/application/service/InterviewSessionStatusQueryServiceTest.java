@@ -119,4 +119,16 @@ class InterviewSessionStatusQueryServiceTest {
                 .extracting(e -> ((InterviewException) e).getErrorCode())
                 .isEqualTo(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND);
     }
+
+    @Test
+    void 세션이_존재하지만_다른_사용자_소유면_404() {
+        UUID otherUserId = UUID.randomUUID();
+        given(interviewSessionRepository.findById(1L))
+                .willReturn(Optional.of(sessionWithStatus(InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now())));
+
+        assertThatThrownBy(() -> service.getStatus(otherUserId, 1L))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND);
+    }
 }
