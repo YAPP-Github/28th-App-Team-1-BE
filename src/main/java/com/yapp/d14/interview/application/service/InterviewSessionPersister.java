@@ -29,14 +29,12 @@ class InterviewSessionPersister {
             Map<TestType, Integer> weights,
             Map<TestType, AxisAssignment> assignments
     ) {
-        // jdUrl은 생성 시점에 jdText로 이미 해석됐으므로 저장하지 않는다.
-        // (preload 단계가 jdUrl을 jdText보다 우선 조회하는데, 캐시가 만료되면 이미 해석된 jdText를 무시하게 된다)
         InterviewSession session = InterviewSession.create(
                 command.userId(),
                 command.portfolioId(),
                 command.jobRole(),
                 command.careerYears(),
-                null,
+                command.jdUrl(),
                 jdText,
                 command.freeText()
         );
