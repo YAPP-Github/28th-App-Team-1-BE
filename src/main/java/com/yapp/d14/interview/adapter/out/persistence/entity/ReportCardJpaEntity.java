@@ -17,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -43,10 +44,12 @@ public class ReportCardJpaEntity {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "report_card_highlight_span", joinColumns = @JoinColumn(name = "report_card_id"))
+    @BatchSize(size = 100)
     private List<HighlightSpanEmbeddable> highlightSpans = new ArrayList<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "report_card_action_keyword", joinColumns = @JoinColumn(name = "report_card_id"))
+    @BatchSize(size = 100)
     private List<ActionKeywordEmbeddable> actionKeywords = new ArrayList<>();
 
     @Column(name = "rewrite_original_quote", columnDefinition = "TEXT")

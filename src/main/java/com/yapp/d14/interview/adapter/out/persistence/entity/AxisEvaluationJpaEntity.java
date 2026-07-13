@@ -18,6 +18,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ public class AxisEvaluationJpaEntity {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "axis_evaluation_evidence_timestamp", joinColumns = @JoinColumn(name = "axis_evaluation_id"))
+    @BatchSize(size = 100)
     private List<TimeRangeEmbeddable> evidenceTimestamps = new ArrayList<>();
 
     @Column(name = "rationale", columnDefinition = "TEXT")

@@ -17,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public class RedFlagJpaEntity {
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "red_flag_evidence_timestamp", joinColumns = @JoinColumn(name = "red_flag_id"))
+    @BatchSize(size = 100)
     private List<TimeRangeEmbeddable> evidenceTimestamps = new ArrayList<>();
 
     @Column(name = "created_at")
