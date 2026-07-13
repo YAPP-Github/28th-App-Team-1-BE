@@ -1,8 +1,9 @@
 # 레드플래그 카탈로그 (5종) - 채점 신뢰도를 훼손하는 신호와 그 효과
 # 용도: RedFlagReconciler(AnthropicRedFlagReconcilerAdapter)의 시스템 프롬프트에 고정 삽입.
-#       stale/contradicted 후보와 전체 턴 맥락을 검토해 레드플래그를 확정할 때의 판단 기준.
-# 출처: 채점 루브릭 원문(9961535) §4-3. exposed(사용자 노출 여부)는 PRD Part2/Part3
-#       대조로 확정한 세션 합의 사항이며 원문에는 명시돼 있지 않다.
+#       포트폴리오 대조 후보(source=portfolio) · 라이브 모순 후보(stale/contradicted)와
+#       프롬프트의 [턴 원문] 섹션(전체 턴 질문·답변 원문)을 대조해 확정할 때의 판단 기준.
+# 출처: 유형·cap·knockout·기본 영향 축은 채점 루브릭 원문(9961535) §4-3.
+#       5종 저장·3종 노출(지어냄·앞뒤 모순·무결점 서사)은 PRD Part2 §6.6에 명시돼 있다.
 #
 # 원문에는 6종(날조/버즈워드 샐러드/전적 책임 전가/방어성·회피/일관성 붕괴/무결점 서사)이
 # 있으나, '방어성/회피'는 Part3 §2-3 resolution_level=LOW(원인: FEW_TURNS/SHALLOW_ANSWER/
@@ -10,6 +11,8 @@
 #
 # type은 RedFlagType enum과 그대로 매칭된다.
 # default_affected_axes가 빈 배열이면 특정 축이 아니라 전체 신뢰도에 영향을 준다(축 cap 아님).
+# 효과 매핑(코드): cap_value+affected_axes → 해당 축 점수 상한, knockout=true → 종합 등급을
+# NO 이하로 강등, exposed=true → 보고서 헤드라인을 SEVERE_RED_FLAG 분기로 전환.
 
 red_flags:
   - type: FABRICATION
@@ -20,10 +23,11 @@ red_flags:
     knockout: true
     exposed: true
     note: >
-      knockout 확정 전 "모순 확인 탐침 1회"를 반드시 거친 결과여야 한다(STT 오인식으로 인한
-      오탐 방어, 원문 부록 B-2-2). stale/contradicted 후보가 재탐침으로도 해소되지 않는지
-      확인한 뒤에만 확정한다 - RedFlagReconciler가 tool-calling으로 턴을 재조회하는 이유가
-      바로 이 검증 단계다.
+      PRD Part2 §4.3(보고서 생성 단계)대로 source=portfolio 캐물 지점과 실제 발화를 대조하거나,
+      라이브에서 잠정 기록된 stale/contradicted 후보를 검토해 확정한다. knockout 확정 전에는
+      [턴 원문]에서 관련 턴의 질문·답변 전체 맥락을 다시 대조해 실제로 앞뒤가 안 맞는지 확인한다
+      (STT 오인식으로 인한 오탐 방어, 원문 부록 B-2-2). 지원자가 스스로 정정했거나
+      (stale_reason=corrected) 재탐침으로 해소된 경우는 확정하지 않는다.
 
   - type: BUZZWORD_SALAD
     label: "버즈워드 샐러드"
@@ -48,7 +52,11 @@ red_flags:
     cap_value: null
     knockout: false
     exposed: true
-    note: "특정 축 cap이 아니라 종합 판정(InternalGrade) 전체 신뢰도 강등으로 처리한다."
+    note: >
+      cap도 knockout도 걸지 않는다(cap_value=null, knockout=false, affectedTestType=null이라
+      종합점수·등급 계산에는 직접 개입하지 않음). 노출 레드플래그이므로 확정 시 보고서 헤드라인이
+      SEVERE_RED_FLAG 분기로 전환돼 전체 신뢰도 주의 신호를 남긴다. 등급 강등(knockout)은
+      날조에만 적용된다.
 
   - type: PERFECT_NARRATIVE
     label: "무결점 서사"
