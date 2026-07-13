@@ -179,9 +179,9 @@ class InterviewSessionCreateValidatorTest {
     }
 
     @Test
-    void freeText가_유효길이여도_연관성이_0_6미만이면_FREETEXT_NOT_RELEVANT() {
+    void freeText가_유효길이여도_연관성이_0_35미만이면_FREETEXT_NOT_RELEVANT() {
         givenPortfolioStatus(PortfolioStatus.READY);
-        given(portfolioSimilarityCheckUseCase.checkSimilarity(any(), any())).willReturn(Optional.of(0.59));
+        given(portfolioSimilarityCheckUseCase.checkSimilarity(any(), any())).willReturn(Optional.of(0.34));
 
         assertThatThrownBy(() -> validator.validate(command(null, null, "가".repeat(20))))
                 .isInstanceOf(InterviewException.class)
@@ -201,9 +201,9 @@ class InterviewSessionCreateValidatorTest {
     }
 
     @Test
-    void freeText가_유효길이이고_연관성이_0_6이상이면_통과한다() {
+    void freeText가_유효길이이고_연관성이_0_35이상이면_통과한다() {
         givenPortfolioStatus(PortfolioStatus.READY);
-        given(portfolioSimilarityCheckUseCase.checkSimilarity(any(), any())).willReturn(Optional.of(0.6));
+        given(portfolioSimilarityCheckUseCase.checkSimilarity(any(), any())).willReturn(Optional.of(0.35));
 
         assertThatCode(() -> validator.validate(command(null, null, "가".repeat(20)))).doesNotThrowAnyException();
     }

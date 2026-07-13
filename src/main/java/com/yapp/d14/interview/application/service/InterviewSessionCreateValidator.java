@@ -21,7 +21,7 @@ class InterviewSessionCreateValidator {
     private static final int MAX_JD_TEXT_LENGTH = 3000;
     private static final int MIN_FREE_TEXT_LENGTH = 10;
     private static final int MAX_FREE_TEXT_LENGTH = 300;
-    private static final double FREE_TEXT_RELEVANCE_THRESHOLD = 0.6;
+    private static final double FREE_TEXT_RELEVANCE_THRESHOLD = 0.35;
 
     private final PortfolioStatusUseCase portfolioStatusUseCase;
     private final JdValidationCheckUseCase jdValidationCheckUseCase;
