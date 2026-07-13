@@ -84,7 +84,7 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'integration'
+        excludeTags 'integration', 'llm-e2e'
     }
 }
 
@@ -95,6 +95,17 @@ tasks.register('integrationTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
         includeTags 'integration'
+    }
+    shouldRunAfter test
+}
+
+tasks.register('llmE2eTest', Test) {
+    group = 'verification'
+    description = '실제 Anthropic API를 호출하는 리포트 파이프라인 e2e 테스트만 실행합니다. (비용 발생, ANTHROPIC_API_KEY 필요)'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'llm-e2e'
     }
     shouldRunAfter test
 }
