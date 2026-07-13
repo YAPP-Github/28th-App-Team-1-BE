@@ -62,19 +62,21 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
             String questionText = buildSummaryQuestionText(session.getFocusProject());
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 합성 시작: sessionId={}", sessionId);
+            Instant ttsStartedAt = Instant.now();
             byte[] audioContent = textToSpeechSynthesizer.synthesize(questionText);
             String aiVoiceS3Key = audioContent != null
                     ? interviewVoiceStorage.upload(session.getUserId(), sessionId, SUMMARY_TURN_LEVEL, audioContent)
                     : null;
-            log.info("[INTERVIEW PRELOAD] 요약 질문 음성 처리 완료: sessionId={}, uploaded={}", sessionId, aiVoiceS3Key != null);
+            log.info("[INTERVIEW PRELOAD] 요약 질문 음성 처리 완료: sessionId={}, uploaded={}, elapsedSeconds={}",
+                    sessionId, aiVoiceS3Key != null, elapsedSeconds(ttsStartedAt));
 
             Question summaryQuestion = Question.create(
                     sessionId, questionText, SUMMARY_TURN_LEVEL, SUMMARY_DEPTH_LEVEL, null, null, aiVoiceS3Key
             );
 
             interviewPreloadResultPersister.persist(session, candidates, summaryQuestion);
-            double elapsedSeconds = Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
-            log.info("[INTERVIEW PRELOAD] 처리 완료, 세션 READY 전환: sessionId={}, elapsedSeconds={}", sessionId, elapsedSeconds);
+            log.info("[INTERVIEW PRELOAD] 처리 완료, 세션 READY 전환: sessionId={}, elapsedSeconds={}",
+                    sessionId, elapsedSeconds(startedAt));
         } catch (Exception e) {
             log.error("[INTERVIEW PRELOAD] 처리 실패: sessionId={}", sessionId, e);
             interviewPreloadFailureHandler.markFailed(sessionId);
@@ -86,10 +88,12 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                 ? session.getFocusProject()
                 : session.getSnapshotJobType().getLabel() + " 프로젝트 경험";
 
+        Instant startedAt = Instant.now();
         List<String> chunks = portfolioChunkSearchUseCase.searchChunks(session.getPortfolioId(), queryText, TOP_K).stream()
                 .map(PortfolioChunkResult::text)
                 .toList();
-        log.info("[INTERVIEW PRELOAD] 포트폴리오 청크 조회 완료: sessionId={}, chunkCount={}", session.getId(), chunks.size());
+        log.info("[INTERVIEW PRELOAD] 포트폴리오 청크 조회 완료: sessionId={}, chunkCount={}, elapsedSeconds={}",
+                session.getId(), chunks.size(), elapsedSeconds(startedAt));
         return chunks;
     }
 
@@ -101,16 +105,20 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         }
 
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 시작: sessionId={}", session.getId());
+        Instant startedAt = Instant.now();
         List<String> jdKeywords = callWithRetry(() -> jdKeywordExtractor.extractKeywords(jdText));
-        log.info("[INTERVIEW PRELOAD] JD 키워드 추출 완료: sessionId={}, keywordCount={}", session.getId(), jdKeywords.size());
+        log.info("[INTERVIEW PRELOAD] JD 키워드 추출 완료: sessionId={}, keywordCount={}, elapsedSeconds={}",
+                session.getId(), jdKeywords.size(), elapsedSeconds(startedAt));
         return jdKeywords;
     }
 
     private List<QuestionCandidate> buildQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 시작: sessionId={}, chunkCount={}, jdKeywordCount={}",
                 session.getId(), chunks.size(), jdKeywords.size());
+        Instant startedAt = Instant.now();
         List<ProbeCandidateDraft> drafts = callWithRetry(() -> probeCandidateExtractor.extract(chunks, jdKeywords));
-        log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}", session.getId(), drafts.size());
+        log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
+                session.getId(), drafts.size(), elapsedSeconds(startedAt));
 
         return drafts.stream()
                 .map(draft -> {
@@ -138,6 +146,10 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             return "포트폴리오에 있는 프로젝트 중 [%s] 프로젝트에 대해 2분간 자유롭게 요약해서 설명해 주세요.".formatted(focusProject);
         }
         return "포트폴리오에서 가장 자신 있는 프로젝트를 골라 2분간 자유롭게 요약해서 설명해 주세요.";
+    }
+
+    private double elapsedSeconds(Instant startedAt) {
+        return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
     }
 
     private <T> T callWithRetry(Supplier<T> call) {
