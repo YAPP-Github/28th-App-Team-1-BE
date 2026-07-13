@@ -19,6 +19,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -45,6 +47,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     @Async("interviewPreloadTaskExecutor")
     public void preload(Long sessionId) {
         log.info("interview preload async processing triggered: sessionId={}", sessionId);
+        Instant startedAt = Instant.now();
 
         InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
         if (session == null) {
@@ -70,7 +73,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             );
 
             interviewPreloadResultPersister.persist(session, candidates, summaryQuestion);
-            log.info("[INTERVIEW PRELOAD] 처리 완료, 세션 READY 전환: sessionId={}", sessionId);
+            double elapsedSeconds = Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
+            log.info("[INTERVIEW PRELOAD] 처리 완료, 세션 READY 전환: sessionId={}, elapsedSeconds={}", sessionId, elapsedSeconds);
         } catch (Exception e) {
             log.error("[INTERVIEW PRELOAD] 처리 실패: sessionId={}", sessionId, e);
             interviewPreloadFailureHandler.markFailed(sessionId);
