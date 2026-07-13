@@ -45,17 +45,17 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
             2. [모순 후보] - 라이브 중 뒤 턴이 앞 턴의 전제를 뒤집어 잠정 기록된 지점. 원래
                발언 턴과 뒤집은 발언 턴 번호가 있습니다. CONTRADICTION(일관성 붕괴) 또는
                맥락에 따라 FABRICATION 후보입니다.
-            3. [턴 인덱스] - 세션 전체 턴 번호·axis 목록(원문은 없음).
+            3. [턴 원문] - 세션 전체 턴의 질문·답변 원문과 axis, 발화 구간.
 
             규칙:
-            - 후보는 실제 원문을 확인해야 확정할 수 있습니다. getTurnDetail 툴로 관련 턴 번호의
-              질문·답변 원문을 조회한 뒤 판단하세요. 목록에 없는 턴이라도 의심되면 조회하세요.
-            - FABRICATION·knockout은 특히 신중해야 합니다 - 관련 턴을 반드시 조회해 실제로
+            - 후보는 요약(echo/probe 인용문)만 보고 확정하지 말고, 반드시 [턴 원문]에서 해당
+              턴의 실제 질문·답변 전체 맥락을 확인한 뒤에만 판단하세요.
+            - FABRICATION·knockout은 특히 신중해야 합니다 - 관련 턴 원문을 다시 확인해 실제로
               앞뒤가 안 맞는지, 지원자가 스스로 정정했는지(정정이면 레드플래그 아님) 확인한
               뒤에만 확정하세요. STT 인식 오류로 인한 오탐 가능성도 고려하세요.
             - PERFECT_NARRATIVE·BLAME_SHIFTING·BUZZWORD_SALAD는 잠정 후보가 따로 없으므로,
-              턴 인덱스를 보고 의심되는 축(특히 ④ 대안·우선순위, ⑤ 갈등)의 턴을 조회해 직접
-              판단하세요. 모든 턴을 다 조회할 필요는 없습니다.
+              [턴 원문]에서 의심되는 축(특히 ④ 대안·우선순위, ⑤ 갈등)의 턴을 직접 검토해
+              판단하세요.
             - 확정할 근거가 부족하면 레드플래그를 만들지 마세요. 의심만으로 확정하지 않습니다.
             - evidenceTimestamps는 판단 근거가 된 턴의 시작/종료 초를 인용하세요(모순은 원래
               발언과 뒤집은 발언 두 구간 모두 인용).
@@ -83,13 +83,11 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
     @Override
     public List<RedFlagVerdict> reconcile(RedFlagReconcileContext context) {
         String userMessage = buildUserMessage(context);
-        RedFlagTurnLookupTools tools = new RedFlagTurnLookupTools(context.turns());
 
         try {
             List<RedFlagVerdictLlmEntry> entries = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
-                    .tools(tools)
                     .call()
                     .entity(new ParameterizedTypeReference<List<RedFlagVerdictLlmEntry>>() {
                     });
@@ -127,11 +125,12 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
                     .append("\n");
         }
 
-        sb.append("\n[턴 인덱스]\n");
+        sb.append("\n[턴 원문]\n");
         for (Turn turn : context.turns()) {
-            sb.append(turn.turnNumber()).append(". axis=").append(turn.testType().name().toLowerCase())
-                    .append(turn.skipped() ? " (스킵됨)" : "")
-                    .append("\n");
+            sb.append(turn.turnNumber()).append(". axis=").append(turn.testType().name().toLowerCase()).append("\n");
+            sb.append("   Q: ").append(turn.questionContent()).append("\n");
+            sb.append("   A: ").append(turn.skipped() ? "(스킵됨)" : turn.answerText()).append("\n");
+            sb.append("   (start=").append(turn.answerStartSec()).append(", end=").append(turn.answerEndSec()).append(")\n");
         }
 
         return sb.toString();
