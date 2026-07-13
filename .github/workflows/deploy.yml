@@ -115,9 +115,9 @@ jobs:
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
-            # TODO: OpenAI/Anthropic/Apple 시크릿 등록 후 주석 해제
-            # OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            # ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            # TODO: Apple 시크릿 등록 후 주석 해제
             # APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
             # APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
             # APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}
