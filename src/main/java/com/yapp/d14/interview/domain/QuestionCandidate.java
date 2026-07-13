@@ -22,6 +22,7 @@ public class QuestionCandidate {
     private QuestionCandidateStatus status;
     private QuestionCandidateStaleReason staleReason;
     private Integer usedInTurn;
+    private Integer contradictingTurnNumber;
     private final LocalDateTime createdAt;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -39,6 +40,7 @@ public class QuestionCandidate {
             QuestionCandidateStatus status,
             QuestionCandidateStaleReason staleReason,
             Integer usedInTurn,
+            Integer contradictingTurnNumber,
             LocalDateTime createdAt
     ) {
         this.id = id;
@@ -54,6 +56,7 @@ public class QuestionCandidate {
         this.status = status;
         this.staleReason = staleReason;
         this.usedInTurn = usedInTurn;
+        this.contradictingTurnNumber = contradictingTurnNumber;
         this.createdAt = createdAt;
     }
 
@@ -97,6 +100,7 @@ public class QuestionCandidate {
             QuestionCandidateStatus status,
             QuestionCandidateStaleReason staleReason,
             Integer usedInTurn,
+            Integer contradictingTurnNumber,
             LocalDateTime createdAt
     ) {
         return QuestionCandidate.builder()
@@ -113,6 +117,7 @@ public class QuestionCandidate {
                 .status(status)
                 .staleReason(staleReason)
                 .usedInTurn(usedInTurn)
+                .contradictingTurnNumber(contradictingTurnNumber)
                 .createdAt(createdAt)
                 .build();
     }
