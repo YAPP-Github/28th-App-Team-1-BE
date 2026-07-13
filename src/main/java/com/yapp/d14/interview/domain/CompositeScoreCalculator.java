@@ -16,12 +16,12 @@ public final class CompositeScoreCalculator {
     }
 
     public static Optional<Result> compute(
-            List<AxisEvaluation> axisScores,
+            List<AxisEvaluation> axisEvaluations,
             Map<TestType, Integer> weights,
             Set<TestType> coreAxes,
             boolean knockoutTriggered
     ) {
-        Set<TestType> scoredAxes = axisScores.stream()
+        Set<TestType> scoredAxes = axisEvaluations.stream()
                 .map(AxisEvaluation::getTestType)
                 .collect(Collectors.toSet());
         if (!scoredAxes.containsAll(coreAxes)) {
@@ -30,9 +30,9 @@ public final class CompositeScoreCalculator {
 
         long weightedSum = 0;
         long weightSum = 0;
-        for (AxisEvaluation axisScore : axisScores) {
-            int weight = weights.getOrDefault(axisScore.getTestType(), 0);
-            weightedSum += (long) axisScore.effectiveScore() * weight;
+        for (AxisEvaluation evaluation : axisEvaluations) {
+            int weight = weights.getOrDefault(evaluation.getTestType(), 0);
+            weightedSum += (long) evaluation.effectiveScore() * weight;
             weightSum += weight;
         }
         if (weightSum == 0) {
