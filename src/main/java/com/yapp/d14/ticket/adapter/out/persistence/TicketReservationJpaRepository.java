@@ -20,7 +20,7 @@ interface TicketReservationJpaRepository extends JpaRepository<TicketReservation
 
     Optional<TicketReservationJpaEntity> findBySessionId(Long sessionId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE TicketReservationJpaEntity r SET r.status = 'RELEASED', r.outcomeReason = :outcomeReason, " +
             "r.resolvedAt = CURRENT_TIMESTAMP WHERE r.id = :id AND r.status = 'HELD'")
     int releaseIfHeld(@Param("id") Long id, @Param("outcomeReason") String outcomeReason);
