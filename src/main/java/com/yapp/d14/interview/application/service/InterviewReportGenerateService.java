@@ -205,8 +205,9 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
     private List<RedFlagVerdict> reconcileRedFlags(Long sessionId, List<QuestionCandidate> candidates, List<Turn> turns) {
         List<RedFlagReconcileContext.PortfolioCandidate> portfolioCandidates = candidates.stream()
                 .filter(candidate -> candidate.getSource() == QuestionCandidateSource.PORTFOLIO)
+                .filter(candidate -> candidate.getUsedInTurn() != null)
                 .map(candidate -> new RedFlagReconcileContext.PortfolioCandidate(
-                        candidate.getTestType(), candidate.getProbeText(), candidate.getEchoQuote()
+                        candidate.getTestType(), candidate.getUsedInTurn(), candidate.getProbeText(), candidate.getEchoQuote()
                 ))
                 .toList();
 

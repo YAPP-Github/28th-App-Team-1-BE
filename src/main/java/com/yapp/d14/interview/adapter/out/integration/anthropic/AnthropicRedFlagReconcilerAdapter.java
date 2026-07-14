@@ -40,8 +40,9 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
 
             입력으로 세 가지를 받습니다:
             1. [포트폴리오 대조 후보] - 포트폴리오에서 뽑은 캐물 지점(무엇을 캐물으려 했는지)과
-               그 지점을 실제로 캐물은 턴 번호. 포트폴리오 내용과 실제 답변이 어긋나면
-               FABRICATION(지어냄) 후보입니다.
+               그 지점을 실제로 캐물은 턴 번호(usedInTurn). 실제로 질문된 후보만 제공됩니다.
+               usedInTurn 턴의 답변 원문을 [턴 원문]에서 확인해, 포트폴리오 내용과 실제 답변이
+               어긋나면 FABRICATION(지어냄) 후보입니다.
             2. [모순 후보] - 라이브 중 뒤 턴이 앞 턴의 전제를 뒤집어 잠정 기록된 지점. 원래
                발언 턴과 뒤집은 발언 턴 번호가 있습니다. CONTRADICTION(일관성 붕괴) 또는
                맥락에 따라 FABRICATION 후보입니다.
@@ -107,6 +108,7 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
         }
         for (PortfolioCandidate candidate : context.portfolioCandidates()) {
             sb.append("- axis: ").append(candidate.testType().name().toLowerCase())
+                    .append(", usedInTurn: ").append(candidate.usedInTurn())
                     .append(", probe: ").append(candidate.probeText())
                     .append(", echo: ").append(candidate.echoQuote())
                     .append("\n");

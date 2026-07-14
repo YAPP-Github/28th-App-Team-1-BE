@@ -138,7 +138,7 @@ class InterviewReportGenerateServiceTest {
         return QuestionCandidate.of(
                 1L, 1L, QuestionCandidateSource.PORTFOLIO, "포트폴리오 발췌", testType, null,
                 "probe", "echo quote", null, QuestionCandidateStrength.HIGH,
-                QuestionCandidateStatus.OPEN, null, null, null, LocalDateTime.now()
+                QuestionCandidateStatus.OPEN, null, 1, null, LocalDateTime.now()
         );
     }
 

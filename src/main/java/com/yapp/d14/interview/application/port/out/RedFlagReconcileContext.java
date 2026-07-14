@@ -12,6 +12,7 @@ public record RedFlagReconcileContext(
 
     public record PortfolioCandidate(
             TestType testType,
+            Integer usedInTurn,
             String probeText,
             String echoQuote
     ) {
