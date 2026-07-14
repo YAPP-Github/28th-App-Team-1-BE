@@ -220,8 +220,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                 ))
                 .toList();
 
-        if (portfolioCandidates.isEmpty() && contradictionCandidates.isEmpty()) {
-            log.info("[INTERVIEW REPORT] 레드플래그 후보 없음, 확정 스킵: sessionId={}", sessionId);
+        if (turns.isEmpty()) {
+            log.info("[INTERVIEW REPORT] 검사할 턴 없음, 레드플래그 확정 스킵: sessionId={}", sessionId);
             return List.of();
         }
 

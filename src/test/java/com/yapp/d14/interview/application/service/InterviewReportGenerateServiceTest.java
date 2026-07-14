@@ -196,7 +196,8 @@ class InterviewReportGenerateServiceTest {
 
         service.generate(1L);
 
-        verify(redFlagReconciler, never()).reconcile(any());
+        // 후보가 없어도 턴이 있으면 PERFECT_NARRATIVE/BLAME_SHIFTING/BUZZWORD_SALAD 검사를 위해 리컨실러를 1회 호출한다
+        verify(redFlagReconciler).reconcile(any());
 
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         @SuppressWarnings("unchecked")
