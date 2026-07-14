@@ -20,6 +20,13 @@ class RedFlagPersistenceAdapter implements RedFlagRepository {
     }
 
     @Override
+    public void saveAll(List<RedFlag> redFlags) {
+        redFlagJpaRepository.saveAll(
+                redFlags.stream().map(RedFlagJpaEntity::from).toList()
+        );
+    }
+
+    @Override
     public List<RedFlag> findAllBySessionId(Long sessionId) {
         return redFlagJpaRepository.findAllBySessionId(sessionId).stream()
                 .map(RedFlagJpaEntity::toDomain)

@@ -8,6 +8,8 @@ public interface RedFlagRepository {
 
     RedFlag save(RedFlag redFlag);
 
+    void saveAll(List<RedFlag> redFlags);
+
     List<RedFlag> findAllBySessionId(Long sessionId);
 
     void deleteBySessionId(Long sessionId);

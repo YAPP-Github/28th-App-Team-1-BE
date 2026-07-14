@@ -20,6 +20,13 @@ class ReportCardPersistenceAdapter implements ReportCardRepository {
     }
 
     @Override
+    public void saveAll(List<ReportCard> reportCards) {
+        reportCardJpaRepository.saveAll(
+                reportCards.stream().map(ReportCardJpaEntity::from).toList()
+        );
+    }
+
+    @Override
     public List<ReportCard> findAllBySessionId(Long sessionId) {
         return reportCardJpaRepository.findAllBySessionId(sessionId).stream()
                 .map(ReportCardJpaEntity::toDomain)

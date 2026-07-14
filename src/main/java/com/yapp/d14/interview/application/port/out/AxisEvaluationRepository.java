@@ -8,6 +8,8 @@ public interface AxisEvaluationRepository {
 
     AxisEvaluation save(AxisEvaluation axisEvaluation);
 
+    void saveAll(List<AxisEvaluation> axisEvaluations);
+
     List<AxisEvaluation> findAllBySessionId(Long sessionId);
 
     void deleteBySessionId(Long sessionId);

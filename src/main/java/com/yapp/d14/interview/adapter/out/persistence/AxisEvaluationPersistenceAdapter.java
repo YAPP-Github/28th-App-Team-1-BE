@@ -20,6 +20,13 @@ class AxisEvaluationPersistenceAdapter implements AxisEvaluationRepository {
     }
 
     @Override
+    public void saveAll(List<AxisEvaluation> axisEvaluations) {
+        axisEvaluationJpaRepository.saveAll(
+                axisEvaluations.stream().map(AxisEvaluationJpaEntity::from).toList()
+        );
+    }
+
+    @Override
     public List<AxisEvaluation> findAllBySessionId(Long sessionId) {
         return axisEvaluationJpaRepository.findAllBySessionId(sessionId).stream()
                 .map(AxisEvaluationJpaEntity::toDomain)

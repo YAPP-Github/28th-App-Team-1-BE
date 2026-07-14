@@ -37,14 +37,8 @@ class InterviewReportPersister {
         reportCardRepository.deleteBySessionId(sessionId);
 
         reportRepository.save(report);
-        for (AxisEvaluation axisEvaluation : axisEvaluations) {
-            axisEvaluationRepository.save(axisEvaluation);
-        }
-        for (RedFlag redFlag : redFlags) {
-            redFlagRepository.save(redFlag);
-        }
-        for (ReportCard reportCard : reportCards) {
-            reportCardRepository.save(reportCard);
-        }
+        axisEvaluationRepository.saveAll(axisEvaluations);
+        redFlagRepository.saveAll(redFlags);
+        reportCardRepository.saveAll(reportCards);
     }
 }

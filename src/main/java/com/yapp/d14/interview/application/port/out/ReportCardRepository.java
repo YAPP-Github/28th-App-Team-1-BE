@@ -8,6 +8,8 @@ public interface ReportCardRepository {
 
     ReportCard save(ReportCard reportCard);
 
+    void saveAll(List<ReportCard> reportCards);
+
     List<ReportCard> findAllBySessionId(Long sessionId);
 
     void deleteBySessionId(Long sessionId);
