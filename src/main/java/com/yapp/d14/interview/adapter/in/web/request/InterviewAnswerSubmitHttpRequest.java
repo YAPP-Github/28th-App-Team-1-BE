@@ -32,10 +32,17 @@ public record InterviewAnswerSubmitHttpRequest(
         @Schema(description = "답변 길이(초)")
         Float answerDuration,
 
-        @Schema(description = "null/SKIP/MANUAL_END/HARD_CAP/EARLY_EXIT 중 하나")
+        @Schema(description = """
+                종료·특수 처리 사유. null/SKIP/MANUAL_END/HARD_CAP/EARLY_EXIT 중 하나
+                - null: 정상 진행 (일반 답변 제출)
+                - SKIP: 답변을 건너뜀 (audio 없음)
+                - MANUAL_END: 8:00 경과 후 사용자가 종료 버튼으로 수동 종료
+                - HARD_CAP: 12:00 경과로 서버가 강제 종료
+                - EARLY_EXIT: 0:00~8:00 사이 사용자가 의도적으로 이탈(차감 경고 확인 후)
+                """)
         String endType,
 
-        @Schema(description = "8:45 경과 여부(클라이언트 타이머 기준)")
+        @Schema(description = "면접 시작 8:45 경과 여부(클라이언트 타이머 기준)")
         Boolean isWrapUp
 ) {
 
