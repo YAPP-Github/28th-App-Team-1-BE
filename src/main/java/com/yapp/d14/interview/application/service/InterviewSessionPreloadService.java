@@ -29,7 +29,8 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
-    private static final int TOP_K = 20;
+    private static final int TOP_K = 10;
+    private static final int MAX_CANDIDATES = 5;
     private static final int MAX_LLM_RETRIES = 2;
     private static final int SUMMARY_TURN_LEVEL = 0;
     private static final int SUMMARY_DEPTH_LEVEL = 0;
@@ -115,12 +116,15 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     private List<QuestionCandidate> buildQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 시작: sessionId={}, chunkCount={}, jdKeywordCount={}",
                 session.getId(), chunks.size(), jdKeywords.size());
+        log.info("[INTERVIEW PRELOAD] 캐물지점 추출 입력값: sessionId={}, chunks={}, jdKeywords={}",
+                session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
         List<ProbeCandidateDraft> drafts = callWithRetry(() -> probeCandidateExtractor.extract(chunks, jdKeywords));
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
 
         return drafts.stream()
+                .limit(MAX_CANDIDATES)
                 .map(draft -> {
                     QuestionCandidateSource source = StringUtils.hasText(draft.jdMatch())
                             ? QuestionCandidateSource.JD
