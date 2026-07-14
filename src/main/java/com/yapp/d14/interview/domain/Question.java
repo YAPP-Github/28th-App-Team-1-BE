@@ -61,7 +61,8 @@ public class Question {
             Integer turnLevel,
             Integer depthLevel,
             TestType testType,
-            String appliedPrinciple
+            String appliedPrinciple,
+            String aiVoiceS3Key
     ) {
         return Question.builder()
                 .sessionId(sessionId)
@@ -70,6 +71,7 @@ public class Question {
                 .depthLevel(depthLevel)
                 .testType(testType)
                 .appliedPrinciple(appliedPrinciple)
+                .aiVoiceS3Key(aiVoiceS3Key)
                 .createdAt(LocalDateTime.now())
                 .build();
     }

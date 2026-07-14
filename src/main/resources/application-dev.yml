@@ -30,9 +30,23 @@ spring:
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          temperature: 0.3
+          max-tokens: 1000
       embedding:
         options:
           model: text-embedding-3-small
+      audio:
+        speech:
+          options:
+            voice: ${OPENAI_TTS_VOICE:alloy}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: ${ANTHROPIC_MODEL:claude-haiku-4-5-20251001}
+          max-tokens: 8192
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -48,9 +62,6 @@ apple:
   team-id: ${APPLE_TEAM_ID}
   key-id: ${APPLE_KEY_ID}
   private-key: ${APPLE_PRIVATE_KEY}
-
-openai:
-  api-key: ${OPENAI_API_KEY}
 
 aws:
   s3:

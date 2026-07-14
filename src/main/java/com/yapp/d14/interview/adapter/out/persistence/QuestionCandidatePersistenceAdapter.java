@@ -31,4 +31,9 @@ class QuestionCandidatePersistenceAdapter implements QuestionCandidateRepository
                 .map(QuestionCandidateJpaEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public void deleteBySessionId(Long sessionId) {
+        questionCandidateJpaRepository.deleteAllBySessionId(sessionId);
+    }
 }

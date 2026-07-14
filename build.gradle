@@ -65,8 +65,10 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.46.18')
     implementation 'software.amazon.awssdk:s3'
 
-    // 포트폴리오 청크 임베딩/pgvector 저장
+    // 포트폴리오 청크 임베딩/pgvector 저장, JD 추출·키워드 추출·TTS
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+    // 면접 Preload LLM 호출 (캐물지점 추출)
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

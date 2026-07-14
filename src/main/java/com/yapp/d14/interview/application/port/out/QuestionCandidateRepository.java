@@ -12,4 +12,6 @@ public interface QuestionCandidateRepository {
     Optional<QuestionCandidate> findById(Long id);
 
     List<QuestionCandidate> findAllBySessionId(Long sessionId);
+
+    void deleteBySessionId(Long sessionId);
 }

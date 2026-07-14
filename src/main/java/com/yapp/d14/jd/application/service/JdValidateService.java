@@ -42,7 +42,7 @@ class JdValidateService implements JdValidateUseCase {
             return JdCrawlResult.failure(JdValidationFailureReason.EXTRACTION_FAILED);
         }
 
-        jdContentRepository.save(command.userId(), command.jdUrl(), extractedContent);
+        jdContentRepository.save(command.jdUrl(), extractedContent);
         return JdCrawlResult.success(extractedContent);
     }
 }

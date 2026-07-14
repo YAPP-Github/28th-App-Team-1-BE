@@ -6,7 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
-import java.util.UUID;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,11 +18,21 @@ class RedisJdContentAdapter implements JdContentRepository {
     private final StringRedisTemplate redisTemplate;
 
     @Override
-    public void save(UUID userId, String jdUrl, String content) {
-        redisTemplate.opsForValue().set(key(userId, jdUrl), content, TTL);
+    public void save(String jdUrl, String content) {
+        redisTemplate.opsForValue().set(key(jdUrl), content, TTL);
     }
 
-    private String key(UUID userId, String jdUrl) {
-        return KEY_PREFIX + userId + ":" + jdUrl;
+    @Override
+    public boolean exists(String jdUrl) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key(jdUrl)));
+    }
+
+    @Override
+    public Optional<String> get(String jdUrl) {
+        return Optional.ofNullable(redisTemplate.opsForValue().get(key(jdUrl)));
+    }
+
+    private String key(String jdUrl) {
+        return KEY_PREFIX + jdUrl;
     }
 }

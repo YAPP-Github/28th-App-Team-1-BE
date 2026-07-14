@@ -25,4 +25,17 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "interviewPreloadTaskExecutor")
+    public Executor interviewPreloadTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(10);
+        executor.setThreadNamePrefix("interview-preload-async-");
+        // 큐가 가득 차면 즉시 RejectedExecutionException을 던져 호출부(InterviewSessionCreateService)에서 처리한다.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.initialize();
+        return executor;
+    }
 }

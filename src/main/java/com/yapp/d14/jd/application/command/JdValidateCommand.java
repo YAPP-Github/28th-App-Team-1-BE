@@ -3,9 +3,7 @@ package com.yapp.d14.jd.application.command;
 import com.yapp.d14.jd.exception.JdErrorCode;
 import com.yapp.d14.jd.exception.JdException;
 
-import java.util.UUID;
-
-public record JdValidateCommand(UUID userId, String jdUrl) {
+public record JdValidateCommand(String jdUrl) {
 
     public JdValidateCommand {
         if (jdUrl == null || jdUrl.isBlank()) {

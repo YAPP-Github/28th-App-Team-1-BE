@@ -11,13 +11,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "interview_axis_plan")
+@Table(name = "interview_axis_plan", uniqueConstraints = @UniqueConstraint(columnNames = {"session_id", "test_type"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InterviewAxisPlanJpaEntity {
 
