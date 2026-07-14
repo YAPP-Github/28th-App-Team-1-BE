@@ -27,11 +27,11 @@ class PortfolioDeleteService implements PortfolioDeleteUseCase {
     public PortfolioDeleteResult delete(UUID userId, UUID portfolioId) {
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
 
+        // pgvector는 같은 PostgreSQL 데이터소스를 쓰므로 DB 삭제와 같은 트랜잭션 안에서 처리한다.
+        // 실패하면 함께 롤백되어, DB 레코드는 지워졌는데 임베딩만 고아로 남는 상황을 막는다.
+        portfolioEmbeddingStore.deleteByPortfolioId(portfolio.getId());
         portfolioRepository.deleteById(portfolio.getId());
-        AfterCommitExecutor.runAfterCommit(() -> {
-            portfolioEmbeddingStore.deleteByPortfolioId(portfolio.getId());
-            portfolioFileUploader.delete(portfolio.getS3Key());
-        });
+        AfterCommitExecutor.runAfterCommit(() -> portfolioFileUploader.delete(portfolio.getS3Key()));
 
         return new PortfolioDeleteResult(portfolio.getId(), LocalDateTime.now());
     }
