@@ -4,6 +4,7 @@ import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -47,6 +48,30 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             }
         }
         throw lastException;
+    }
+
+    @Override
+    @Async("audioArchiveTaskExecutor")
+    public void uploadAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
+        String key = buildKey(userId, sessionId, turnLevel);
+
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .contentType(CONTENT_TYPE)
+                .build();
+        RequestBody requestBody = RequestBody.fromBytes(audioContent);
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                s3Client.putObject(request, requestBody);
+                return;
+            } catch (SdkException e) {
+                log.warn("[INTERVIEW VOICE UPLOAD ASYNC] {}번째 시도 실패: key={}", attempt, key, e);
+            }
+        }
+        // 재시도를 다 소진해도 예외를 던지지 않는다 - 실시간 재생 흐름과는 무관한 부가 기능이라 로깅만 하고 끝낸다.
+        log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
     }
 
     @Override
