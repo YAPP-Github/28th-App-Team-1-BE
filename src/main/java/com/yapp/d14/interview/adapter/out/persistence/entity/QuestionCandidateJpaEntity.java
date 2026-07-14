@@ -70,6 +70,9 @@ public class QuestionCandidateJpaEntity {
     @Column(name = "used_in_turn")
     private Integer usedInTurn;
 
+    @Column(name = "contradicting_turn_number")
+    private Integer contradictingTurnNumber;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -88,6 +91,7 @@ public class QuestionCandidateJpaEntity {
         entity.status = questionCandidate.getStatus();
         entity.staleReason = questionCandidate.getStaleReason();
         entity.usedInTurn = questionCandidate.getUsedInTurn();
+        entity.contradictingTurnNumber = questionCandidate.getContradictingTurnNumber();
         entity.createdAt = questionCandidate.getCreatedAt();
         return entity;
     }
@@ -107,6 +111,7 @@ public class QuestionCandidateJpaEntity {
                 status,
                 staleReason,
                 usedInTurn,
+                contradictingTurnNumber,
                 createdAt
         );
     }

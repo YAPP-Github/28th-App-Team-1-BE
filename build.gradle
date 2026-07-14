@@ -72,6 +72,7 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.awaitility:awaitility:4.2.2'
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
@@ -82,7 +83,31 @@ dependencyManagement {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'integration', 'llm-e2e'
+    }
+}
+
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = '로컬 Postgres/Redis(docker compose)가 필요한 통합 테스트만 실행합니다.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    shouldRunAfter test
+}
+
+tasks.register('llmE2eTest', Test) {
+    group = 'verification'
+    description = '실제 Anthropic API를 호출하는 리포트 파이프라인 e2e 테스트만 실행합니다. (비용 발생, ANTHROPIC_API_KEY 필요)'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'llm-e2e'
+    }
+    shouldRunAfter test
 }
 
 tasks.register('issueTestToken', JavaExec) {

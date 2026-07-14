@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=restricted", "${POSTGRES_MCP_DSN}"]
+    },
+    "redis": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from", "redis-mcp-server@latest",
+        "redis-mcp-server",
+        "--url", "${REDIS_MCP_URL}"
+      ]
+    }
+  }
+}
