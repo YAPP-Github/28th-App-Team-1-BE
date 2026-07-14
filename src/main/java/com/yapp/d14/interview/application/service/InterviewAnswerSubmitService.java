@@ -51,23 +51,54 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
-        InterviewSession session = interviewSessionRepository.findById(command.sessionId())
+        InterviewSession session = findOwnedSession(userId, command.sessionId());
+        Question summaryQuestion = findValidatedSummaryQuestion(session, command);
+
+        String sttText = speechToTextTranscriber.transcribe(command.audioContent());
+        LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText);
+
+        InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session);
+        TestType nextAxis = nextAxisPlan.getTestType();
+        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis);
+        String nextQuestionText = generateNextQuestionText(selectedProbe);
+
+        int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
+        Question nextQuestion = Question.create(
+                session.getId(), nextQuestionText, nextTurnLevel, 0, nextAxis, null, null
+        );
+        List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
+                session.getId(), liveTurnResult, command.turnLevel()
+        );
+        Answer answer = buildAnswer(session, summaryQuestion, sttText, command);
+
+        InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
+                answer, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
+        );
+
+        return buildResult(persisted, nextTurnLevel);
+    }
+
+    private InterviewSession findOwnedSession(UUID userId, Long sessionId) {
+        return interviewSessionRepository.findById(sessionId)
                 .filter(s -> s.getUserId().equals(userId))
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND));
+    }
 
+    // TODO: questionId 기준 실제 turnLevel과 요청값을 대조하는 공통 검증(clientRequestId·endType×audio 포함)은
+    //       이슈2(진입 처리)에서 구현한다. 여기서는 turnLevel=0 케이스만 최소한으로 가드한다.
+    private Question findValidatedSummaryQuestion(InterviewSession session, InterviewAnswerSubmitCommand command) {
         Question summaryQuestion = questionRepository.findById(command.questionId())
                 .filter(q -> q.getSessionId().equals(session.getId()))
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.QUESTION_NOT_FOUND));
 
-        // TODO: questionId 기준 실제 turnLevel과 요청값을 대조하는 공통 검증(clientRequestId·endType×audio 포함)은
-        //       이슈2(진입 처리)에서 구현한다. 여기서는 turnLevel=0 케이스만 최소한으로 가드한다.
         if (command.turnLevel() != SUMMARY_TURN_LEVEL || !summaryQuestion.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
         }
+        return summaryQuestion;
+    }
 
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent());
-
-        LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
+    private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
+        return liveTurnAnalyzer.analyze(
                 session.getId(),
                 summaryQuestion.getContent(),
                 sttText,
@@ -75,48 +106,34 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getSnapshotJobType(),
                 List.of()
         );
+    }
 
+    private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session) {
         List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
         TestType nextAxis = FirstCoreAxisSelector.select(axisPlans, session.getWeights())
                 .orElseThrow(() -> new IllegalStateException("CORE tier 항목이 없어요. sessionId=" + session.getId()));
-        InterviewAxisPlan nextAxisPlan = axisPlans.stream()
+        return axisPlans.stream()
                 .filter(plan -> plan.getTestType() == nextAxis)
                 .findFirst()
                 .orElseThrow();
+    }
 
+    private Optional<QuestionCandidate> selectNextProbe(Long sessionId, TestType axis) {
         List<QuestionCandidate> openCandidates = questionCandidateRepository
-                .findOpenBySessionIdAndTestType(session.getId(), nextAxis);
-        Optional<QuestionCandidate> selectedProbe = NextProbeSelector.select(openCandidates);
+                .findOpenBySessionIdAndTestType(sessionId, axis);
+        return NextProbeSelector.select(openCandidates);
+    }
 
-        String nextQuestionText = selectedProbe
+    private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe) {
+        return selectedProbe
                 .map(probe -> questionTextGenerator.generate(probe.getProbeText(), probe.getEchoQuote()))
                 .orElse(SEED_QUESTION_TEXT);
+    }
 
-        int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
-        Question nextQuestion = Question.create(
-                session.getId(), nextQuestionText, nextTurnLevel, 0, nextAxis, null, null
-        );
-
-        List<QuestionCandidate> newProbeCandidates = liveTurnResult.newProbes().stream()
-                .map(draft -> toQuestionCandidate(session.getId(), draft, command.turnLevel()))
+    private List<QuestionCandidate> toQuestionCandidates(Long sessionId, LiveTurnResult liveTurnResult, int turnLevel) {
+        return liveTurnResult.newProbes().stream()
+                .map(draft -> toQuestionCandidate(sessionId, draft, turnLevel))
                 .toList();
-
-        Answer answer = Answer.create(
-                session.getId(), summaryQuestion.getId(), sttText,
-                command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
-                false, null, null, null, null, false, false, null
-        );
-
-        InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
-                answer, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
-        );
-
-        return new InterviewAnswerSubmitResult(
-                persisted.answer().getId(),
-                new InterviewAnswerSubmitResult.NextQuestion(persisted.question().getId(), false, nextTurnLevel, 0),
-                null,
-                null
-        );
     }
 
     private QuestionCandidate toQuestionCandidate(Long sessionId, ProbeCandidateDraft draft, int turnLevel) {
@@ -130,6 +147,27 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 draft.echoQuote(),
                 draft.jdMatch(),
                 draft.strength()
+        );
+    }
+
+    private Answer buildAnswer(
+            InterviewSession session, Question summaryQuestion, String sttText, InterviewAnswerSubmitCommand command
+    ) {
+        return Answer.create(
+                session.getId(), summaryQuestion.getId(), sttText,
+                command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                false, null, null, null, null, false, false, null
+        );
+    }
+
+    private InterviewAnswerSubmitResult buildResult(
+            InterviewAnswerSubmitPersister.PersistResult persisted, int nextTurnLevel
+    ) {
+        return new InterviewAnswerSubmitResult(
+                persisted.answer().getId(),
+                new InterviewAnswerSubmitResult.NextQuestion(persisted.question().getId(), false, nextTurnLevel, 0),
+                null,
+                null
         );
     }
 }
