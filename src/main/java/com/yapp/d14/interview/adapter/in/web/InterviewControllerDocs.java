@@ -2,7 +2,9 @@ package com.yapp.d14.interview.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
+import com.yapp.d14.interview.adapter.in.web.request.InterviewAnswerSubmitHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewSessionCreateHttpRequest;
+import com.yapp.d14.interview.adapter.in.web.response.InterviewAnswerSubmitHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionCreateHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionStatusHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,6 +18,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -208,5 +211,81 @@ public interface InterviewControllerDocs {
     ResponseEntity<ApiResponse<InterviewSessionStatusHttpResponse>> getStatus(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId
+    );
+
+    @Operation(
+            summary = "답변 제출 (turnLevel=0, 첫 턴 전용)",
+            description = "요약 질문(turnLevel=0)에 대한 답변을 제출하고 다음 질문을 받습니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 현재는 turnLevel=0(첫 턴) 경로만 지원합니다. turnLevel≥1 일반 매 턴 처리는 추후 지원 예정입니다.\n" +
+                    "- 응답에는 오디오가 동봉되지 않습니다. `nextQuestion.questionId`로 " +
+                    "`GET /{sessionId}/questions/{questionId}/audio/stream`(추후 추가 예정)을 호출해 오디오를 받으세요."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "제출 성공 — 다음 질문 메타데이터 반환",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": {
+                                        "answerId": 12,
+                                        "nextQuestion": {
+                                          "questionId": 13,
+                                          "isLast": false,
+                                          "turn": { "turnLevel": 1, "depthLevel": 0 }
+                                        },
+                                        "wrapUpMessage": null,
+                                        "reportId": null
+                                      }
+                                    }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "아직 지원하지 않는 turnLevel",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "UNSUPPORTED_TURN_LEVEL",
+                                      "message": "아직 지원하지 않는 turnLevel이에요."
+                                    }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "세션 또는 질문을 찾을 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "세션 없음", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INTERVIEW_SESSION_NOT_FOUND",
+                                              "message": "면접 세션을 찾을 수 없어요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "질문 없음", value = """
+                                            {
+                                              "success": false,
+                                              "code": "QUESTION_NOT_FOUND",
+                                              "message": "질문을 찾을 수 없어요."
+                                            }
+                                            """)
+                            }
+                    )
+            )
+    })
+    ResponseEntity<ApiResponse<InterviewAnswerSubmitHttpResponse>> submitAnswer(
+            @Parameter(hidden = true) @CurrentUser UUID userId,
+            @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId,
+            @Parameter(description = "답변 음성 파일(mp3)") MultipartFile audio,
+            @Valid InterviewAnswerSubmitHttpRequest request
     );
 }

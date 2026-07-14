@@ -86,6 +86,12 @@ public class QuestionCandidate {
                 .build();
     }
 
+    // 이 캐물지점을 질문으로 사용 확정 (5-6장): status=USED 전환 + 사용된 turnLevel 기록
+    public void markUsed(int usedInTurn) {
+        this.status = QuestionCandidateStatus.USED;
+        this.usedInTurn = usedInTurn;
+    }
+
     public static QuestionCandidate of(
             Long id,
             Long sessionId,

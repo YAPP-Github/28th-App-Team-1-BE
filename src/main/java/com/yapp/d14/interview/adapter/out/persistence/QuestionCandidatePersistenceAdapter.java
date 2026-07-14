@@ -23,6 +23,16 @@ class QuestionCandidatePersistenceAdapter implements QuestionCandidateRepository
     }
 
     @Override
+    public List<QuestionCandidate> saveAll(List<QuestionCandidate> questionCandidates) {
+        List<QuestionCandidateJpaEntity> entities = questionCandidates.stream()
+                .map(QuestionCandidateJpaEntity::from)
+                .toList();
+        return questionCandidateJpaRepository.saveAll(entities).stream()
+                .map(QuestionCandidateJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<QuestionCandidate> findById(Long id) {
         return questionCandidateJpaRepository.findById(id).map(QuestionCandidateJpaEntity::toDomain);
     }

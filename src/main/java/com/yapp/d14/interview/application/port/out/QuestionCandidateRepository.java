@@ -10,6 +10,8 @@ public interface QuestionCandidateRepository {
 
     QuestionCandidate save(QuestionCandidate questionCandidate);
 
+    List<QuestionCandidate> saveAll(List<QuestionCandidate> questionCandidates);
+
     Optional<QuestionCandidate> findById(Long id);
 
     List<QuestionCandidate> findAllBySessionId(Long sessionId);
