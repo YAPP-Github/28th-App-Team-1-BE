@@ -71,12 +71,21 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         Question nextQuestion = Question.create(
                 session.getId(), nextQuestionText, nextTurnLevel, 1, nextAxis, null, null
         ); // 다음 질문 생성
-        Answer answer = Answer.create(
-                session.getId(), summaryQuestion.getId(), sttText,
-                command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
-                false, null, null, null, null, false, false, null
-        );
-        summaryQuestion.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec()); // 재생 구간 기록
+        Answer answer;
+        try {
+            answer = Answer.create(
+                    session.getId(), summaryQuestion.getId(), sttText,
+                    command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                    false, null, null, null, null, false, false, null
+            );
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
+        }
+        try {
+            summaryQuestion.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec()); // 재생 구간 기록
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_PLAYBACK_RANGE);
+        }
 
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
                 answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion

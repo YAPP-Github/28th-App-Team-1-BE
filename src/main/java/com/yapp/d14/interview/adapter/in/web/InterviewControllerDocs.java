@@ -246,6 +246,29 @@ public interface InterviewControllerDocs {
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "재생·답변 구간 값 오류",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "질문 재생 구간 값 오류", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INVALID_PLAYBACK_RANGE",
+                                              "message": "질문 재생 구간 값이 올바르지 않아요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "답변 구간 값 오류", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INVALID_ANSWER_RANGE",
+                                              "message": "답변 구간 값이 올바르지 않아요."
+                                            }
+                                            """)
+                            }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "세션 또는 질문을 찾을 수 없음",
                     content = @Content(
@@ -266,6 +289,20 @@ public interface InterviewControllerDocs {
                                             }
                                             """)
                             }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "같은 질문에 이미 답변이 제출됨(재시도 차단)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "ANSWER_ALREADY_SUBMITTED",
+                                      "message": "이미 제출된 답변이에요."
+                                    }
+                                    """)
                     )
             )
     })

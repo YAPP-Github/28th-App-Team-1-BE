@@ -186,6 +186,46 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 재생_구간_시작이_종료보다_크면_400_예외로_변환된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        InterviewAnswerSubmitCommand invalidRangeCommand =
+                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 110f, 100f, 0f, 5f, 5f);
+
+        assertThatThrownBy(() -> service.submit(userId, invalidRangeCommand))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.INVALID_PLAYBACK_RANGE);
+
+        verifyNoInteractions(interviewAnswerSubmitPersister);
+    }
+
+    @Test
+    void 답변_구간_시작이_종료보다_크면_400_예외로_변환된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        InterviewAnswerSubmitCommand invalidRangeCommand =
+                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 5f, 0f, 5f);
+
+        assertThatThrownBy(() -> service.submit(userId, invalidRangeCommand))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.INVALID_ANSWER_RANGE);
+
+        verifyNoInteractions(interviewAnswerSubmitPersister);
+    }
+
+    @Test
     void 후보가_없으면_seed_질문으로_대체하고_질문생성_어댑터는_호출하지_않는다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));

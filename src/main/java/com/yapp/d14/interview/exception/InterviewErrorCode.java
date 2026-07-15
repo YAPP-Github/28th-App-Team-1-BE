@@ -18,6 +18,8 @@ public enum InterviewErrorCode implements ErrorCode {
     INTERVIEW_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_SESSION_NOT_FOUND", "면접 세션을 찾을 수 없어요."),
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "QUESTION_NOT_FOUND", "질문을 찾을 수 없어요."),
     ANSWER_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "ANSWER_ALREADY_SUBMITTED", "이미 제출된 답변이에요."),
+    INVALID_PLAYBACK_RANGE(HttpStatus.BAD_REQUEST, "INVALID_PLAYBACK_RANGE", "질문 재생 구간 값이 올바르지 않아요."),
+    INVALID_ANSWER_RANGE(HttpStatus.BAD_REQUEST, "INVALID_ANSWER_RANGE", "답변 구간 값이 올바르지 않아요."),
     // TODO: turnLevel≥1 일반 매 턴 처리(이슈2 이후)가 구현되기 전까지의 임시 가드
     UNSUPPORTED_TURN_LEVEL(HttpStatus.BAD_REQUEST, "UNSUPPORTED_TURN_LEVEL", "아직 지원하지 않는 turnLevel이에요.");
 

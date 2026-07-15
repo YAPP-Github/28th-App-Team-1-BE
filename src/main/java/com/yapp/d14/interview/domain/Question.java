@@ -77,8 +77,31 @@ public class Question {
     }
 
     public void markPlayed(Float questionStartSec, Float questionEndSec) {
+        validatePlaybackRange(questionStartSec, questionEndSec);
         this.questionStartSec = questionStartSec;
         this.questionEndSec = questionEndSec;
+    }
+
+    private static void validatePlaybackRange(Float startSec, Float endSec) {
+        requireNonNegativeFinite(startSec, "questionStartSec");
+        requireNonNegativeFinite(endSec, "questionEndSec");
+        if (startSec != null && endSec != null && startSec > endSec) {
+            throw new IllegalArgumentException(
+                    "재생 시작 시간은 종료 시간보다 클 수 없어요. start=%s, end=%s".formatted(startSec, endSec)
+            );
+        }
+    }
+
+    private static void requireNonNegativeFinite(Float value, String fieldName) {
+        if (value == null) {
+            return;
+        }
+        if (value.isNaN() || value.isInfinite()) {
+            throw new IllegalArgumentException("%s는 유한한 값이어야 해요. value=%s".formatted(fieldName, value));
+        }
+        if (value < 0) {
+            throw new IllegalArgumentException("%s는 음수일 수 없어요. value=%s".formatted(fieldName, value));
+        }
     }
 
     public static Question of(
