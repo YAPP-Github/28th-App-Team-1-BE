@@ -17,9 +17,6 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.UUID;
 
-// Spring MVC(서블릿) 스택에서는 Flux<byte[]>를 컨트롤러 반환 타입으로 그대로 선언하면
-// audio/mpeg를 스트리밍 미디어 타입으로 인식하지 못해 500이 나므로,
-// ResponseEntity<StreamingResponseBody>로 감싸 청크를 OutputStream에 직접 write+flush한다.
 @RestController
 @RequestMapping("/api/v1/interview/sessions")
 @RequiredArgsConstructor

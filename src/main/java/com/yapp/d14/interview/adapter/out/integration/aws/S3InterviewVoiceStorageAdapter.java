@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.aws;
 
 import com.yapp.d14.common.properties.S3Properties;
+import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     @Override
     public String upload(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
-        String key = buildKey(userId, sessionId, turnLevel);
+        String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel);
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
@@ -53,7 +54,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
     @Override
     @Async("audioArchiveTaskExecutor")
     public void uploadAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
-        String key = buildKey(userId, sessionId, turnLevel);
+        String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel);
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
@@ -70,7 +71,6 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
                 log.warn("[INTERVIEW VOICE UPLOAD ASYNC] {}번째 시도 실패: key={}", attempt, key, e);
             }
         }
-        // 재시도를 다 소진해도 예외를 던지지 않는다 - 실시간 재생 흐름과는 무관한 부가 기능이라 로깅만 하고 끝낸다.
         log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
     }
 
@@ -87,9 +87,5 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             log.warn("[INTERVIEW VOICE READ] S3 조회 실패: key={}", s3Key, e);
             return null;
         }
-    }
-
-    private String buildKey(UUID userId, Long sessionId, int turnLevel) {
-        return "users/%s/sessions/%s/questions/%s.mp3".formatted(userId, sessionId, turnLevel);
     }
 }
