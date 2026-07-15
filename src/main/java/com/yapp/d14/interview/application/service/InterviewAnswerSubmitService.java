@@ -3,24 +3,8 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
 import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
-import com.yapp.d14.interview.application.port.out.InterviewAxisPlanRepository;
-import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
-import com.yapp.d14.interview.application.port.out.LiveTurnAnalyzer;
-import com.yapp.d14.interview.application.port.out.LiveTurnResult;
-import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
-import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
-import com.yapp.d14.interview.application.port.out.QuestionRepository;
-import com.yapp.d14.interview.application.port.out.QuestionTextGenerator;
-import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
-import com.yapp.d14.interview.domain.Answer;
-import com.yapp.d14.interview.domain.FirstCoreAxisSelector;
-import com.yapp.d14.interview.domain.InterviewAxisPlan;
-import com.yapp.d14.interview.domain.InterviewSession;
-import com.yapp.d14.interview.domain.NextProbeSelector;
-import com.yapp.d14.interview.domain.Question;
-import com.yapp.d14.interview.domain.QuestionCandidate;
-import com.yapp.d14.interview.domain.QuestionCandidateSource;
-import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.interview.application.port.out.*;
+import com.yapp.d14.interview.domain.*;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import lombok.RequiredArgsConstructor;
@@ -52,18 +36,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
-        Question question = findOwnedQuestion(session, command.questionId());
+        Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
 
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);
         }
         return handleRegularTurn(session, question, command);
-    }
-
-    private Question findOwnedQuestion(InterviewSession session, Long questionId) {
-        return questionRepository.findById(questionId)
-                .filter(q -> q.getSessionId().equals(session.getId()))
-                .orElseThrow(() -> new InterviewException(InterviewErrorCode.QUESTION_NOT_FOUND));
     }
 
     // turnLevel=0(요약 답변) 특수 처리 경로

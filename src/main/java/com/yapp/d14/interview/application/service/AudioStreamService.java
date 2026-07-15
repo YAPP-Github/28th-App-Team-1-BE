@@ -7,8 +7,6 @@ import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
-import com.yapp.d14.interview.exception.InterviewErrorCode;
-import com.yapp.d14.interview.exception.InterviewException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,9 +29,7 @@ class AudioStreamService implements AudioStreamUseCase {
     public Flux<byte[]> stream(UUID userId, Long sessionId, Long questionId) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, sessionId, userId);
 
-        Question question = questionRepository.findById(questionId)
-                .filter(q -> q.getSessionId().equals(session.getId()))
-                .orElseThrow(() -> new InterviewException(InterviewErrorCode.QUESTION_NOT_FOUND));
+        Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, questionId, session);
 
         // tee: 클라이언트로 나가는 동일 스트림에서 청크를 버퍼링해뒀다가 완료 시점에 S3로 비동기 업로드한다.
         // Flux를 재구독해 새로 생성하면 OpenAI TTS 호출이 두 번 나가 비용이 두 배가 되므로 반드시 같은 구독에서 처리한다.
