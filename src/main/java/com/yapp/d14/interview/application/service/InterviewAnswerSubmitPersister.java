@@ -50,7 +50,12 @@ class InterviewAnswerSubmitPersister {
         }
         questionRepository.save(answeredQuestion);
 
-        questionCandidateRepository.saveAll(newProbeCandidates);
+        // selectedProbe가 이번 턴에 새로 추출된 후보라면 newProbeCandidates에도 같은 인스턴스가 들어있을 수 있다.
+        // 아래에서 selectedProbe를 별도로 markUsed 후 저장하므로, 여기서는 제외하고 저장해 중복 삽입을 막는다.
+        List<QuestionCandidate> candidatesToInsert = newProbeCandidates.stream()
+                .filter(candidate -> candidate != selectedProbe)
+                .toList();
+        questionCandidateRepository.saveAll(candidatesToInsert);
 
         if (selectedProbe != null) {
             selectedProbe.markUsed(nextTurnLevel);

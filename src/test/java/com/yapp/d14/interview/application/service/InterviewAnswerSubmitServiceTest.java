@@ -210,6 +210,42 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 기존_OPEN_후보가_없어도_이번_턴에_추출한_후보로_다음_질문을_생성한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(
+                        List.of(new ProbeCandidateDraft(
+                                TestType.DEPTH, null, "새로 추출된 probe", "새로 추출된 echo", null, QuestionCandidateStrength.HIGH
+                        )),
+                        new CeilingAssessment(false, null, "판별 대상 아님"),
+                        List.of()
+                ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(questionTextGenerator.generate("새로 추출된 probe", "새로 추출된 echo")).willReturn("생성된 질문 문장");
+
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        service.submit(userId, command());
+
+        verify(questionTextGenerator).generate("새로 추출된 probe", "새로 추출된 echo");
+
+        ArgumentCaptor<QuestionCandidate> selectedProbeCaptor = ArgumentCaptor.forClass(QuestionCandidate.class);
+        verify(interviewAnswerSubmitPersister).persist(any(), any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
+        assertThat(selectedProbeCaptor.getValue().getProbeText()).isEqualTo("새로 추출된 probe");
+    }
+
+    @Test
     void 세션이_없으면_예외가_발생하고_이후_단계는_실행되지_않는다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.empty());
 

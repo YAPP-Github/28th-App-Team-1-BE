@@ -10,6 +10,7 @@ import com.yapp.d14.interview.exception.InterviewException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,19 +58,19 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     ) {
         String sttText = speechToTextTranscriber.transcribe(command.audioContent()); // STT 변환
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
+        List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
+                session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
+        ); // 새 후보 변환 — 축 선택 전에 만들어 이번 턴에 추출한 후보도 선택 대상에 포함시킨다
 
         InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session); // 다음 axis 선택
         TestType nextAxis = nextAxisPlan.getTestType(); // axis 값 추출
-        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis); // 후보 선택
+        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 기존 OPEN 후보 + 신규 후보를 병합해 한 번만 선택
         String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장 생성
 
         int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
         Question nextQuestion = Question.create(
                 session.getId(), nextQuestionText, nextTurnLevel, 1, nextAxis, null, null
         ); // 다음 질문 생성
-        List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
-                session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
-        ); // 새 후보 변환
         Answer answer = Answer.create(
                 session.getId(), summaryQuestion.getId(), sttText,
                 command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
@@ -143,10 +144,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 .orElseThrow();
     }
 
-    private Optional<QuestionCandidate> selectNextProbe(Long sessionId, TestType axis) {
-        List<QuestionCandidate> openCandidates = questionCandidateRepository
-                .findOpenBySessionIdAndTestType(sessionId, axis);
-        return NextProbeSelector.select(openCandidates);
+    // 선택 축(axis)의 기존 OPEN 후보와, 이번 턴에 새로 추출된 후보 중 같은 축인 것을 병합해 한 번에 선택한다.
+    private Optional<QuestionCandidate> selectNextProbe(Long sessionId, TestType axis, List<QuestionCandidate> newProbeCandidates) {
+        List<QuestionCandidate> candidatePool = new ArrayList<>(
+                questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, axis)
+        );
+        newProbeCandidates.stream()
+                .filter(candidate -> candidate.getTestType() == axis)
+                .forEach(candidatePool::add);
+        return NextProbeSelector.select(candidatePool);
     }
 
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe) {
