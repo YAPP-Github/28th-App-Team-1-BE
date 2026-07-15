@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -286,6 +287,6 @@ public interface InterviewControllerDocs {
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId,
             @Parameter(description = "답변 음성 파일(mp3)") MultipartFile audio,
-            @Valid InterviewAnswerSubmitHttpRequest request
+            @Valid @ParameterObject InterviewAnswerSubmitHttpRequest request
     );
 }
