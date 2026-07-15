@@ -135,7 +135,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "생성된 질문 문장", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -146,7 +146,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().questionId()).isEqualTo(13L);
         assertThat(result.nextQuestion().isLast()).isFalse();
         assertThat(result.nextQuestion().turnLevel()).isEqualTo(1);
-        assertThat(result.nextQuestion().depthLevel()).isEqualTo(0);
+        assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         assertThat(result.wrapUpMessage()).isNull();
         assertThat(result.reportId()).isNull();
     }
@@ -165,7 +165,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -195,7 +195,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -276,7 +276,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "생성된 질문 문장", 1, 0, TestType.BOUNDARY, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.BOUNDARY, null, null, null, null, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));

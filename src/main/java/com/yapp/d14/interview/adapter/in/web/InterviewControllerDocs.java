@@ -236,7 +236,7 @@ public interface InterviewControllerDocs {
                                         "nextQuestion": {
                                           "questionId": 13,
                                           "isLast": false,
-                                          "turn": { "turnLevel": 1, "depthLevel": 0 }
+                                          "turn": { "turnLevel": 1, "depthLevel": 1 }
                                         },
                                         "wrapUpMessage": null,
                                         "reportId": null

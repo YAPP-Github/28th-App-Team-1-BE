@@ -56,9 +56,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis); // 후보 선택
         String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장 생성
 
-        int nextTurnLevel = SUMMARY_TURN_LEVEL + 1; // 다음 턴 번호
+        int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
         Question nextQuestion = Question.create(
-                session.getId(), nextQuestionText, nextTurnLevel, 0, nextAxis, null, null
+                session.getId(), nextQuestionText, nextTurnLevel, 1, nextAxis, null, null
         ); // 다음 질문 생성
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
@@ -68,9 +68,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
                 answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
-        ); // 한번에 DB 저장
+        );
 
-        return buildResult(persisted, nextTurnLevel); // 결과 반환
+        return buildResult(persisted, nextTurnLevel);
     }
 
     // TODO: turnLevel≥1 일반 매 턴 루프 (설계 문서 5장, 다이어그램 0-2). 이슈2 이후에서 아래 구조로 구현한다.
@@ -171,7 +171,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     ) {
         return new InterviewAnswerSubmitResult(
                 persisted.answer().getId(),
-                new InterviewAnswerSubmitResult.NextQuestion(persisted.question().getId(), false, nextTurnLevel, 0),
+                new InterviewAnswerSubmitResult.NextQuestion(
+                        persisted.question().getId(), false, nextTurnLevel, persisted.question().getDepthLevel()
+                ),
                 null,
                 null
         );
