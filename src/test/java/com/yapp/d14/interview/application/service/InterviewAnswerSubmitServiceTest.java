@@ -27,6 +27,7 @@ import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -205,6 +206,63 @@ class InterviewAnswerSubmitServiceTest {
                 .isInstanceOf(InterviewException.class)
                 .extracting("errorCode")
                 .isEqualTo(InterviewErrorCode.QUESTION_NOT_FOUND);
+    }
+
+    @Test
+    void CORE_중_가중치가_가장_높은_axis가_선택되고_그_axis에서_jd_match와_strength_우선순위로_probe가_선택된다() {
+        // 가중치: depth 20, boundary 30, connection 10, tradeoff 20, conflict 10, resilience 10
+        // → CORE(depth/boundary/tradeoff) 중 boundary(30)가 가장 높아 boundary가 선택돼야 한다
+        InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
+                20, 30, 10, 20, 10, 10
+        );
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithBoundaryWeighted));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+
+        // boundary axis의 open 후보 3개 — jd_match 존재 여부 > strength(high>mid>low) 순으로 우선순위가 매겨진다
+        QuestionCandidate noJdHighStrength = QuestionCandidate.create(
+                sessionId, QuestionCandidateSource.PORTFOLIO, null, TestType.BOUNDARY, null,
+                "jd 매칭 없음, strength만 HIGH", "echoA", null, QuestionCandidateStrength.HIGH
+        );
+        QuestionCandidate jdMatchLowStrength = QuestionCandidate.create(
+                sessionId, QuestionCandidateSource.JD, null, TestType.BOUNDARY, null,
+                "jd 매칭 있음, strength는 LOW", "echoB", "확장성", QuestionCandidateStrength.LOW
+        );
+        QuestionCandidate jdMatchHighStrength = QuestionCandidate.create(
+                sessionId, QuestionCandidateSource.JD, null, TestType.BOUNDARY, null,
+                "jd 매칭 있음, strength도 HIGH", "echoC", "트래픽", QuestionCandidateStrength.HIGH
+        );
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.BOUNDARY))
+                .willReturn(List.of(noJdHighStrength, jdMatchLowStrength, jdMatchHighStrength));
+        given(questionTextGenerator.generate(any(), any())).willReturn("생성된 질문 문장");
+
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "생성된 질문 문장", 1, 0, TestType.BOUNDARY, null, null, null, null, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        service.submit(userId, command());
+
+        // 1. axis 선택 검증: DEPTH(20)·TRADEOFF(20)가 아니라 BOUNDARY(30)의 open 후보를 조회했다
+        verify(questionCandidateRepository).findOpenBySessionIdAndTestType(sessionId, TestType.BOUNDARY);
+
+        // 2. probe 선택 검증: jd_match 없는 HIGH보다, jd_match 있는 후보가 우선이고
+        //    그중에서도 strength가 HIGH인 jdMatchHighStrength가 최종 선택된다
+        verify(questionTextGenerator).generate("jd 매칭 있음, strength도 HIGH", "echoC");
+
+        ArgumentCaptor<QuestionCandidate> selectedProbeCaptor = ArgumentCaptor.forClass(QuestionCandidate.class);
+        verify(interviewAnswerSubmitPersister).persist(any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
+        assertThat(selectedProbeCaptor.getValue()).isSameAs(jdMatchHighStrength);
     }
 
     @Test
