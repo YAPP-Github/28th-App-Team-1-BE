@@ -44,7 +44,10 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
                     .user(userMessage)
                     .call()
                     .content();
-            return content == null ? "" : content.strip();
+            if (content == null || content.isBlank()) {
+                throw new IllegalStateException("Anthropic이 빈 질문 문장을 반환했어요.");
+            }
+            return content.strip();
         } catch (Exception e) {
             log.error("[QUESTION TEXT GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("질문 문장 생성에 실패했어요.", e);
