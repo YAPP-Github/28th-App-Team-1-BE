@@ -51,19 +51,13 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
-        InterviewSession session = findOwnedSession(userId, command.sessionId());
+        InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
         Question question = findOwnedQuestion(session, command.questionId());
 
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);
         }
         return handleRegularTurn(session, question, command);
-    }
-
-    private InterviewSession findOwnedSession(UUID userId, Long sessionId) {
-        return interviewSessionRepository.findById(sessionId)
-                .filter(s -> s.getUserId().equals(userId))
-                .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND));
     }
 
     private Question findOwnedQuestion(InterviewSession session, Long questionId) {

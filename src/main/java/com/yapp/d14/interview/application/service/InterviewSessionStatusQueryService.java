@@ -9,8 +9,6 @@ import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
-import com.yapp.d14.interview.exception.InterviewErrorCode;
-import com.yapp.d14.interview.exception.InterviewException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,9 +26,7 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
 
     @Override
     public InterviewSessionStatusResult getStatus(UUID userId, Long sessionId) {
-        InterviewSession session = interviewSessionRepository.findById(sessionId)
-                .filter(s -> s.getUserId().equals(userId))
-                .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND));
+        InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, sessionId, userId);
 
         InterviewSessionPollStatus pollStatus = InterviewSessionPollStatus.from(session.getStatus());
         if (pollStatus != InterviewSessionPollStatus.READY) {

@@ -220,7 +220,7 @@ public interface InterviewControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 현재는 turnLevel=0(첫 턴) 경로만 지원합니다. turnLevel≥1 일반 매 턴 처리는 추후 지원 예정입니다.\n" +
                     "- 응답에는 오디오가 동봉되지 않습니다. `nextQuestion.questionId`로 " +
-                    "`GET /{sessionId}/questions/{questionId}/audio/stream`(추후 추가 예정)을 호출해 오디오를 받으세요."
+                    "`GET /{sessionId}/questions/{questionId}/audio/stream`을 호출해 오디오를 받으세요."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

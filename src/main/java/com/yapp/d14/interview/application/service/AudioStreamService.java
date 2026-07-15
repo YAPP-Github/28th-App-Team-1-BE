@@ -29,9 +29,7 @@ class AudioStreamService implements AudioStreamUseCase {
 
     @Override
     public Flux<byte[]> stream(UUID userId, Long sessionId, Long questionId) {
-        InterviewSession session = interviewSessionRepository.findById(sessionId)
-                .filter(s -> s.getUserId().equals(userId))
-                .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND));
+        InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, sessionId, userId);
 
         Question question = questionRepository.findById(questionId)
                 .filter(q -> q.getSessionId().equals(session.getId()))
