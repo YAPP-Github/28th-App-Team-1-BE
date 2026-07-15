@@ -296,18 +296,16 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void 질문의_turnLevel이_0이_아니면_예외가_발생한다() {
+    void 질문의_turnLevel이_0이_아니면_아직_구현되지_않아_null을_반환한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         Question regularQuestion = Question.of(
                 101L, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion));
 
-        assertThatThrownBy(() -> service.submit(userId, command()))
-                .isInstanceOf(InterviewException.class)
-                .extracting("errorCode")
-                .isEqualTo(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
 
+        assertThat(result).isNull();
         verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer);
     }
 }
