@@ -107,7 +107,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     private InterviewAnswerSubmitCommand command() {
-        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 0, audioContent, 0f, 5f, 5f);
+        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 0, audioContent, 100f, 110f, 0f, 5f, 5f);
     }
 
     @Test
@@ -137,7 +137,7 @@ class InterviewAnswerSubmitServiceTest {
         Question savedQuestion = Question.of(
                 13L, sessionId, "생성된 질문 문장", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
-        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), anyInt(), any(), any()))
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
 
         InterviewAnswerSubmitResult result = service.submit(userId, command());
@@ -149,6 +149,36 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(0);
         assertThat(result.wrapUpMessage()).isNull();
         assertThat(result.reportId()).isNull();
+    }
+
+    @Test
+    void 요청의_질문_음성_재생_구간이_답변한_질문에_기록된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        service.submit(userId, command());
+
+        ArgumentCaptor<Question> answeredQuestionCaptor = ArgumentCaptor.forClass(Question.class);
+        verify(interviewAnswerSubmitPersister)
+                .persist(any(), answeredQuestionCaptor.capture(), any(), any(), anyInt(), any(), any());
+        Question answeredQuestion = answeredQuestionCaptor.getValue();
+        assertThat(answeredQuestion.getId()).isEqualTo(summaryQuestionId);
+        assertThat(answeredQuestion.getQuestionStartSec()).isEqualTo(100f);
+        assertThat(answeredQuestion.getQuestionEndSec()).isEqualTo(110f);
     }
 
     @Test
@@ -167,7 +197,7 @@ class InterviewAnswerSubmitServiceTest {
         Question savedQuestion = Question.of(
                 13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
         );
-        given(interviewAnswerSubmitPersister.persist(any(), any(), isNull(), anyInt(), any(), any()))
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
 
         service.submit(userId, command());
@@ -248,7 +278,7 @@ class InterviewAnswerSubmitServiceTest {
         Question savedQuestion = Question.of(
                 13L, sessionId, "생성된 질문 문장", 1, 0, TestType.BOUNDARY, null, null, null, null, LocalDateTime.now()
         );
-        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), anyInt(), any(), any()))
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
 
         service.submit(userId, command());
@@ -261,7 +291,7 @@ class InterviewAnswerSubmitServiceTest {
         verify(questionTextGenerator).generate("jd 매칭 있음, strength도 HIGH", "echoC");
 
         ArgumentCaptor<QuestionCandidate> selectedProbeCaptor = ArgumentCaptor.forClass(QuestionCandidate.class);
-        verify(interviewAnswerSubmitPersister).persist(any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
+        verify(interviewAnswerSubmitPersister).persist(any(), any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
         assertThat(selectedProbeCaptor.getValue()).isSameAs(jdMatchHighStrength);
     }
 
@@ -270,7 +300,7 @@ class InterviewAnswerSubmitServiceTest {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         InterviewAnswerSubmitCommand invalidCommand =
-                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 1, audioContent, 0f, 5f, 5f);
+                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 1, audioContent, 100f, 110f, 0f, 5f, 5f);
 
         assertThatThrownBy(() -> service.submit(userId, invalidCommand))
                 .isInstanceOf(InterviewException.class)

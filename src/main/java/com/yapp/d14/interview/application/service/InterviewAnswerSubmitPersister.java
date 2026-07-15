@@ -31,6 +31,7 @@ class InterviewAnswerSubmitPersister {
     @Transactional
     PersistResult persist(
             Answer answer,
+            Question answeredQuestion,
             List<QuestionCandidate> newProbeCandidates,
             QuestionCandidate selectedProbe,
             int nextTurnLevel,
@@ -38,6 +39,7 @@ class InterviewAnswerSubmitPersister {
             Question nextQuestion
     ) {
         Answer savedAnswer = answerRepository.save(answer);
+        questionRepository.save(answeredQuestion);
 
         questionCandidateRepository.saveAll(newProbeCandidates);
 

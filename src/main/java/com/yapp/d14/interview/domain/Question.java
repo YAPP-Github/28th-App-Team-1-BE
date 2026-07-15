@@ -23,8 +23,8 @@ public class Question {
     private final String appliedPrinciple;
 
     // 질문 음성이 영상에서 시작/종료된 시점(초)
-    private final Float questionStartSec;
-    private final Float questionEndSec;
+    private Float questionStartSec;
+    private Float questionEndSec;
     private final String aiVoiceS3Key;
     private final LocalDateTime createdAt;
 
@@ -74,6 +74,11 @@ public class Question {
                 .aiVoiceS3Key(aiVoiceS3Key)
                 .createdAt(LocalDateTime.now())
                 .build();
+    }
+
+    public void markPlayed(Float questionStartSec, Float questionEndSec) {
+        this.questionStartSec = questionStartSec;
+        this.questionEndSec = questionEndSec;
     }
 
     public static Question of(

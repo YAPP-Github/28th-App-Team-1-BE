@@ -7,6 +7,8 @@ public record InterviewAnswerSubmitCommand(
         Long questionId,
         int turnLevel,
         byte[] audioContent,
+        Float questionAudioStartSec,
+        Float questionAudioEndSec,
         Float answerStartSec,
         Float answerEndSec,
         Float answerDuration

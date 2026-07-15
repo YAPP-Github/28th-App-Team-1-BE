@@ -101,9 +101,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getId(), liveTurnResult, command.turnLevel()
         ); // 새 후보 변환
         Answer answer = buildAnswer(session, summaryQuestion, sttText, command); // 답변 생성
+        summaryQuestion.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec()); // 재생 구간 기록
 
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
-                answer, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
+                answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
         ); // 한번에 DB 저장
 
         return buildResult(persisted, nextTurnLevel); // 결과 반환
