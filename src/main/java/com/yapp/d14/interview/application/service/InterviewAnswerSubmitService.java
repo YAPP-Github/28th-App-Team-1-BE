@@ -63,14 +63,25 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
         ); // 새 후보 변환
-        Answer answer = buildAnswer(session, summaryQuestion, sttText, command); // 답변 생성
+        Answer answer = Answer.create(
+                session.getId(), summaryQuestion.getId(), sttText,
+                command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                false, null, null, null, null, false, false, null
+        );
         summaryQuestion.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec()); // 재생 구간 기록
 
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
                 answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
         );
 
-        return buildResult(persisted, nextTurnLevel);
+        return new InterviewAnswerSubmitResult(
+                persisted.answer().getId(),
+                new InterviewAnswerSubmitResult.NextQuestion(
+                        persisted.question().getId(), false, nextTurnLevel, persisted.question().getDepthLevel()
+                ),
+                null,
+                null
+        );
     }
 
     // TODO: turnLevel≥1 일반 매 턴 루프 (설계 문서 5장, 다이어그램 0-2). 이슈2 이후에서 아래 구조로 구현한다.
@@ -100,7 +111,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleRegularTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
-        throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        // 구현 예정
+        return null;
     }
 
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
@@ -153,29 +165,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 draft.echoQuote(),
                 draft.jdMatch(),
                 draft.strength()
-        );
-    }
-
-    private Answer buildAnswer(
-            InterviewSession session, Question summaryQuestion, String sttText, InterviewAnswerSubmitCommand command
-    ) {
-        return Answer.create(
-                session.getId(), summaryQuestion.getId(), sttText,
-                command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
-                false, null, null, null, null, false, false, null
-        );
-    }
-
-    private InterviewAnswerSubmitResult buildResult(
-            InterviewAnswerSubmitPersister.PersistResult persisted, int nextTurnLevel
-    ) {
-        return new InterviewAnswerSubmitResult(
-                persisted.answer().getId(),
-                new InterviewAnswerSubmitResult.NextQuestion(
-                        persisted.question().getId(), false, nextTurnLevel, persisted.question().getDepthLevel()
-                ),
-                null,
-                null
         );
     }
 }
