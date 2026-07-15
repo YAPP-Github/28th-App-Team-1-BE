@@ -63,6 +63,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH));
     }
 
+    // 사용자의 답변에 대한 새로운 후보풀을 추출한다.
     @Override
     public LiveTurnResult analyze(
             Long sessionId,
