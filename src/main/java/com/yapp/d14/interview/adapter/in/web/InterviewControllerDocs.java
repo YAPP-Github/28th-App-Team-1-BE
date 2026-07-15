@@ -246,20 +246,6 @@ public interface InterviewControllerDocs {
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "아직 지원하지 않는 turnLevel",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "UNSUPPORTED_TURN_LEVEL",
-                                      "message": "아직 지원하지 않는 turnLevel이에요."
-                                    }
-                                    """)
-                    )
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "세션 또는 질문을 찾을 수 없음",
                     content = @Content(
