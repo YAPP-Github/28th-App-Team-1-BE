@@ -28,6 +28,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final QuestionRepository questionRepository;
     private final InterviewAxisPlanRepository interviewAxisPlanRepository;
     private final QuestionCandidateRepository questionCandidateRepository;
+    private final AnswerRepository answerRepository;
     private final SpeechToTextTranscriber speechToTextTranscriber;
     private final LiveTurnAnalyzer liveTurnAnalyzer;
     private final QuestionTextGenerator questionTextGenerator;
@@ -37,6 +38,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
         Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
+
+        // 같은 질문에 답변이 이미 있으면 직렬 재시도로 간주 — STT·LLM 재실행 전에 차단.
+        // 동시 요청으로 인한 경합은 InterviewAnswerSubmitPersister의 unique 제약 위반 처리로 막는다.
+        if (answerRepository.findByQuestionId(question.getId()).isPresent()) {
+            throw new InterviewException(InterviewErrorCode.ANSWER_ALREADY_SUBMITTED);
+        }
 
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);

@@ -2,6 +2,7 @@ package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
+import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.CeilingAssessment;
 import com.yapp.d14.interview.application.port.out.InterviewAxisPlanRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
@@ -62,6 +63,9 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private QuestionCandidateRepository questionCandidateRepository;
+
+    @Mock
+    private AnswerRepository answerRepository;
 
     @Mock
     private SpeechToTextTranscriber speechToTextTranscriber;
@@ -225,6 +229,24 @@ class InterviewAnswerSubmitServiceTest {
                 .isInstanceOf(InterviewException.class)
                 .extracting("errorCode")
                 .isEqualTo(InterviewErrorCode.INTERVIEW_SESSION_NOT_FOUND);
+    }
+
+    @Test
+    void 이미_답변이_있는_질문이면_예외가_발생하고_STT나_분석은_실행되지_않는다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        Answer existingAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "이미 저장된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        given(answerRepository.findByQuestionId(summaryQuestionId)).willReturn(Optional.of(existingAnswer));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.ANSWER_ALREADY_SUBMITTED);
+
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerSubmitPersister);
     }
 
     @Test

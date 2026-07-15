@@ -8,7 +8,10 @@ import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.QuestionCandidate;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +41,13 @@ class InterviewAnswerSubmitPersister {
             InterviewAxisPlan nextAxisPlan,
             Question nextQuestion
     ) {
-        Answer savedAnswer = answerRepository.save(answer);
+        Answer savedAnswer;
+        try {
+            savedAnswer = answerRepository.save(answer);
+        } catch (DataIntegrityViolationException e) {
+            // question_id unique 제약 위반 = 동시 요청이 먼저 답변을 저장함 (동시 재시도 차단)
+            throw new InterviewException(InterviewErrorCode.ANSWER_ALREADY_SUBMITTED);
+        }
         questionRepository.save(answeredQuestion);
 
         questionCandidateRepository.saveAll(newProbeCandidates);
