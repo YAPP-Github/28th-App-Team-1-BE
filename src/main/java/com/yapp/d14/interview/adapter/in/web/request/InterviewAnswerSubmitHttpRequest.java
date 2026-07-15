@@ -11,9 +11,6 @@ import java.io.UncheckedIOException;
 // POST /answers 요청 메타데이터(설계 문서 7-2장). clientRequestId(idempotency)는 이번 이슈 범위에서 제외.
 // endType·isWrapUp은 계약대로 받아두되, 이번 turnLevel=0 경로에서는 사용하지 않는다(이슈2에서 활용).
 public record InterviewAnswerSubmitHttpRequest(
-        @Schema(description = "클라이언트가 알고 있는 턴 순번", example = "0")
-        @NotNull Integer turnLevel,
-
         @Schema(description = "어떤 질문에 대한 제출인지", example = "1")
         @NotNull Long questionId,
 
@@ -49,7 +46,7 @@ public record InterviewAnswerSubmitHttpRequest(
     public InterviewAnswerSubmitCommand toCommand(Long sessionId, MultipartFile audio) {
         try {
             return new InterviewAnswerSubmitCommand(
-                    sessionId, questionId, turnLevel, audio.getBytes(),
+                    sessionId, questionId, audio.getBytes(),
                     questionAudioStartAt, questionAudioEndAt, answerStartAt, answerEndAt, answerDuration
             );
         } catch (IOException e) {

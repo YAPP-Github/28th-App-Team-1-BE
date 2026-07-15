@@ -107,7 +107,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     private InterviewAnswerSubmitCommand command() {
-        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 0, audioContent, 100f, 110f, 0f, 5f, 5f);
+        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 0f, 5f, 5f);
     }
 
     @Test
@@ -296,13 +296,14 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void turnLevel이_0이_아니면_예외가_발생한다() {
+    void 질문의_turnLevel이_0이_아니면_예외가_발생한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
-        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
-        InterviewAnswerSubmitCommand invalidCommand =
-                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, 1, audioContent, 100f, 110f, 0f, 5f, 5f);
+        Question regularQuestion = Question.of(
+                101L, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+        );
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion));
 
-        assertThatThrownBy(() -> service.submit(userId, invalidCommand))
+        assertThatThrownBy(() -> service.submit(userId, command()))
                 .isInstanceOf(InterviewException.class)
                 .extracting("errorCode")
                 .isEqualTo(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);

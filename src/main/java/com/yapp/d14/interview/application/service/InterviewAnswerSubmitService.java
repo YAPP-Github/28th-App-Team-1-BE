@@ -53,7 +53,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = findOwnedSession(userId, command.sessionId());
         Question question = findOwnedQuestion(session, command.questionId());
-        validateTurnLevelMatches(command, question);
 
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);
@@ -73,14 +72,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.QUESTION_NOT_FOUND));
     }
 
-    // TODO: clientRequestId 기반 idempotency, endType×audio 정합성 검증 등 나머지 진입부 분기는
-    //       이슈2(진입 처리)에서 구현한다. 여기서는 questionId 기준 실제 turnLevel과 요청값 대조만 수행한다.
-    private void validateTurnLevelMatches(InterviewAnswerSubmitCommand command, Question question) {
-        if (!question.getTurnLevel().equals(command.turnLevel())) {
-            throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
-        }
-    }
-
     // turnLevel=0(요약 답변) 특수 처리 경로
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
@@ -98,7 +89,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getId(), nextQuestionText, nextTurnLevel, 0, nextAxis, null, null
         ); // 다음 질문 생성
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
-                session.getId(), liveTurnResult, command.turnLevel()
+                session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
         ); // 새 후보 변환
         Answer answer = buildAnswer(session, summaryQuestion, sttText, command); // 답변 생성
         summaryQuestion.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec()); // 재생 구간 기록

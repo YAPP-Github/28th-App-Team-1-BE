@@ -5,7 +5,6 @@ package com.yapp.d14.interview.application.command;
 public record InterviewAnswerSubmitCommand(
         Long sessionId,
         Long questionId,
-        int turnLevel,
         byte[] audioContent,
         Float questionAudioStartSec,
         Float questionAudioEndSec,
