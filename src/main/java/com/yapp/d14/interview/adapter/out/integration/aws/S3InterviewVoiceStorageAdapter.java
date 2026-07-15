@@ -22,6 +22,7 @@ import java.util.UUID;
 class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     private static final int MAX_ATTEMPTS = 3;
+    private static final long BASE_BACKOFF_MILLIS = 200L;
     private static final String CONTENT_TYPE = "audio/mpeg";
 
     private final S3Client s3Client;
@@ -46,6 +47,9 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             } catch (SdkException e) {
                 lastException = e;
                 log.warn("[INTERVIEW VOICE UPLOAD] {}번째 시도 실패: key={}", attempt, key, e);
+                if (attempt < MAX_ATTEMPTS && !sleepBackoff(attempt)) {
+                    break;
+                }
             }
         }
         throw lastException;
@@ -69,9 +73,22 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
                 return;
             } catch (SdkException e) {
                 log.warn("[INTERVIEW VOICE UPLOAD ASYNC] {}번째 시도 실패: key={}", attempt, key, e);
+                if (attempt < MAX_ATTEMPTS && !sleepBackoff(attempt)) {
+                    break;
+                }
             }
         }
         log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
+    }
+
+    private boolean sleepBackoff(int attempt) {
+        try {
+            Thread.sleep(BASE_BACKOFF_MILLIS << (attempt - 1));
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     @Override
