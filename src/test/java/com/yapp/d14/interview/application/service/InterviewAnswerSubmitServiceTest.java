@@ -318,6 +318,23 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 이미_종료된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
+        InterviewSession completedSession = InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
+                25, 20, 10, 20, 10, 15
+        );
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(completedSession));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SESSION_ALREADY_ENDED);
+
+        verifyNoInteractions(questionRepository, speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+    }
+
+    @Test
     void 세션_소유자가_아니면_예외가_발생한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
 

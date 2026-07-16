@@ -18,6 +18,7 @@ public enum InterviewErrorCode implements ErrorCode {
     INTERVIEW_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_SESSION_NOT_FOUND", "면접 세션을 찾을 수 없어요."),
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "QUESTION_NOT_FOUND", "질문을 찾을 수 없어요."),
     ANSWER_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "ANSWER_ALREADY_SUBMITTED", "이미 제출된 답변이에요."),
+    SESSION_ALREADY_ENDED(HttpStatus.CONFLICT, "SESSION_ALREADY_ENDED", "이미 종료된 면접 세션이에요."),
     INVALID_PLAYBACK_RANGE(HttpStatus.BAD_REQUEST, "INVALID_PLAYBACK_RANGE", "질문 재생 구간 값이 올바르지 않아요."),
     INVALID_ANSWER_RANGE(HttpStatus.BAD_REQUEST, "INVALID_ANSWER_RANGE", "답변 구간 값이 올바르지 않아요."),
     INVALID_END_TYPE(HttpStatus.BAD_REQUEST, "INVALID_END_TYPE", "지원하지 않는 endType이에요."),

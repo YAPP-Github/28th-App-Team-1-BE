@@ -336,16 +336,25 @@ public interface InterviewControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "같은 질문에 이미 답변이 제출됨(재시도 차단)",
+                    description = "재시도 차단 — 같은 질문에 이미 답변이 제출됐거나 세션이 이미 종료됨",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "ANSWER_ALREADY_SUBMITTED",
-                                      "message": "이미 제출된 답변이에요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "이미 제출된 답변", value = """
+                                            {
+                                              "success": false,
+                                              "code": "ANSWER_ALREADY_SUBMITTED",
+                                              "message": "이미 제출된 답변이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "이미 종료된 세션", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_ALREADY_ENDED",
+                                              "message": "이미 종료된 면접 세션이에요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })

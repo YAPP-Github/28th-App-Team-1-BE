@@ -49,6 +49,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
+        if (session.getStatus() == InterviewSessionStatus.COMPLETED) {
+            throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
+        }
         Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
 
         // 같은 질문에 답변이 이미 있으면 직렬 재시도로 간주 — STT·LLM 재실행 전에 차단.
@@ -118,20 +121,17 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     ) {
         InterviewEndType terminationEndType = resolveTerminationEndType(question, command);
         if (terminationEndType == null) {
+            // TODO: 매 턴 루프(run_live_turn → select_next_axis → select_next_probe → generate_question_text) 미구현
             return null;
         }
         return handleTermination(session, question, command, terminationEndType);
     }
 
     private InterviewEndType resolveTerminationEndType(Question question, InterviewAnswerSubmitCommand command) {
-        if (command.endType() == InterviewEndType.EARLY_EXIT) {
-            return InterviewEndType.EARLY_EXIT;
-        }
-        if (command.endType() == InterviewEndType.MANUAL_END) {
-            return InterviewEndType.MANUAL_END;
-        }
-        if (command.endType() == InterviewEndType.HARD_CAP) {
-            return InterviewEndType.HARD_CAP;
+        if (command.endType() == InterviewEndType.EARLY_EXIT
+                || command.endType() == InterviewEndType.MANUAL_END
+                || command.endType() == InterviewEndType.HARD_CAP) {
+            return command.endType();
         }
         if (Boolean.TRUE.equals(question.getIsWrapUp())) {
             return InterviewEndType.NORMAL_END;
@@ -177,6 +177,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private void triggerReportGeneration(Long sessionId) {
         try {
+            // (To Server) 이렇게 마지막 답변 처리까지 완료후 비동기로 report 생성 불러내면 될까요?
             interviewReportGenerateUseCase.generate(sessionId);
         } catch (RejectedExecutionException e) {
             log.error("[INTERVIEW REPORT] 비동기 처리 큐가 가득 찼어요: sessionId={}", sessionId, e);
