@@ -24,4 +24,9 @@ interface TicketReservationJpaRepository extends JpaRepository<TicketReservation
     @Query("UPDATE TicketReservationJpaEntity r SET r.status = 'RELEASED', r.outcomeReason = :outcomeReason, " +
             "r.resolvedAt = CURRENT_TIMESTAMP WHERE r.id = :id AND r.status = 'HELD'")
     int releaseIfHeld(@Param("id") Long id, @Param("outcomeReason") String outcomeReason);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("UPDATE TicketReservationJpaEntity r SET r.status = 'COMMITTED', r.outcomeReason = :outcomeReason, " +
+            "r.resolvedAt = CURRENT_TIMESTAMP WHERE r.id = :id AND r.status = 'HELD'")
+    int commitIfHeld(@Param("id") Long id, @Param("outcomeReason") String outcomeReason);
 }

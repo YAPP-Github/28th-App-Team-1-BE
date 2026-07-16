@@ -16,4 +16,6 @@ public interface TicketReservationRepository {
     Optional<TicketReservation> findBySessionId(Long sessionId);
 
     int releaseIfHeld(Long id, String outcomeReason);
+
+    int commitIfHeld(Long id, String outcomeReason);
 }
