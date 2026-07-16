@@ -111,7 +111,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     private InterviewAnswerSubmitCommand command() {
-        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 0f, 5f, 5f);
+        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 0f, 5f, 5f, null, false);
     }
 
     @Test
@@ -195,7 +195,7 @@ class InterviewAnswerSubmitServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
         InterviewAnswerSubmitCommand invalidRangeCommand =
-                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 110f, 100f, 0f, 5f, 5f);
+                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 110f, 100f, 0f, 5f, 5f, null, false);
 
         assertThatThrownBy(() -> service.submit(userId, invalidRangeCommand))
                 .isInstanceOf(InterviewException.class)
@@ -215,7 +215,7 @@ class InterviewAnswerSubmitServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
         InterviewAnswerSubmitCommand invalidRangeCommand =
-                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 5f, 0f, 5f);
+                new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audioContent, 100f, 110f, 5f, 0f, 5f, null, false);
 
         assertThatThrownBy(() -> service.submit(userId, invalidRangeCommand))
                 .isInstanceOf(InterviewException.class)
