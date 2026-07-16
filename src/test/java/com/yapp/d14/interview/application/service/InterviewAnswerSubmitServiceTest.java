@@ -13,7 +13,9 @@ import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.QuestionTextGenerator;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
+import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisTier;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
@@ -36,6 +38,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -89,6 +92,12 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private InterviewReportFailureHandler interviewReportFailureHandler;
+
+    @Mock
+    private TextToSpeechSynthesizer textToSpeechSynthesizer;
+
+    @Mock
+    private InterviewVoiceStorage interviewVoiceStorage;
 
     @InjectMocks
     private InterviewAnswerSubmitService service;
@@ -451,16 +460,19 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void endType이_MANUAL_END이면_짧은_멘트와_함께_종료하고_COMPLETED로_commit한다() {
+    void endType이_MANUAL_END이면_짧은_멘트_음성과_함께_종료하고_COMPLETED로_commit한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
         given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
 
-        assertThat(result.wrapUpMessage()).isNotNull();
+        assertThat(result.wrapUpMessage().ttsAudio()).isEqualTo(Base64.getEncoder().encodeToString("tts-audio".getBytes()));
+        verify(interviewVoiceStorage).upload(eq("system/interview/wrapup-messages/MANUAL_END.mp3"), any());
         ArgumentCaptor<String> outcomeReasonCaptor = ArgumentCaptor.forClass(String.class);
         verify(interviewAnswerTerminationPersister)
                 .persist(any(), any(), any(), eq(InterviewEndType.MANUAL_END), outcomeReasonCaptor.capture());
@@ -469,9 +481,27 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 마무리_멘트_음성이_이미_S3에_있으면_재합성하지_않고_캐시를_그대로_쓴다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewVoiceStorage.readBase64("system/interview/wrapup-messages/MANUAL_END.mp3")).willReturn("cached-base64");
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
+
+        assertThat(result.wrapUpMessage().ttsAudio()).isEqualTo("cached-base64");
+        verifyNoInteractions(textToSpeechSynthesizer);
+        verify(interviewVoiceStorage, never()).upload(any(), any());
+    }
+
+    @Test
     void endType이_HARD_CAP이고_audio가_없어도_정상적으로_종료된다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
         given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
 
@@ -489,6 +519,8 @@ class InterviewAnswerSubmitServiceTest {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(true)));
         given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
         given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(22L));
 

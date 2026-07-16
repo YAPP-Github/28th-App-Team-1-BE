@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
 import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewReportGenerateUseCase;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,6 +43,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewAnswerTerminationPersister interviewAnswerTerminationPersister;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
+    private final TextToSpeechSynthesizer textToSpeechSynthesizer;
+    private final InterviewVoiceStorage interviewVoiceStorage;
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
@@ -103,6 +107,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 new InterviewAnswerSubmitResult.NextQuestion(
                         persisted.question().getId(), false, nextTurnLevel, persisted.question().getDepthLevel()
                 ),
+                false,
                 null,
                 null
         );
@@ -151,7 +156,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         triggerReportGeneration(session.getId());
 
-        return new InterviewAnswerSubmitResult(persisted.answerId(), null, wrapUpMessageFor(endType), null);
+        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessageFor(endType), null);
     }
 
     private Answer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
@@ -179,7 +184,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
-    private Object wrapUpMessageFor(InterviewEndType endType) {
+    private InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessageFor(InterviewEndType endType) {
+        String text = wrapUpTextFor(endType);
+        if (text == null) {
+            return null;
+        }
+        return new InterviewAnswerSubmitResult.WrapUpMessage(resolveWrapUpAudioBase64(endType, text));
+    }
+
+    private String wrapUpTextFor(InterviewEndType endType) {
         return switch (endType) {
             case EARLY_EXIT -> null;
             case MANUAL_END -> MANUAL_END_MESSAGE;
@@ -187,6 +200,17 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             case NORMAL_END -> NORMAL_END_MESSAGE;
             default -> null;
         };
+    }
+
+    private String resolveWrapUpAudioBase64(InterviewEndType endType, String text) {
+        String key = S3KeyGenerator.wrapUpMessageKey(endType.name());
+        String cached = interviewVoiceStorage.readBase64(key);
+        if (cached != null) {
+            return cached;
+        }
+        byte[] audioContent = textToSpeechSynthesizer.synthesize(text);
+        interviewVoiceStorage.upload(key, audioContent);
+        return Base64.getEncoder().encodeToString(audioContent);
     }
 
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
