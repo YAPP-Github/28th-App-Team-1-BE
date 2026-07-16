@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
+import com.yapp.d14.interview.application.port.in.InterviewReportGenerateUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.CeilingAssessment;
@@ -16,6 +17,7 @@ import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisTier;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
+import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.JobType;
@@ -78,6 +80,15 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private InterviewAnswerSubmitPersister interviewAnswerSubmitPersister;
+
+    @Mock
+    private InterviewAnswerTerminationPersister interviewAnswerTerminationPersister;
+
+    @Mock
+    private InterviewReportGenerateUseCase interviewReportGenerateUseCase;
+
+    @Mock
+    private InterviewReportFailureHandler interviewReportFailureHandler;
 
     @InjectMocks
     private InterviewAnswerSubmitService service;
@@ -394,16 +405,98 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void 질문의_turnLevel이_0이_아니면_아직_구현되지_않아_null을_반환한다() {
+    void 질문의_turnLevel이_0이_아니고_종료_사유도_없으면_아직_구현되지_않아_null을_반환한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
-        Question regularQuestion = Question.of(
-                101L, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
-        );
-        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
 
         InterviewAnswerSubmitResult result = service.submit(userId, command());
 
         assertThat(result).isNull();
-        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer);
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+    }
+
+    private Question regularQuestion(boolean isWrapUp) {
+        return Question.of(
+                summaryQuestionId, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, isWrapUp, LocalDateTime.now()
+        );
+    }
+
+    private InterviewAnswerSubmitCommand regularTurnCommand(InterviewEndType endType, byte[] audio) {
+        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audio, 100f, 110f, 0f, 5f, 5f, endType, false);
+    }
+
+    @Test
+    void endType이_EARLY_EXIT이면_STT만_수행하고_즉시_종료하며_EARLY_EXIT으로_commit한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(20L));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.EARLY_EXIT, audioContent));
+
+        assertThat(result.answerId()).isEqualTo(20L);
+        assertThat(result.nextQuestion()).isNull();
+        assertThat(result.wrapUpMessage()).isNull();
+        assertThat(result.reportId()).isNull();
+        verifyNoInteractions(liveTurnAnalyzer);
+
+        ArgumentCaptor<InterviewEndType> endTypeCaptor = ArgumentCaptor.forClass(InterviewEndType.class);
+        ArgumentCaptor<String> outcomeReasonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), any(), endTypeCaptor.capture(), outcomeReasonCaptor.capture());
+        assertThat(endTypeCaptor.getValue()).isEqualTo(InterviewEndType.EARLY_EXIT);
+        assertThat(outcomeReasonCaptor.getValue()).isEqualTo("EARLY_EXIT");
+        verify(interviewReportGenerateUseCase).generate(sessionId);
+    }
+
+    @Test
+    void endType이_MANUAL_END이면_짧은_멘트와_함께_종료하고_COMPLETED로_commit한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
+
+        assertThat(result.wrapUpMessage()).isNotNull();
+        ArgumentCaptor<String> outcomeReasonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), any(), eq(InterviewEndType.MANUAL_END), outcomeReasonCaptor.capture());
+        assertThat(outcomeReasonCaptor.getValue()).isEqualTo("COMPLETED");
+        verify(interviewReportGenerateUseCase).generate(sessionId);
+    }
+
+    @Test
+    void endType이_HARD_CAP이고_audio가_없어도_정상적으로_종료된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.HARD_CAP, null));
+
+        assertThat(result.answerId()).isNull();
+        assertThat(result.nextQuestion()).isNull();
+        verifyNoInteractions(speechToTextTranscriber);
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+    }
+
+    @Test
+    void 직전_질문이_isWrapUp이면_자연종료로_처리하고_COMPLETED로_commit한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(true)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(22L));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(null, audioContent));
+
+        assertThat(result.wrapUpMessage()).isNotNull();
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), any(), eq(InterviewEndType.NORMAL_END), eq("COMPLETED"));
+        verify(interviewReportGenerateUseCase).generate(sessionId);
     }
 }
