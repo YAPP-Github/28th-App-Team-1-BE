@@ -3,10 +3,6 @@ package com.yapp.d14.interview.application.command;
 import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
 
 public record InterviewAnswerSubmitCommand(
         Long sessionId,
@@ -24,7 +20,7 @@ public record InterviewAnswerSubmitCommand(
     public static InterviewAnswerSubmitCommand of(
             Long sessionId,
             Long questionId,
-            MultipartFile audio,
+            byte[] audioContent,
             Float questionAudioStartSec,
             Float questionAudioEndSec,
             Float answerStartSec,
@@ -34,7 +30,6 @@ public record InterviewAnswerSubmitCommand(
             Boolean isWrapUp
     ) {
         InterviewEndType endType = parseEndType(rawEndType);
-        byte[] audioContent = extractAudioContent(audio);
         validateAudioPresence(endType, audioContent);
 
         return new InterviewAnswerSubmitCommand(
@@ -52,17 +47,6 @@ public record InterviewAnswerSubmitCommand(
             return InterviewEndType.valueOf(rawEndType);
         } catch (IllegalArgumentException e) {
             throw new InterviewException(InterviewErrorCode.INVALID_END_TYPE);
-        }
-    }
-
-    private static byte[] extractAudioContent(MultipartFile audio) {
-        if (audio == null || audio.isEmpty()) {
-            return null;
-        }
-        try {
-            return audio.getBytes();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
     }
 

@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
 public record InterviewAnswerSubmitHttpRequest(
         @Schema(description = "어떤 질문에 대한 제출인지", example = "1")
         @NotNull Long questionId,
@@ -40,9 +43,20 @@ public record InterviewAnswerSubmitHttpRequest(
 
     public InterviewAnswerSubmitCommand toCommand(Long sessionId, MultipartFile audio) {
         return InterviewAnswerSubmitCommand.of(
-                sessionId, questionId, audio,
+                sessionId, questionId, extractAudioContent(audio),
                 questionAudioStartAt, questionAudioEndAt, answerStartAt, answerEndAt, answerDuration,
                 endType, isWrapUp
         );
+    }
+
+    private static byte[] extractAudioContent(MultipartFile audio) {
+        if (audio == null || audio.isEmpty()) {
+            return null;
+        }
+        try {
+            return audio.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

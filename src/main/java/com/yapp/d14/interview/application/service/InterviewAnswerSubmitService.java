@@ -249,7 +249,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe) {
         return selectedProbe
                 .map(probe -> questionTextGenerator.generate(probe.getProbeText(), probe.getEchoQuote()))
-                .orElse(SEED_QUESTION_TEXT);
+                .orElse(SEED_QUESTION_TEXT); //TODO 여는 질문 로직 구현 예정
     }
 
     private List<QuestionCandidate> toQuestionCandidates(Long sessionId, LiveTurnResult liveTurnResult, int turnLevel) {
