@@ -101,6 +101,12 @@ public class InterviewSession {
         this.status = InterviewSessionStatus.PRELOAD_FAILED;
     }
 
+    public void markCompleted(InterviewEndType endType) {
+        this.status = InterviewSessionStatus.COMPLETED;
+        this.endedAt = LocalDateTime.now();
+        this.endType = endType;
+    }
+
     // FirstCoreAxisSelector 등 axis 우선순위 판단 로직에 넘길 때 쓰는 조회용 헬퍼
     public Map<TestType, Integer> getWeights() {
         return Map.of(

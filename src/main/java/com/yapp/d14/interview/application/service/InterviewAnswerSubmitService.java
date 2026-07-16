@@ -69,7 +69,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
         Question nextQuestion = Question.create(
-                session.getId(), nextQuestionText, nextTurnLevel, 1, nextAxis, null, null
+                session.getId(), nextQuestionText, nextTurnLevel, 1, nextAxis, null, null, false
         ); // 다음 질문 생성
         Answer answer;
         try {

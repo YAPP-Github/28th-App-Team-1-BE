@@ -96,7 +96,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     private Question summaryQuestion() {
-        return Question.of(summaryQuestionId, sessionId, "자기소개 부탁드려요", 0, 0, null, null, null, null, null, LocalDateTime.now());
+        return Question.of(summaryQuestionId, sessionId, "자기소개 부탁드려요", 0, 0, null, null, null, null, null, false, LocalDateTime.now());
     }
 
     private List<InterviewAxisPlan> axisPlans() {
@@ -139,7 +139,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -169,7 +169,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -239,7 +239,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -271,7 +271,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -374,7 +374,7 @@ class InterviewAnswerSubmitServiceTest {
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
         );
         Question savedQuestion = Question.of(
-                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.BOUNDARY, null, null, null, null, LocalDateTime.now()
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.BOUNDARY, null, null, null, null, false, LocalDateTime.now()
         );
         given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
                 .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
@@ -397,7 +397,7 @@ class InterviewAnswerSubmitServiceTest {
     void 질문의_turnLevel이_0이_아니면_아직_구현되지_않아_null을_반환한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         Question regularQuestion = Question.of(
-                101L, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, LocalDateTime.now()
+                101L, sessionId, "꼬리 질문", 1, 0, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion));
 

@@ -64,7 +64,7 @@ class InterviewPreloadResultPersisterTest {
     @Test
     void 저장_전에_세션ID_기준으로_기존_후보와_질문을_정리한다() {
         InterviewSession session = session();
-        Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null);
+        Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);
 
         persister.persist(session, List.of(candidate()), summaryQuestion);
 
@@ -78,7 +78,7 @@ class InterviewPreloadResultPersisterTest {
     @Test
     void 후보와_질문을_저장하고_세션을_READY로_전환한다() {
         InterviewSession session = session();
-        Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null);
+        Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);
         List<QuestionCandidate> candidates = List.of(candidate(), candidate());
 
         persister.persist(session, candidates, summaryQuestion);

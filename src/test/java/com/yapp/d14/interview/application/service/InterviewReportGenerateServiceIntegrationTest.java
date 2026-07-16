@@ -145,7 +145,7 @@ class InterviewReportGenerateServiceIntegrationTest {
 
     private Long createQuestion(Long sessionId, int turnLevel, TestType testType, String content, String appliedPrinciple) {
         return questionRepository.save(
-                Question.create(sessionId, content, turnLevel, 1, testType, appliedPrinciple, null)
+                Question.create(sessionId, content, turnLevel, 1, testType, appliedPrinciple, null, false)
         ).getId();
     }
 

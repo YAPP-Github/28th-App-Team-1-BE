@@ -72,7 +72,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                     sessionId, aiVoiceS3Key != null, elapsedSeconds(ttsStartedAt));
 
             Question summaryQuestion = Question.create(
-                    sessionId, questionText, SUMMARY_TURN_LEVEL, SUMMARY_DEPTH_LEVEL, null, null, aiVoiceS3Key
+                    sessionId, questionText, SUMMARY_TURN_LEVEL, SUMMARY_DEPTH_LEVEL, null, null, aiVoiceS3Key, false
             );
 
             interviewPreloadResultPersister.persist(session, candidates, summaryQuestion);
