@@ -5,11 +5,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-
-// POST /answers 요청 메타데이터(설계 문서 7-2장). clientRequestId(idempotency)는 이번 이슈 범위에서 제외.
-// endType·isWrapUp은 계약대로 받아두되, 이번 turnLevel=0 경로에서는 사용하지 않는다(이슈2에서 활용).
 public record InterviewAnswerSubmitHttpRequest(
         @Schema(description = "어떤 질문에 대한 제출인지", example = "1")
         @NotNull Long questionId,
@@ -40,17 +35,14 @@ public record InterviewAnswerSubmitHttpRequest(
         String endType,
 
         @Schema(description = "면접 시작 8:45 경과 여부(클라이언트 타이머 기준)")
-        Boolean isWrapUp
+        @NotNull Boolean isWrapUp
 ) {
 
     public InterviewAnswerSubmitCommand toCommand(Long sessionId, MultipartFile audio) {
-        try {
-            return new InterviewAnswerSubmitCommand(
-                    sessionId, questionId, audio.getBytes(),
-                    questionAudioStartAt, questionAudioEndAt, answerStartAt, answerEndAt, answerDuration
-            );
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return InterviewAnswerSubmitCommand.of(
+                sessionId, questionId, audio,
+                questionAudioStartAt, questionAudioEndAt, answerStartAt, answerEndAt, answerDuration,
+                endType, isWrapUp
+        );
     }
 }
