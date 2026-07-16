@@ -215,10 +215,20 @@ public interface InterviewControllerDocs {
     );
 
     @Operation(
-            summary = "답변 제출 (turnLevel=0, 첫 턴 전용)",
-            description = "요약 질문(turnLevel=0)에 대한 답변을 제출하고 다음 질문을 받습니다.\n\n" +
+            summary = "답변 제출",
+            description = "질문에 대한 답변을 제출하고 다음 질문(또는 세션 종료 결과)을 받습니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- 현재는 turnLevel=0(첫 턴) 경로만 지원합니다. turnLevel≥1 일반 매 턴 처리는 추후 지원 예정입니다.\n" +
+                    "- turnLevel=0(요약 질문) 응답은 항상 다음 질문을 생성합니다.\n" +
+                    "- turnLevel≥1에서는 `endType`에 따라 즉시 세션이 종료될 수 있습니다.\n" +
+                    "  - `endType=EARLY_EXIT`: 0:00~8:00 사이 사용자가 의도적으로 이탈 — audio가 있으면 STT만 기록하고 즉시 종료(wrapUpMessage 없음).\n" +
+                    "  - `endType=MANUAL_END`: 8:00 이후 수동 종료 — 즉시 종료하며 짧은 마무리 멘트를 반환합니다.\n" +
+                    "  - `endType=HARD_CAP`: 12:00 경과 강제 종료 — audio 유무와 무관하게 즉시 종료합니다.\n" +
+                    "  - 직전에 받은 질문이 마무리(wrap-up) 질문이었던 경우, endType 없이도 자연 종료됩니다.\n" +
+                    "  - 위 종료 경로에서는 `nextQuestion`이 `null`이며, 이용권이 확정(commit)되고 리포트 생성이 비동기로 트리거됩니다.\n" +
+                    "  - 그 외에는 매 턴 루프로 이어집니다(현재 구현 중).\n" +
+                    "- `isWrapUp`은 클라이언트 타이머 기준 8:45 경과 여부이며, 다음 질문을 마무리 질문으로 만들지 여부에 사용됩니다.\n" +
+                    "- `audio` 파트는 선택적입니다. `endType=SKIP`이면 audio가 없어야 하고, `endType=null`이면 audio가 있어야 합니다. " +
+                    "`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`은 audio 유무와 무관합니다.\n" +
                     "- 응답에는 오디오가 동봉되지 않습니다. `nextQuestion.questionId`로 " +
                     "`GET /{sessionId}/questions/{questionId}/audio/stream`을 호출해 오디오를 받으세요."
     )
@@ -247,7 +257,7 @@ public interface InterviewControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "재생·답변 구간 값 오류",
+                    description = "재생·답변 구간 값 오류 또는 endType 관련 오류",
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
@@ -263,6 +273,20 @@ public interface InterviewControllerDocs {
                                               "success": false,
                                               "code": "INVALID_ANSWER_RANGE",
                                               "message": "답변 구간 값이 올바르지 않아요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "지원하지 않는 endType", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INVALID_END_TYPE",
+                                              "message": "지원하지 않는 endType이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "endType과 audio 유무 불일치", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INVALID_AUDIO_PRESENCE",
+                                              "message": "endType과 답변 음성 유무가 맞지 않아요."
                                             }
                                             """)
                             }
@@ -309,7 +333,7 @@ public interface InterviewControllerDocs {
     ResponseEntity<ApiResponse<InterviewAnswerSubmitHttpResponse>> submitAnswer(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId,
-            @Parameter(description = "답변 음성 파일(mp3)") MultipartFile audio,
+            @Parameter(description = "답변 음성 파일(mp3). endType=SKIP이면 생략, HARD_CAP은 있어도 없어도 됨") MultipartFile audio,
             @Valid @ParameterObject InterviewAnswerSubmitHttpRequest request
     );
 }
