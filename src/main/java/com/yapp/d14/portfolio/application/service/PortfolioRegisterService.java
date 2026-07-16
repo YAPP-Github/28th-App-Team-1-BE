@@ -1,6 +1,5 @@
 package com.yapp.d14.portfolio.application.service;
 
-import com.yapp.d14.common.util.S3Directory;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
@@ -39,7 +38,7 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
         }
 
         UUID portfolioId = UUID.randomUUID();
-        String s3Key = S3KeyGenerator.generate(S3Directory.PORTFOLIOS, command.userId(), portfolioId, "%s.pdf".formatted(portfolioId));
+        String s3Key = S3KeyGenerator.portfolioKey(command.userId(), portfolioId);
         Portfolio portfolio = Portfolio.create(
                 portfolioId,
                 command.userId(),

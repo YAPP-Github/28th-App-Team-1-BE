@@ -52,6 +52,11 @@ public class InterviewAxisPlan {
                 .build();
     }
 
+    // 이 축으로 질문을 하나 생성했을 때 호출 (5-6장): 예산 소진 여부 판단에 쓰이는 used_count 증가
+    public void incrementUsedCount() {
+        this.usedCount = this.usedCount + 1;
+    }
+
     public static InterviewAxisPlan of(
             Long id,
             Long sessionId,

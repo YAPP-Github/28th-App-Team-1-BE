@@ -79,6 +79,7 @@ public class Answer {
             Boolean redFlagDetected,
             TestType testType
     ) {
+        validateAnswerRange(answerStartSec, answerEndSec);
         return Answer.builder()
                 .sessionId(sessionId)
                 .questionId(questionId)
@@ -134,5 +135,27 @@ public class Answer {
                 .testType(testType)
                 .createdAt(createdAt)
                 .build();
+    }
+
+    private static void validateAnswerRange(Float startSec, Float endSec) {
+        requireNonNegativeFinite(startSec, "answerStartSec");
+        requireNonNegativeFinite(endSec, "answerEndSec");
+        if (startSec != null && endSec != null && startSec > endSec) {
+            throw new IllegalArgumentException(
+                    "답변 시작 시간은 종료 시간보다 클 수 없어요. start=%s, end=%s".formatted(startSec, endSec)
+            );
+        }
+    }
+
+    private static void requireNonNegativeFinite(Float value, String fieldName) {
+        if (value == null) {
+            return;
+        }
+        if (value.isNaN() || value.isInfinite()) {
+            throw new IllegalArgumentException("%s는 유한한 값이어야 해요. value=%s".formatted(fieldName, value));
+        }
+        if (value < 0) {
+            throw new IllegalArgumentException("%s는 음수일 수 없어요. value=%s".formatted(fieldName, value));
+        }
     }
 }

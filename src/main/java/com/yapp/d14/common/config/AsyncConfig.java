@@ -39,6 +39,20 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "audioArchiveTaskExecutor")
+    public Executor audioArchiveTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // 질문 음성(mp3) 한 건 크기가 작아 큐에 넉넉히 쌓아둬도 메모리 부담이 적다.
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("audio-archive-async-");
+        // 큐가 가득 차도 실시간 재생 흐름에는 영향을 주면 안 되므로, 호출부(AudioStreamService)에서 즉시 잡아 로깅만 한다.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "interviewReportTaskExecutor")
     public Executor interviewReportTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

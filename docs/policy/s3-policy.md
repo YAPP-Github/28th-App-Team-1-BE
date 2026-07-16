@@ -12,8 +12,7 @@
   └─ users/{userId}/
         │
         ├─ portfolios/
-        │     └─ {portfolioId}/
-        │           └─ original.pdf        ← 원본 포트폴리오 파일
+        │     └─ {portfolioId}.pdf         ← 원본 포트폴리오 파일
         │
         └─ sessions/
               └─ {sessionId}/
@@ -78,4 +77,4 @@ video_expires_at > NOW() 확인
 
 - 업로드: `POST /api/v1/portfolios` 등록 시 비동기로 S3 업로드 (`PortfolioProcessService`, `S3PortfolioFileUploaderAdapter`).
 - 삭제: 포트폴리오 삭제 시 S3 원본 파일도 함께 삭제된다. `PortfolioDeleteService.delete()`는 `@Transactional`로 DB 삭제를 감싸고, `AfterCommitExecutor.runAfterCommit(...)`을 통해 트랜잭션이 커밋된 이후에만 `PortfolioFileUploader.delete(key)`를 실행한다 — DB 삭제가 롤백됐는데 S3 파일은 이미 지워지는 불일치를 방지하기 위함이다.
-  - 향후 pgvector 청크 삭제가 추가되면 같은 트랜잭션 안에서 처리하고, S3 삭제는 그 이후에도 커밋 후 실행되도록 유지한다 (전부-또는-전무 삭제 원칙).
+  - pgvector 청크 삭제(`PortfolioEmbeddingStore.deleteByPortfolioId`)는 같은 PostgreSQL 데이터소스를 쓰므로 DB 레코드 삭제와 같은 트랜잭션 안에서 처리한다. S3 삭제만 그 트랜잭션 커밋 후 별도로 실행한다 (전부-또는-전무 삭제 원칙 — pgvector 삭제가 실패하면 DB 레코드 삭제도 함께 롤백된다).

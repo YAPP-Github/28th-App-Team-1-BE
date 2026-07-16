@@ -6,5 +6,7 @@ public interface InterviewVoiceStorage {
 
     String upload(UUID userId, Long sessionId, int turnLevel, byte[] audioContent);
 
+    void uploadAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent);
+
     String readBase64(String s3Key);
 }

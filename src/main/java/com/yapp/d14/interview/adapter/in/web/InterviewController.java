@@ -2,23 +2,31 @@ package com.yapp.d14.interview.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
+import com.yapp.d14.interview.adapter.in.web.request.InterviewAnswerSubmitHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewSessionCreateHttpRequest;
+import com.yapp.d14.interview.adapter.in.web.response.InterviewAnswerSubmitHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionCreateHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionStatusHttpResponse;
+import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -29,6 +37,7 @@ class InterviewController implements InterviewControllerDocs {
 
     private final InterviewSessionCreateUseCase interviewSessionCreateUseCase;
     private final InterviewSessionStatusUseCase interviewSessionStatusUseCase;
+    private final InterviewAnswerSubmitUseCase interviewAnswerSubmitUseCase;
 
     @Override
     @PostMapping
@@ -49,6 +58,19 @@ class InterviewController implements InterviewControllerDocs {
     ) {
         InterviewSessionStatusResult result = interviewSessionStatusUseCase.getStatus(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.ok(InterviewSessionStatusHttpResponse.from(result)));
+    }
+
+    @Override
+    @PostMapping(value = "/{sessionId}/answers", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<InterviewAnswerSubmitHttpResponse>> submitAnswer(
+            @CurrentUser UUID userId,
+            @PathVariable Long sessionId,
+            @RequestPart("audio") MultipartFile audio,
+            @Valid @ModelAttribute InterviewAnswerSubmitHttpRequest request
+    ) {
+        InterviewAnswerSubmitResult result =
+                interviewAnswerSubmitUseCase.submit(userId, request.toCommand(sessionId, audio));
+        return ResponseEntity.ok(ApiResponse.ok(InterviewAnswerSubmitHttpResponse.from(result)));
     }
 }
 

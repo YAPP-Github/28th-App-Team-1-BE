@@ -1,9 +1,11 @@
 package com.yapp.d14.interview.adapter.out.integration.aws;
 
 import com.yapp.d14.common.properties.S3Properties;
+import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -20,6 +22,7 @@ import java.util.UUID;
 class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     private static final int MAX_ATTEMPTS = 3;
+    private static final long BASE_BACKOFF_MILLIS = 200L;
     private static final String CONTENT_TYPE = "audio/mpeg";
 
     private final S3Client s3Client;
@@ -27,7 +30,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     @Override
     public String upload(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
-        String key = buildKey(userId, sessionId, turnLevel);
+        String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel);
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
@@ -44,9 +47,48 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             } catch (SdkException e) {
                 lastException = e;
                 log.warn("[INTERVIEW VOICE UPLOAD] {}번째 시도 실패: key={}", attempt, key, e);
+                if (attempt < MAX_ATTEMPTS && !sleepBackoff(attempt)) {
+                    break;
+                }
             }
         }
         throw lastException;
+    }
+
+    @Override
+    @Async("audioArchiveTaskExecutor")
+    public void uploadAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
+        String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel);
+
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .contentType(CONTENT_TYPE)
+                .build();
+        RequestBody requestBody = RequestBody.fromBytes(audioContent);
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                s3Client.putObject(request, requestBody);
+                return;
+            } catch (SdkException e) {
+                log.warn("[INTERVIEW VOICE UPLOAD ASYNC] {}번째 시도 실패: key={}", attempt, key, e);
+                if (attempt < MAX_ATTEMPTS && !sleepBackoff(attempt)) {
+                    break;
+                }
+            }
+        }
+        log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
+    }
+
+    private boolean sleepBackoff(int attempt) {
+        try {
+            Thread.sleep(BASE_BACKOFF_MILLIS << (attempt - 1));
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     @Override
@@ -62,9 +104,5 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             log.warn("[INTERVIEW VOICE READ] S3 조회 실패: key={}", s3Key, e);
             return null;
         }
-    }
-
-    private String buildKey(UUID userId, Long sessionId, int turnLevel) {
-        return "users/%s/sessions/%s/questions/%s.mp3".formatted(userId, sessionId, turnLevel);
     }
 }

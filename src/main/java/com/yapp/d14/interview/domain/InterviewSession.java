@@ -101,6 +101,18 @@ public class InterviewSession {
         this.status = InterviewSessionStatus.PRELOAD_FAILED;
     }
 
+    // FirstCoreAxisSelector 등 axis 우선순위 판단 로직에 넘길 때 쓰는 조회용 헬퍼
+    public Map<TestType, Integer> getWeights() {
+        return Map.of(
+                TestType.DEPTH, weightDepth,
+                TestType.BOUNDARY, weightBoundary,
+                TestType.CONNECTION, weightConnection,
+                TestType.TRADEOFF, weightTradeoff,
+                TestType.CONFLICT, weightConflict,
+                TestType.RESILIENCE, weightResilience
+        );
+    }
+
     public void assignWeights(Map<TestType, Integer> weights) {
         this.weightDepth = weights.get(TestType.DEPTH);
         this.weightBoundary = weights.get(TestType.BOUNDARY);
