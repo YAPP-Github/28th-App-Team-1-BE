@@ -138,7 +138,7 @@ class InterviewReportGenerateServiceIntegrationTest {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
                 null, UUID.randomUUID(), UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
-                25, 20, 10, 20, 10, 15
+                25, 20, 10, 20, 10, 15, 0, 0
         ));
         return saved.getId();
     }
@@ -267,7 +267,7 @@ class InterviewReportGenerateServiceIntegrationTest {
                 "포트폴리오에 결제 시스템 아키텍처를 처음부터 설계하고 구현을 리드했다고 적으셨는데, "
                         + "구체적으로 어떤 부분을 직접 설계하셨나요?",
                 "결제 시스템 아키텍처를 처음부터 설계하고 구현을 리드했습니다.",
-                null, QuestionCandidateStrength.HIGH
+                null, QuestionCandidateStrength.HIGH, null
         ));
 
         given(axisReportScorer.score(any())).willReturn(List.of(

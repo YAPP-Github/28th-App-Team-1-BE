@@ -19,7 +19,8 @@ class NextProbeSelectorTest {
                 "probe",
                 "echo",
                 jdMatch,
-                strength
+                strength,
+                null
         );
     }
 

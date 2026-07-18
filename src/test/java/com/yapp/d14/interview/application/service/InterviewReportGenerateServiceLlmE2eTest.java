@@ -146,7 +146,7 @@ class InterviewReportGenerateServiceLlmE2eTest {
                 "포트폴리오 3페이지 결제 시스템 프로젝트 항목", TestType.DEPTH, null,
                 "결제 재시도 로직을 어떻게 구현했는지, 멱등성을 어떻게 보장했는지",
                 "결제 재시도 로직과 멱등키 기반 중복 방지를 구현했습니다.",
-                null, QuestionCandidateStrength.HIGH
+                null, QuestionCandidateStrength.HIGH, null
         ));
 
         interviewReportGenerateUseCase.generate(sessionId);
@@ -262,7 +262,7 @@ class InterviewReportGenerateServiceLlmE2eTest {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
                 null, UUID.randomUUID(), UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
-                25, 20, 10, 20, 10, 15
+                25, 20, 10, 20, 10, 15, 0, 0
         ));
         return saved.getId();
     }

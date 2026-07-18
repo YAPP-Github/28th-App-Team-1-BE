@@ -103,7 +103,7 @@ class InterviewReportGenerateServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15
+                25, 20, 10, 20, 10, 15, 0, 0
         );
     }
 
@@ -130,7 +130,7 @@ class InterviewReportGenerateServiceTest {
                 1L, 1L, QuestionCandidateSource.JD, "turn " + originTurn, testType, null,
                 "probe", "echo quote", null, QuestionCandidateStrength.MID,
                 QuestionCandidateStatus.STALE, QuestionCandidateStaleReason.CONTRADICTED,
-                null, contradictingTurn, LocalDateTime.now()
+                null, contradictingTurn, LocalDateTime.now(), null
         );
     }
 
@@ -138,7 +138,7 @@ class InterviewReportGenerateServiceTest {
         return QuestionCandidate.of(
                 1L, 1L, QuestionCandidateSource.PORTFOLIO, "포트폴리오 발췌", testType, null,
                 "probe", "echo quote", null, QuestionCandidateStrength.HIGH,
-                QuestionCandidateStatus.OPEN, null, 1, null, LocalDateTime.now()
+                QuestionCandidateStatus.OPEN, null, 1, null, LocalDateTime.now(), null
         );
     }
 

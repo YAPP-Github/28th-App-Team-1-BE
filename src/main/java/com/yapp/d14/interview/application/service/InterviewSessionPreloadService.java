@@ -139,7 +139,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                             draft.probeText(),
                             draft.echoQuote(),
                             draft.jdMatch(),
-                            draft.strength()
+                            draft.strength(),
+                            null
                     );
                 })
                 .toList();

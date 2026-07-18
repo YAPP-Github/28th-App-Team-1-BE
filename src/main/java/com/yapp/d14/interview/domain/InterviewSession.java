@@ -30,6 +30,10 @@ public class InterviewSession {
     private Integer weightConflict;
     private Integer weightResilience;
 
+    // 5-2장: 세션 전체 누적 STT 세그먼트 카운트(no_speech_prob>0.6인 세그먼트/전체 세그먼트). 30% 초과 시 STT_RESET.
+    private Integer sttFailedSegmentCount;
+    private Integer sttTotalSegmentCount;
+
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewSession(
             Long id,
@@ -49,7 +53,9 @@ public class InterviewSession {
             Integer weightConnection,
             Integer weightTradeoff,
             Integer weightConflict,
-            Integer weightResilience
+            Integer weightResilience,
+            Integer sttFailedSegmentCount,
+            Integer sttTotalSegmentCount
     ) {
         this.id = id;
         this.userId = userId;
@@ -69,6 +75,8 @@ public class InterviewSession {
         this.weightTradeoff = weightTradeoff;
         this.weightConflict = weightConflict;
         this.weightResilience = weightResilience;
+        this.sttFailedSegmentCount = sttFailedSegmentCount;
+        this.sttTotalSegmentCount = sttTotalSegmentCount;
     }
 
     public static InterviewSession create(
@@ -89,6 +97,8 @@ public class InterviewSession {
                 .jdText(jdText)
                 .focusProject(focusProject)
                 .status(InterviewSessionStatus.PREPARING)
+                .sttFailedSegmentCount(0)
+                .sttTotalSegmentCount(0)
                 .build();
     }
 
@@ -105,6 +115,26 @@ public class InterviewSession {
         this.status = InterviewSessionStatus.COMPLETED;
         this.endedAt = LocalDateTime.now();
         this.endType = endType;
+    }
+
+    // 5-2/6-2장: 세션 누적 STT 인식 실패율이 30%를 초과해 세션을 완전 리셋(무효화)할 때 호출
+    public void markInvalid() {
+        this.status = InterviewSessionStatus.INVALID;
+        this.endedAt = LocalDateTime.now();
+    }
+
+    // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).
+    public void recordSttSegments(int failedSegmentCount, int totalSegmentCount) {
+        this.sttFailedSegmentCount += failedSegmentCount;
+        this.sttTotalSegmentCount += totalSegmentCount;
+    }
+
+    // 누적 실패 세그먼트 비율이 30%를 초과했는지 판단 (분모가 0이면 아직 판단 대상 아님)
+    public boolean isSttFailureRateExceeded() {
+        if (sttTotalSegmentCount == null || sttTotalSegmentCount == 0) {
+            return false;
+        }
+        return (double) sttFailedSegmentCount / sttTotalSegmentCount > 0.3;
     }
 
     // FirstCoreAxisSelector 등 axis 우선순위 판단 로직에 넘길 때 쓰는 조회용 헬퍼
@@ -146,7 +176,9 @@ public class InterviewSession {
             Integer weightConnection,
             Integer weightTradeoff,
             Integer weightConflict,
-            Integer weightResilience
+            Integer weightResilience,
+            Integer sttFailedSegmentCount,
+            Integer sttTotalSegmentCount
     ) {
         return InterviewSession.builder()
                 .id(id)
@@ -167,6 +199,8 @@ public class InterviewSession {
                 .weightTradeoff(weightTradeoff)
                 .weightConflict(weightConflict)
                 .weightResilience(weightResilience)
+                .sttFailedSegmentCount(sttFailedSegmentCount)
+                .sttTotalSegmentCount(sttTotalSegmentCount)
                 .build();
     }
 }

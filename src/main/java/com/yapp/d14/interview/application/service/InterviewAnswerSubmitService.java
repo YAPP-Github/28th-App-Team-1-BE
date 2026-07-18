@@ -70,7 +70,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent()); // STT 변환
+        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text(); // STT 변환
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
@@ -165,7 +165,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         if (command.audioContent() == null) {
             return null;
         }
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent());
+        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text();
         try {
             return Answer.create(
                     session.getId(), question.getId(), sttText,
@@ -270,7 +270,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 draft.probeText(),
                 draft.echoQuote(),
                 draft.jdMatch(),
-                draft.strength()
+                draft.strength(),
+                null
         );
     }
 }

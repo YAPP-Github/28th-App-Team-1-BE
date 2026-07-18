@@ -65,7 +65,7 @@ class InterviewSessionCreateServiceTest {
         return InterviewSession.of(
                 sessionId, userId, portfolioId, JobType.BACKEND, 8, null, null, null,
                 InterviewSessionStatus.PREPARING, null, null, null,
-                0, 0, 0, 0, 0, 0
+                0, 0, 0, 0, 0, 0, 0, 0
         );
     }
 
