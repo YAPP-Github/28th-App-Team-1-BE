@@ -11,8 +11,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 // run_live_turn의 prior_qa/get_prior_qa가 쓰는 axis별 이전 턴 이력 캐시 (3단계 4-1장).
 // 키: session:{sessionId}:axis:{axis}, 값: PriorTurn을 JSON으로 직렬화해 Redis List에 턴 순서대로 적재.
@@ -47,10 +49,10 @@ class RedisPriorQaAdapter implements PriorQaCache {
 
     @Override
     public void clear(Long sessionId) {
-        Set<String> keys = redisTemplate.keys(KEY_PREFIX + sessionId + KEY_MIDDLE + "*");
-        if (keys != null && !keys.isEmpty()) {
-            redisTemplate.delete(keys);
-        }
+        Set<String> keys = Arrays.stream(TestType.values())
+                .map(axis -> key(sessionId, axis))
+                .collect(Collectors.toSet());
+        redisTemplate.delete(keys);
     }
 
     private String key(Long sessionId, TestType axis) {

@@ -2,7 +2,6 @@ package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
-import com.yapp.d14.interview.application.port.out.PriorQaCache;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.InterviewSession;
@@ -26,7 +25,6 @@ class InterviewSttResetPersister {
     private final QuestionRepository questionRepository;
     private final InterviewSessionRepository interviewSessionRepository;
     private final TicketReleaseUseCase ticketReleaseUseCase;
-    private final PriorQaCache priorQaCache;
 
     record PersistResult(Long answerId) {
     }
@@ -46,7 +44,6 @@ class InterviewSttResetPersister {
 
         // status=invalid 전환과 같은 트랜잭션에서 처리 — release 실패 시 트랜잭션 전체를 롤백한다(try/catch로 삼키지 않음).
         ticketReleaseUseCase.release(session.getId(), OUTCOME_STT_RESET);
-        priorQaCache.clear(session.getId());
 
         return new PersistResult(answerId);
     }

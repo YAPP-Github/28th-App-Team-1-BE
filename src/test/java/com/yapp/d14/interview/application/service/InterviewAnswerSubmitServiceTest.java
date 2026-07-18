@@ -496,7 +496,8 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.sessionEnded()).isTrue();
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
-        verifyNoInteractions(liveTurnAnalyzer, interviewAnswerAnalyzePersister, priorQaCache, interviewReportGenerateUseCase);
+        verify(priorQaCache).clear(sessionId);
+        verifyNoInteractions(liveTurnAnalyzer, interviewAnswerAnalyzePersister, interviewReportGenerateUseCase);
     }
 
     @Test

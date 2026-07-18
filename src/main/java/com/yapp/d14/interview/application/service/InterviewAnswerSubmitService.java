@@ -218,6 +218,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         markQuestionPlayed(question, command);
 
         InterviewSttResetPersister.PersistResult persisted = interviewSttResetPersister.persist(session, question, answer);
+        priorQaCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
     }
@@ -260,6 +261,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
+        priorQaCache.clear(session.getId());
 
         triggerReportGeneration(session.getId());
 

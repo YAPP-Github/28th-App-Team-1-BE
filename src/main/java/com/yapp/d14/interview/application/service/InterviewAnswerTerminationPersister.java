@@ -2,7 +2,6 @@ package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
-import com.yapp.d14.interview.application.port.out.PriorQaCache;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.InterviewEndType;
@@ -24,7 +23,6 @@ class InterviewAnswerTerminationPersister {
     private final QuestionRepository questionRepository;
     private final InterviewSessionRepository interviewSessionRepository;
     private final TicketCommitUseCase ticketCommitUseCase;
-    private final PriorQaCache priorQaCache;
 
     record PersistResult(Long answerId) {
     }
@@ -51,7 +49,6 @@ class InterviewAnswerTerminationPersister {
         interviewSessionRepository.save(session);
 
         ticketCommitUseCase.commit(session.getId(), outcomeReason);
-        priorQaCache.clear(session.getId());
 
         return new PersistResult(answerId);
     }
