@@ -41,4 +41,9 @@ class TicketReservationPersistenceAdapter implements TicketReservationRepository
     public int releaseIfHeld(Long id, String outcomeReason) {
         return ticketReservationJpaRepository.releaseIfHeld(id, outcomeReason);
     }
+
+    @Override
+    public int commitIfHeld(Long id, String outcomeReason) {
+        return ticketReservationJpaRepository.commitIfHeld(id, outcomeReason);
+    }
 }

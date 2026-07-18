@@ -9,26 +9,33 @@
 
 ```
 {bucket}/
-  └─ users/{userId}/
-        │
-        ├─ portfolios/
-        │     └─ {portfolioId}.pdf         ← 원본 포트폴리오 파일
-        │
-        └─ sessions/
-              └─ {sessionId}/
-                    │
-                    ├─ answers/            ← 사용자 답변 음성
-                    │     └─ {turnId}.webm (or .wav)
-                    │
-                    ├─ questions/          ← AI 면접관 TTS 음성
-                    │     └─ {turnId}.mp3
-                    │
-                    ├─ recording/          ← 면접 영상 (프론트 녹화본)
-                    │     └─ raw.webm
-                    │
-                    └─ composite/          ← 최종 합성 영상
-                          └─ final.mp4
+  ├─ users/{userId}/
+  │     │
+  │     ├─ portfolios/
+  │     │     └─ {portfolioId}.pdf         ← 원본 포트폴리오 파일
+  │     │
+  │     └─ sessions/
+  │           └─ {sessionId}/
+  │                 │
+  │                 ├─ answers/            ← 사용자 답변 음성
+  │                 │     └─ {turnId}.webm (or .wav)
+  │                 │
+  │                 ├─ questions/          ← AI 면접관 TTS 음성
+  │                 │     └─ {turnId}.mp3
+  │                 │
+  │                 ├─ recording/          ← 면접 영상 (프론트 녹화본)
+  │                 │     └─ raw.webm
+  │                 │
+  │                 └─ composite/          ← 최종 합성 영상
+  │                       └─ final.mp4
+  │
+  └─ system/
+        └─ interview/
+              └─ wrapup-messages/          ← 세션 종료 마무리 멘트 TTS(공용, 특정 유저 소유 아님)
+                    └─ {endType}.mp3         (MANUAL_END / HARD_CAP / NORMAL_END)
 ```
+
+`system/` 하위는 특정 유저·세션에 속하지 않는 공용 자산이다. 마무리 멘트 문구는 종료 사유별로 고정돼 있으므로, 최초 요청 시 TTS로 합성해 업로드하고 이후에는 캐시 조회(cache-miss 시에만 재생성)한다. 3장의 세션 영상 만료·삭제 정책과는 무관하며, 문구가 바뀌지 않는 한 삭제되지 않는다.
 
 ## 2. 접근 정책
 

@@ -80,7 +80,7 @@ class InterviewSessionStatusQueryServiceTest {
         given(interviewSessionRepository.findById(1L))
                 .willReturn(Optional.of(sessionWithStatus(InterviewSessionStatus.IN_PROGRESS, startedAt)));
         Question question = Question.of(
-                10L, 1L, "요약 질문", 0, 0, null, null, null, null, "s3-key", LocalDateTime.now()
+                10L, 1L, "요약 질문", 0, 0, null, null, null, null, "s3-key", false, LocalDateTime.now()
         );
         given(questionRepository.findBySessionIdAndTurnLevel(1L, 0)).willReturn(Optional.of(question));
         given(interviewVoiceStorage.readBase64("s3-key")).willReturn("base64-audio");
@@ -100,7 +100,7 @@ class InterviewSessionStatusQueryServiceTest {
         given(interviewSessionRepository.findById(1L))
                 .willReturn(Optional.of(sessionWithStatus(InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now())));
         Question question = Question.of(
-                10L, 1L, "요약 질문", 0, 0, null, null, null, null, null, LocalDateTime.now()
+                10L, 1L, "요약 질문", 0, 0, null, null, null, null, null, false, LocalDateTime.now()
         );
         given(questionRepository.findBySessionIdAndTurnLevel(1L, 0)).willReturn(Optional.of(question));
 

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class QuestionTest {
 
     private static Question question() {
-        return Question.create(1L, "질문 내용", 0, 0, TestType.DEPTH, null, null);
+        return Question.create(1L, "질문 내용", 0, 0, TestType.DEPTH, null, null, false);
     }
 
     @Test

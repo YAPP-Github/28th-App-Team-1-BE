@@ -26,6 +26,7 @@ public class Question {
     private Float questionStartSec;
     private Float questionEndSec;
     private final String aiVoiceS3Key;
+    private final Boolean isWrapUp;
     private final LocalDateTime createdAt;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -40,6 +41,7 @@ public class Question {
             Float questionStartSec,
             Float questionEndSec,
             String aiVoiceS3Key,
+            Boolean isWrapUp,
             LocalDateTime createdAt
     ) {
         this.id = id;
@@ -52,6 +54,7 @@ public class Question {
         this.questionStartSec = questionStartSec;
         this.questionEndSec = questionEndSec;
         this.aiVoiceS3Key = aiVoiceS3Key;
+        this.isWrapUp = isWrapUp;
         this.createdAt = createdAt;
     }
 
@@ -62,7 +65,8 @@ public class Question {
             Integer depthLevel,
             TestType testType,
             String appliedPrinciple,
-            String aiVoiceS3Key
+            String aiVoiceS3Key,
+            Boolean isWrapUp
     ) {
         return Question.builder()
                 .sessionId(sessionId)
@@ -72,6 +76,7 @@ public class Question {
                 .testType(testType)
                 .appliedPrinciple(appliedPrinciple)
                 .aiVoiceS3Key(aiVoiceS3Key)
+                .isWrapUp(isWrapUp)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -115,6 +120,7 @@ public class Question {
             Float questionStartSec,
             Float questionEndSec,
             String aiVoiceS3Key,
+            Boolean isWrapUp,
             LocalDateTime createdAt
     ) {
         return Question.builder()
@@ -128,6 +134,7 @@ public class Question {
                 .questionStartSec(questionStartSec)
                 .questionEndSec(questionEndSec)
                 .aiVoiceS3Key(aiVoiceS3Key)
+                .isWrapUp(isWrapUp)
                 .createdAt(createdAt)
                 .build();
     }

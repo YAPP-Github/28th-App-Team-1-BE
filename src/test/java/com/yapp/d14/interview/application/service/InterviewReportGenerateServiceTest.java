@@ -110,7 +110,7 @@ class InterviewReportGenerateServiceTest {
     private Question question(long id, int turnLevel, TestType testType) {
         return Question.of(
                 id, 1L, "질문 " + turnLevel, turnLevel, 1, testType, "principle",
-                null, null, null, LocalDateTime.now()
+                null, null, null, false, LocalDateTime.now()
         );
     }
 

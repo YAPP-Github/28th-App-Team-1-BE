@@ -1,7 +1,9 @@
 package com.yapp.d14.interview.application.command;
 
-// 답변 제출(POST /answers) 유스케이스 입력. clientRequestId(idempotency)는 이번 구현 범위에서 제외.
-// endType·isWrapUp 등 종료 분기 관련 필드는 이슈2(진입 처리)에서 추가된다.
+import com.yapp.d14.interview.domain.InterviewEndType;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
+
 public record InterviewAnswerSubmitCommand(
         Long sessionId,
         Long questionId,
@@ -10,6 +12,54 @@ public record InterviewAnswerSubmitCommand(
         Float questionAudioEndSec,
         Float answerStartSec,
         Float answerEndSec,
-        Float answerDuration
+        Float answerDuration,
+        InterviewEndType endType,
+        Boolean isWrapUp
 ) {
+
+    public static InterviewAnswerSubmitCommand of(
+            Long sessionId,
+            Long questionId,
+            byte[] audioContent,
+            Float questionAudioStartSec,
+            Float questionAudioEndSec,
+            Float answerStartSec,
+            Float answerEndSec,
+            Float answerDuration,
+            String rawEndType,
+            Boolean isWrapUp
+    ) {
+        InterviewEndType endType = parseEndType(rawEndType);
+        validateAudioPresence(endType, audioContent);
+
+        return new InterviewAnswerSubmitCommand(
+                sessionId, questionId, audioContent,
+                questionAudioStartSec, questionAudioEndSec, answerStartSec, answerEndSec, answerDuration,
+                endType, isWrapUp
+        );
+    }
+
+    private static InterviewEndType parseEndType(String rawEndType) {
+        if (rawEndType == null || rawEndType.isBlank()) {
+            return null;
+        }
+        try {
+            return InterviewEndType.valueOf(rawEndType);
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_END_TYPE);
+        }
+    }
+
+    private static void validateAudioPresence(InterviewEndType endType, byte[] audioContent) {
+        boolean hasAudio = audioContent != null;
+        boolean invalid = switch (endType) {
+            case null -> !hasAudio;
+            case SKIP -> hasAudio;
+            case MANUAL_END, HARD_CAP, EARLY_EXIT -> false;
+            default -> false;
+        };
+        if (invalid) {
+            throw new InterviewException(InterviewErrorCode.INVALID_AUDIO_PRESENCE);
+        }
+    }
 }

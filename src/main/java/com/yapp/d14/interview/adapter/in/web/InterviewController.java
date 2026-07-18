@@ -65,7 +65,7 @@ class InterviewController implements InterviewControllerDocs {
     public ResponseEntity<ApiResponse<InterviewAnswerSubmitHttpResponse>> submitAnswer(
             @CurrentUser UUID userId,
             @PathVariable Long sessionId,
-            @RequestPart("audio") MultipartFile audio,
+            @RequestPart(value = "audio", required = false) MultipartFile audio,
             @Valid @ModelAttribute InterviewAnswerSubmitHttpRequest request
     ) {
         InterviewAnswerSubmitResult result =

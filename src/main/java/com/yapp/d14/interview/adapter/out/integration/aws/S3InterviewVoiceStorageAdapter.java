@@ -30,8 +30,11 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     @Override
     public String upload(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
-        String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel);
+        return upload(S3KeyGenerator.interviewVoiceKey(userId, sessionId, turnLevel), audioContent);
+    }
 
+    @Override
+    public String upload(String key, byte[] audioContent) {
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
                 .key(key)

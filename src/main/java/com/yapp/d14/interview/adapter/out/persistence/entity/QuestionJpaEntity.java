@@ -55,6 +55,9 @@ public class QuestionJpaEntity {
     @Column(name = "ai_voice_s3_key")
     private String aiVoiceS3Key;
 
+    @Column(name = "is_wrap_up")
+    private Boolean isWrapUp;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -70,6 +73,7 @@ public class QuestionJpaEntity {
         entity.questionStartSec = question.getQuestionStartSec();
         entity.questionEndSec = question.getQuestionEndSec();
         entity.aiVoiceS3Key = question.getAiVoiceS3Key();
+        entity.isWrapUp = question.getIsWrapUp();
         entity.createdAt = question.getCreatedAt();
         return entity;
     }
@@ -86,6 +90,7 @@ public class QuestionJpaEntity {
                 questionStartSec,
                 questionEndSec,
                 aiVoiceS3Key,
+                isWrapUp,
                 createdAt
         );
     }

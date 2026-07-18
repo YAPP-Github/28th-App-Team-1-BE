@@ -16,4 +16,8 @@ public final class S3KeyGenerator {
     public static String interviewVoiceKey(UUID userId, Long sessionId, int turnLevel) {
         return "users/%s/sessions/%s/questions/%s.mp3".formatted(userId, sessionId, turnLevel);
     }
+
+    public static String wrapUpMessageKey(String variant) {
+        return "system/interview/wrapup-messages/%s.mp3".formatted(variant);
+    }
 }
