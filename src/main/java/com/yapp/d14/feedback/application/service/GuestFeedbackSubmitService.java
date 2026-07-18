@@ -16,6 +16,7 @@ import com.yapp.d14.interview.application.port.in.InterviewVideoRetentionExtendU
 import com.yapp.d14.interview.application.port.in.result.InterviewVideoStatusResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,6 +35,7 @@ class GuestFeedbackSubmitService implements GuestFeedbackSubmitUseCase {
     private final InterviewVideoRetentionExtendUseCase interviewVideoRetentionExtendUseCase;
 
     @Override
+    @Transactional
     public GuestFeedbackSubmitResult submit(GuestFeedbackSubmitCommand command) {
         FeedbackShare share = feedbackShareRepository.findByToken(command.token())
                 .orElseThrow(() -> new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_TOKEN_NOT_FOUND));

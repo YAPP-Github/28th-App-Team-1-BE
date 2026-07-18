@@ -17,6 +17,7 @@ import com.yapp.d14.interview.application.port.in.result.QuestionBoundaryResult;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -36,7 +37,9 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
     private final QuestionBoundaryQueryUseCase questionBoundaryQueryUseCase;
     private final FindUserUseCase findUserUseCase;
 
+    // 게이트 판정 자체는 순수 조회지만 OPEN 분기에서 영상 보관기간을 연장(쓰기)하므로 트랜잭션으로 묶는다.
     @Override
+    @Transactional
     public GuestFeedbackEntryResult enter(String token, String deviceId) {
         FeedbackShare share = feedbackShareRepository.findByToken(token)
                 .orElseThrow(() -> new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_TOKEN_NOT_FOUND));

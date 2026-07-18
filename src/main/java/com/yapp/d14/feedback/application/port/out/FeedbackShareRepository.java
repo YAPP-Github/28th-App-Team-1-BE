@@ -11,4 +11,7 @@ public interface FeedbackShareRepository {
     Optional<FeedbackShare> findBySessionId(Long sessionId);
 
     Optional<FeedbackShare> findByToken(String token);
+
+    /** status만 PRIVATE로 바꾼다. axes 등 나머지 필드를 다시 쓰지 않는 단건 갱신. */
+    void markPrivate(Long id);
 }
