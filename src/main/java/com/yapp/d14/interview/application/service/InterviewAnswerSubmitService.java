@@ -192,7 +192,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         markQuestionPlayed(question, command);
 
         interviewAnswerAnalyzePersister.persist(
-                answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel()
+                session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel()
         );
         priorQaCache.append(
                 session.getId(), currentAxis,

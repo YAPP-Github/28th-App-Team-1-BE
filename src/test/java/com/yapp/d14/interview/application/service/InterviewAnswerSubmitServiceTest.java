@@ -476,7 +476,7 @@ class InterviewAnswerSubmitServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
 
-        verify(interviewAnswerAnalyzePersister).persist(any(), any(), any(), any(), eq(1));
+        verify(interviewAnswerAnalyzePersister).persist(any(), any(), any(), any(), any(), eq(1));
         verify(priorQaCache).append(eq(sessionId), eq(TestType.DEPTH), any());
         verifyNoInteractions(interviewSttResetPersister, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
     }

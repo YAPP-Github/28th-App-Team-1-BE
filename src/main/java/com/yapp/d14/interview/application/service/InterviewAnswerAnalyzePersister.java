@@ -1,10 +1,12 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.StaleProbeUpdate;
 import com.yapp.d14.interview.domain.Answer;
+import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
@@ -24,6 +26,7 @@ class InterviewAnswerAnalyzePersister {
     private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
     private final QuestionCandidateRepository questionCandidateRepository;
+    private final InterviewSessionRepository interviewSessionRepository;
 
     record PersistResult(Long answerId) {
     }
@@ -37,6 +40,7 @@ class InterviewAnswerAnalyzePersister {
     // 분석 턴: run_live_turn 결과(new_probes/stale_updates)를 probe pool에 반영한다.
     @Transactional
     PersistResult persist(
+            InterviewSession session,
             Answer answer,
             Question question,
             List<QuestionCandidate> newProbeCandidates,
@@ -46,6 +50,7 @@ class InterviewAnswerAnalyzePersister {
         PersistResult result = save(answer, question);
         questionCandidateRepository.saveAll(newProbeCandidates);
         applyStaleUpdates(staleUpdates, currentTurnLevel);
+        interviewSessionRepository.save(session);
         return result;
     }
 
