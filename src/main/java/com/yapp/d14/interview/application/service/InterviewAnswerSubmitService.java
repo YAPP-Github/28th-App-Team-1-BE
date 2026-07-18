@@ -219,10 +219,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
         return liveTurnAnalyzer.analyze(
                 session.getId(),
+                session.getPortfolioId(),
                 summaryQuestion.getContent(),
                 sttText,
                 null,
                 session.getSnapshotJobType(),
+                List.of(),
                 List.of()
         );
     }
@@ -271,7 +273,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 draft.echoQuote(),
                 draft.jdMatch(),
                 draft.strength(),
-                null
+                draft.principleUsed()
         );
     }
 }

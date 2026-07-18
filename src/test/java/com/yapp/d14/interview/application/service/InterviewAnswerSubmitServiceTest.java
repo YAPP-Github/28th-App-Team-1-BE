@@ -144,9 +144,11 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(eq(sessionId), any(), eq("STT 변환된 답변"), isNull(), eq(JobType.BACKEND), eq(List.of())))
+        given(liveTurnAnalyzer.analyze(
+                eq(sessionId), any(), any(), eq("STT 변환된 답변"), isNull(), eq(JobType.BACKEND), eq(List.of()), eq(List.of())
+        ))
                 .willReturn(new LiveTurnResult(
-                        List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH)),
+                        List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null)),
                         new CeilingAssessment(false, null, "판별 대상 아님"),
                         List.of()
                 ));
@@ -186,7 +188,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
@@ -217,7 +219,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
@@ -238,7 +240,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
@@ -259,7 +261,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
@@ -284,10 +286,10 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(
                         List.of(new ProbeCandidateDraft(
-                                TestType.DEPTH, null, "새로 추출된 probe", "새로 추출된 echo", null, QuestionCandidateStrength.HIGH
+                                TestType.DEPTH, null, "새로 추출된 probe", "새로 추출된 echo", null, QuestionCandidateStrength.HIGH, null
                         )),
                         new CeilingAssessment(false, null, "판별 대상 아님"),
                         List.of()
@@ -396,7 +398,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any()))
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
 

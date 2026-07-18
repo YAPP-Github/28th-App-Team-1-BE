@@ -9,6 +9,7 @@ public record ProbeCandidateDraft(
         String probeText,
         String echoQuote,
         String jdMatch,
-        QuestionCandidateStrength strength
+        QuestionCandidateStrength strength,
+        String principleUsed
 ) {
 }

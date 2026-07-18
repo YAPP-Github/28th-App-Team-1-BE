@@ -90,7 +90,8 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
                 entry.probeText(),
                 entry.echoQuote(),
                 entry.jdMatch(),
-                QuestionCandidateStrength.valueOf(entry.strength().toUpperCase())
+                QuestionCandidateStrength.valueOf(entry.strength().toUpperCase()),
+                null
         );
     }
 

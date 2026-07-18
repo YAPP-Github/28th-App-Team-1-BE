@@ -1,8 +1,11 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
 import com.yapp.d14.interview.application.port.out.LiveTurnResult;
+import com.yapp.d14.interview.application.port.out.PriorQaCache;
+import com.yapp.d14.interview.application.port.out.PriorTurn;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.domain.JobType;
+import com.yapp.d14.interview.domain.TestType;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -42,7 +45,9 @@ class FirstTurnQuestionGenerationLlmE2eTest {
     @Test
     void 실제_LLM으로_백엔드_개발자_자기소개_답변에서_다음_질문을_생성한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
-        AnthropicLiveTurnAnalyzerAdapter liveTurnAnalyzer = new AnthropicLiveTurnAnalyzerAdapter(chatModel);
+        AnthropicLiveTurnAnalyzerAdapter liveTurnAnalyzer = new AnthropicLiveTurnAnalyzerAdapter(
+                chatModel, (portfolioId, queryText, topK) -> List.of(), new NoOpPriorQaCache()
+        );
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
 
         String summaryQuestion = "가장 자신 있는 프로젝트를 2분간 소개해주세요.";
@@ -58,7 +63,7 @@ class FirstTurnQuestionGenerationLlmE2eTest {
 
         // 1. run_live_turn: 첫 턴이라 current_axis=null, prior_qa=[]로 호출
         LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
-                1L, summaryQuestion, selfIntroduction, null, JobType.BACKEND, List.of()
+                1L, null, summaryQuestion, selfIntroduction, null, JobType.BACKEND, List.of(), List.of()
         );
 
         log.info("========== [LLM E2E] run_live_turn 결과 ==========");
@@ -122,6 +127,21 @@ class FirstTurnQuestionGenerationLlmE2eTest {
                     .orElseThrow(() -> new IllegalStateException(".env에 ANTHROPIC_API_KEY가 없어요."));
         } catch (IOException e) {
             throw new IllegalStateException(".env 파일을 읽지 못했어요. 프로젝트 루트에서 실행 중인지 확인하세요.", e);
+        }
+    }
+
+    private static class NoOpPriorQaCache implements PriorQaCache {
+        @Override
+        public List<PriorTurn> get(Long sessionId, TestType axis) {
+            return List.of();
+        }
+
+        @Override
+        public void append(Long sessionId, TestType axis, PriorTurn turn) {
+        }
+
+        @Override
+        public void clear(Long sessionId) {
         }
     }
 }
