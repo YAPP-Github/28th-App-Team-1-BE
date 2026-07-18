@@ -9,7 +9,7 @@ public record GuestFeedbackEntryResult(
         GuestGate gate,
         String requesterName,
         List<AttitudeAxis> axes,
-        String videoStreamUrl,
+        String videoUrl,
         List<QuestionBoundary> questionBoundaries
 ) {
 

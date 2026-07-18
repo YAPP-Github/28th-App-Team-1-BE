@@ -18,8 +18,8 @@ public record GuestFeedbackEntryHttpResponse(
         @Schema(description = "지인이 평가할 지정 항목")
         List<Axis> axes,
 
-        @Schema(description = "면접 영상 스트리밍 URL. 영상 파이프라인 연결 전까지 null.")
-        String videoStreamUrl,
+        @Schema(description = "면접 영상 파일 URL(S3 presigned). 만료 전까지 유효하며, 영상 파이프라인 연결 전까지 null.")
+        String videoUrl,
 
         @Schema(description = "질문 경계(각 턴 시작 시각). 어떤 질문 구간인지 맥락 제공.")
         List<QuestionBoundary> questionBoundaries,
@@ -61,7 +61,7 @@ public record GuestFeedbackEntryHttpResponse(
                 result.gate().name(),
                 result.requesterName(),
                 axes,
-                result.videoStreamUrl(),
+                result.videoUrl(),
                 boundaries,
                 result.gate().isSubmissionOpen()
         );
