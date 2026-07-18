@@ -14,7 +14,7 @@ interface FeedbackShareJpaRepository extends JpaRepository<FeedbackShareJpaEntit
 
     Optional<FeedbackShareJpaEntity> findByToken(String token);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE FeedbackShareJpaEntity f SET f.status = 'PRIVATE' WHERE f.id = :id")
     void markPrivate(@Param("id") Long id);
 }
