@@ -136,3 +136,29 @@ tasks.register('issueTestToken', JavaExec) {
     if (project.hasProperty('expiryMs')) cliArgs << "--expiryMs=${project.property('expiryMs')}"
     args = cliArgs
 }
+
+tasks.register('seedFeedbackFixture', JavaExec) {
+    group = 'application'
+    description = '지인 피드백(F4·G4) API 테스트용 완료된 세션·영상 픽스처를 DB에 심습니다. (-PuserId, -PuserName)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.yapp.d14.feedback.tool.FeedbackFixtureSeedCli'
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        def envVars = [:]
+        envFile.eachLine { line ->
+            line = line.trim()
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def (key, value) = line.split('=', 2)
+                envVars[key.trim()] = value.trim().replaceAll(/^["']|["']$/, '')
+            }
+        }
+        environment envVars
+    }
+
+    def cliArgs = []
+    if (project.hasProperty('userId')) cliArgs << "--userId=${project.property('userId')}"
+    if (project.hasProperty('userName')) cliArgs << "--userName=${project.property('userName')}"
+    args = cliArgs
+}
