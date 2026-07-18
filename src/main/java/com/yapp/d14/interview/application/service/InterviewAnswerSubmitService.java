@@ -150,6 +150,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         markQuestionPlayed(question, command);
 
         interviewAnswerAnalyzePersister.persistSkipped(answer, question);
+        // TODO: 다음 질문 결정
         throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
     }
 
@@ -198,6 +199,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 new PriorTurn(question.getTurnLevel(), question.getContent(), transcription.text(), currentAxis)
         );
 
+        // TODO: 다음 질문 결정
         throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
     }
 
