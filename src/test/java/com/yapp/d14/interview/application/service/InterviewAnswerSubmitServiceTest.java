@@ -33,6 +33,7 @@ import com.yapp.d14.interview.exception.InterviewException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,9 +51,11 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.BDDMockito.willThrow;
 
 @ExtendWith(MockitoExtension.class)
 class InterviewAnswerSubmitServiceTest {
@@ -495,6 +498,25 @@ class InterviewAnswerSubmitServiceTest {
                 .persist(any(), any(), any(), eq(InterviewEndType.MANUAL_END), outcomeReasonCaptor.capture());
         assertThat(outcomeReasonCaptor.getValue()).isEqualTo("COMPLETED");
         verify(interviewReportGenerateUseCase).generate(sessionId);
+
+        InOrder order = inOrder(textToSpeechSynthesizer, interviewVoiceStorage, interviewAnswerTerminationPersister);
+        order.verify(textToSpeechSynthesizer).synthesize(any());
+        order.verify(interviewVoiceStorage).upload(any(), any());
+        order.verify(interviewAnswerTerminationPersister).persist(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void 마무리_멘트_합성이_실패하면_종료_처리가_저장되지_않아_재요청이_가능하다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn("STT 변환된 답변");
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        willThrow(new RuntimeException("TTS 합성 실패")).given(textToSpeechSynthesizer).synthesize(any());
+
+        assertThatThrownBy(() -> service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent)))
+                .isInstanceOf(RuntimeException.class);
+
+        verifyNoInteractions(interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
     }
 
     @Test

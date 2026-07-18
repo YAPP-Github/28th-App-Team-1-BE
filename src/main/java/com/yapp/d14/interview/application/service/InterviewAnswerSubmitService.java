@@ -150,13 +150,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             throw new InterviewException(InterviewErrorCode.INVALID_PLAYBACK_RANGE);
         }
 
+        InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
+
         String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
 
         triggerReportGeneration(session.getId());
 
-        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessageFor(endType), null);
+        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessage, null);
     }
 
     private Answer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
