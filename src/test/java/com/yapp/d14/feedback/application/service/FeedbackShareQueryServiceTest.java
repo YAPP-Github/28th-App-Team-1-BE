@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class FeedbackShareQueryServiceTest {
@@ -60,6 +61,7 @@ class FeedbackShareQueryServiceTest {
 
         FeedbackShareStatusResult result = service.get(userId, sessionId);
 
+        verify(interviewSessionOwnershipCheckUseCase).requireOwned(userId, sessionId);
         assertThat(result.token()).isEqualTo("token");
         assertThat(result.status()).isEqualTo(FeedbackShareStatus.ACTIVE);
         assertThat(result.submittedCount()).isEqualTo(2);
