@@ -194,10 +194,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel()
         );
-        priorQaCache.append(
-                session.getId(), currentAxis,
-                new PriorTurn(question.getTurnLevel(), question.getContent(), transcription.text(), currentAxis)
-        );
+        appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text());
 
         // TODO: 다음 질문 결정
         throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
@@ -223,6 +220,18 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         priorQaCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
+    }
+
+    // 답변은 이미 커밋된 뒤라 캐시 추가 실패로 재시도 불가능한 요청 전체 실패를 만들지 않는다 — 로그만 남기고 삼킨다.
+    private void appendPriorQaSafely(Long sessionId, TestType currentAxis, Question question, String answerText) {
+        try {
+            priorQaCache.append(
+                    sessionId, currentAxis,
+                    new PriorTurn(question.getTurnLevel(), question.getContent(), answerText, currentAxis)
+            );
+        } catch (Exception e) {
+            log.error("[PRIOR QA CACHE] append 실패, 해당 턴은 캐시에서 누락됩니다: sessionId={}, axis={}", sessionId, currentAxis, e);
+        }
     }
 
     private void markQuestionPlayed(Question question, InterviewAnswerSubmitCommand command) {
