@@ -71,7 +71,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 토큰이_없으면_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.empty());
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.submit(commandWith("지인1", List.of(AttitudeAxis.GAZE))))
                 .isInstanceOf(FeedbackException.class)
@@ -82,7 +82,7 @@ class GuestFeedbackSubmitServiceTest {
     @Test
     void 비공개_링크면_예외를_던진다() {
         FeedbackShare share = FeedbackShare.of(10L, sessionId, TOKEN, List.of(AttitudeAxis.GAZE), FeedbackShareStatus.PRIVATE, LocalDateTime.now());
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(share));
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(share));
 
         assertThatThrownBy(() -> service.submit(commandWith("지인1", List.of(AttitudeAxis.GAZE))))
                 .isInstanceOf(FeedbackException.class)
@@ -94,7 +94,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 영상이_만료됐으면_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         given(interviewVideoQueryUseCase.getStatus(sessionId))
                 .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), false));
 
@@ -106,7 +106,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 동일_기기가_이미_제출했으면_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(true);
 
@@ -120,7 +120,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 정원이_찼으면_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(4L);
@@ -133,7 +133,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 지정된_항목을_다_채우지_못하면_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN))
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN))
                 .willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE, AttitudeAxis.VOICE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
@@ -149,7 +149,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 지정된_항목을_초과해도_예외를_던진다() {
-        given(feedbackShareRepository.findByToken(TOKEN))
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN))
                 .willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
@@ -163,7 +163,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 정상_제출하면_저장하고_최초_제출_사건으로_영상을_연장한다() {
-        given(feedbackShareRepository.findByToken(TOKEN))
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN))
                 .willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
@@ -185,7 +185,7 @@ class GuestFeedbackSubmitServiceTest {
 
     @Test
     void 닉네임이_비어있으면_지인N으로_자동_생성한다() {
-        given(feedbackShareRepository.findByToken(TOKEN))
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN))
                 .willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         stubOpenVideo();
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);

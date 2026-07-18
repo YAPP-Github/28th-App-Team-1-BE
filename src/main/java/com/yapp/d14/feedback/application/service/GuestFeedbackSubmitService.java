@@ -37,7 +37,8 @@ class GuestFeedbackSubmitService implements GuestFeedbackSubmitUseCase {
     @Override
     @Transactional
     public GuestFeedbackSubmitResult submit(GuestFeedbackSubmitCommand command) {
-        FeedbackShare share = feedbackShareRepository.findByToken(command.token())
+        // 같은 세션에 대한 동시 제출을 직렬화해 정원 초과·중복 기기 제출을 막는다(TOCTOU 방지).
+        FeedbackShare share = feedbackShareRepository.findByTokenForUpdate(command.token())
                 .orElseThrow(() -> new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_TOKEN_NOT_FOUND));
         Long sessionId = share.getSessionId();
 

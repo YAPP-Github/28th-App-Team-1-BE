@@ -30,6 +30,11 @@ class FeedbackSharePersistenceAdapter implements FeedbackShareRepository {
     }
 
     @Override
+    public Optional<FeedbackShare> findByTokenForUpdate(String token) {
+        return feedbackShareJpaRepository.findByTokenForUpdate(token).map(FeedbackShareJpaEntity::toDomain);
+    }
+
+    @Override
     public void markPrivate(Long id) {
         feedbackShareJpaRepository.markPrivate(id);
     }
