@@ -96,7 +96,7 @@ class GuestFeedbackSubmitServiceTest {
     void 영상이_만료됐으면_예외를_던진다() {
         given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
         given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), false));
+                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), true));
 
         assertThatThrownBy(() -> service.submit(commandWith("지인1", List.of(AttitudeAxis.GAZE))))
                 .isInstanceOf(FeedbackException.class)

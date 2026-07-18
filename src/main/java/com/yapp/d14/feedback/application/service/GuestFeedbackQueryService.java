@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -76,7 +75,7 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
         }
 
         InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getStatus(sessionId);
-        if (videoStatus.deleted() || LocalDateTime.now().isAfter(videoStatus.expiresAt())) {
+        if (videoStatus.expired()) {
             return GuestGate.EXPIRED;
         }
 

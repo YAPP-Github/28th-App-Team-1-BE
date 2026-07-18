@@ -19,6 +19,6 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
     public InterviewVideoStatusResult getStatus(Long sessionId) {
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
-        return new InterviewVideoStatusResult(video.getExpiresAt(), video.isDeleted());
+        return new InterviewVideoStatusResult(video.getExpiresAt(), video.isExpired());
     }
 }

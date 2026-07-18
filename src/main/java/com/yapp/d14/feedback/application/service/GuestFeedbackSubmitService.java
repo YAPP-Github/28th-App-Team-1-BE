@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -75,7 +74,7 @@ class GuestFeedbackSubmitService implements GuestFeedbackSubmitUseCase {
             throw new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_CLOSED);
         }
         InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getStatus(sessionId);
-        if (videoStatus.deleted() || LocalDateTime.now().isAfter(videoStatus.expiresAt())) {
+        if (videoStatus.expired()) {
             throw new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_CLOSED);
         }
     }

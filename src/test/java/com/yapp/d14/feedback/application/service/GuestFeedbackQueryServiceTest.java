@@ -88,7 +88,7 @@ class GuestFeedbackQueryServiceTest {
     void 영상이_만료됐으면_EXPIRED_게이트를_반환한다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
         given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), false));
+                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), true));
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 

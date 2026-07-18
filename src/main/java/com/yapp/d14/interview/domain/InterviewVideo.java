@@ -67,6 +67,6 @@ public class InterviewVideo {
     }
 
     public boolean isExpired() {
-        return LocalDateTime.now().isAfter(expiresAt);
+        return deleted || LocalDateTime.now().isAfter(expiresAt);
     }
 }

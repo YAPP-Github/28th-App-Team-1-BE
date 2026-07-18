@@ -4,6 +4,6 @@ import java.time.LocalDateTime;
 
 public record InterviewVideoStatusResult(
         LocalDateTime expiresAt,
-        boolean deleted
+        boolean expired
 ) {
 }
