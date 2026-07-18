@@ -125,8 +125,8 @@ public class InterviewSession {
 
     // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).
     public void recordSttSegments(int failedSegmentCount, int totalSegmentCount) {
-        this.sttFailedSegmentCount += failedSegmentCount;
-        this.sttTotalSegmentCount += totalSegmentCount;
+        this.sttFailedSegmentCount = (sttFailedSegmentCount == null ? 0 : sttFailedSegmentCount) + failedSegmentCount;
+        this.sttTotalSegmentCount = (sttTotalSegmentCount == null ? 0 : sttTotalSegmentCount) + totalSegmentCount;
     }
 
     // 누적 실패 세그먼트 비율이 30%를 초과했는지 판단 (분모가 0이면 아직 판단 대상 아님)
