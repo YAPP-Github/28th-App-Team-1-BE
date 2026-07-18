@@ -188,8 +188,11 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
 
     // currentAxis가 없으면 모델 출력과 무관하게 "판별 대상 아님"으로 고정해 반환한다.
     private CeilingAssessment toCeilingAssessment(TestType currentAxis, CeilingLlmEntry entry) {
-        if (currentAxis == null || entry == null) {
+        if (currentAxis == null) {
             return new CeilingAssessment(false, null, "current_axis 없음 - 판별 대상 아님");
+        }
+        if (entry == null) {
+            throw new IllegalArgumentException("ceiling 응답이 누락됐어요.");
         }
         CeilingKind kind = StringUtils.hasText(entry.kind()) ? CeilingKind.valueOf(entry.kind().toUpperCase()) : null;
         return new CeilingAssessment(entry.reached(), kind, entry.reason());
