@@ -84,6 +84,19 @@ class GuestFeedbackSubmitCommandTest {
     }
 
     @Test
+    void 같은_axis가_중복되면_예외를_던진다() {
+        List<GuestFeedbackSubmitCommand.RawRating> raw = List.of(
+                new GuestFeedbackSubmitCommand.RawRating("GAZE", 2, null),
+                new GuestFeedbackSubmitCommand.RawRating("GAZE", 3, null)
+        );
+
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw, null))
+                .isInstanceOf(FeedbackException.class)
+                .extracting(e -> ((FeedbackException) e).getErrorCode())
+                .isEqualTo(FeedbackErrorCode.DUPLICATE_RATING_AXIS);
+    }
+
+    @Test
     void 정의되지_않은_axis면_예외를_던진다() {
         List<GuestFeedbackSubmitCommand.RawRating> raw = List.of(new GuestFeedbackSubmitCommand.RawRating("FOO", 2, null));
 

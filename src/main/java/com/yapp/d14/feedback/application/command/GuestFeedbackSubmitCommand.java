@@ -4,7 +4,9 @@ import com.yapp.d14.feedback.domain.AttitudeAxis;
 import com.yapp.d14.feedback.exception.FeedbackErrorCode;
 import com.yapp.d14.feedback.exception.FeedbackException;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public record GuestFeedbackSubmitCommand(
         String token,
@@ -33,7 +35,17 @@ public record GuestFeedbackSubmitCommand(
         List<Rating> ratings = rawRatings.stream()
                 .map(GuestFeedbackSubmitCommand::parseRating)
                 .toList();
+        requireDistinctAxes(ratings);
         return new GuestFeedbackSubmitCommand(token, deviceId, nickname, ratings, overallFeedback);
+    }
+
+    private static void requireDistinctAxes(List<Rating> ratings) {
+        Set<AttitudeAxis> seen = new HashSet<>();
+        for (Rating rating : ratings) {
+            if (!seen.add(rating.axis())) {
+                throw new FeedbackException(FeedbackErrorCode.DUPLICATE_RATING_AXIS);
+            }
+        }
     }
 
     private static Rating parseRating(RawRating raw) {

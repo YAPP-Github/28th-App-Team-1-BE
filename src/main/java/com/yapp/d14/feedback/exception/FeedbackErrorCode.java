@@ -21,6 +21,7 @@ public enum FeedbackErrorCode implements ErrorCode {
     FEEDBACK_CAPACITY_FULL(HttpStatus.CONFLICT, "FEEDBACK_CAPACITY_FULL", "이미 4분이 참여했어요."),
     FEEDBACK_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "FEEDBACK_ALREADY_SUBMITTED", "이미 제출하셨어요."),
     INCOMPLETE_RATINGS(HttpStatus.BAD_REQUEST, "INCOMPLETE_RATINGS", "지정된 항목을 모두 평가해 주세요."),
+    DUPLICATE_RATING_AXIS(HttpStatus.BAD_REQUEST, "DUPLICATE_RATING_AXIS", "같은 항목을 중복해서 평가할 수 없어요."),
     INVALID_RATING_LEVEL(HttpStatus.BAD_REQUEST, "INVALID_RATING_LEVEL", "척도 값이 올바르지 않아요."),
     MISSING_DEVICE_ID(HttpStatus.BAD_REQUEST, "MISSING_DEVICE_ID", "기기 식별 값이 필요해요.");
 
