@@ -71,7 +71,7 @@ class RedisPriorQaAdapter implements PriorQaCache {
         try {
             return objectMapper.readValue(raw, PriorTurn.class);
         } catch (JsonProcessingException e) {
-            log.error("[PRIOR QA CACHE] PriorTurn 역직렬화 실패, 해당 항목은 건너뜁니다: raw={}", raw, e);
+            log.error("[PRIOR QA CACHE] PriorTurn 역직렬화 실패: payloadLength={}", raw.length(), e);
             throw new IllegalStateException("PriorTurn 역직렬화에 실패했어요.", e);
         }
     }
