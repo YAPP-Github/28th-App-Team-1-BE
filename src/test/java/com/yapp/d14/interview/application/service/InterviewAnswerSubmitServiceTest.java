@@ -358,6 +358,23 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 무효화된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
+        InterviewSession invalidSession = InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
+                25, 20, 10, 20, 10, 15, 0, 0
+        );
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(invalidSession));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SESSION_ALREADY_ENDED);
+
+        verifyNoInteractions(questionRepository, speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+    }
+
+    @Test
     void 세션_소유자가_아니면_예외가_발생한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
 

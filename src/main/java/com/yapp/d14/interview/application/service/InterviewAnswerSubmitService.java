@@ -52,7 +52,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
-        if (session.getStatus() == InterviewSessionStatus.COMPLETED) {
+        if (session.getStatus() == InterviewSessionStatus.COMPLETED || session.getStatus() == InterviewSessionStatus.INVALID) {
             throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
         }
         Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
