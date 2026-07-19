@@ -3,11 +3,13 @@ package com.yapp.d14.jd.adapter.out.cache;
 import com.yapp.d14.jd.application.port.out.JdValidationRateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.UUID;
 
 @Repository
@@ -17,6 +19,14 @@ class RedisJdValidationRateLimiterAdapter implements JdValidationRateLimiter {
     private static final String KEY_PREFIX = "jd:rate:";
     private static final Duration TTL = Duration.ofHours(25);
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
+
+    private static final RedisScript<Long> INCREMENT_SCRIPT = RedisScript.of("""
+            local count = redis.call('INCR', KEYS[1])
+            if count == 1 then
+                redis.call('EXPIRE', KEYS[1], ARGV[1])
+            end
+            return count
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 
@@ -28,11 +38,7 @@ class RedisJdValidationRateLimiterAdapter implements JdValidationRateLimiter {
 
     @Override
     public void increment(UUID userId) {
-        String key = key(userId);
-        Long count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            redisTemplate.expire(key, TTL);
-        }
+        redisTemplate.execute(INCREMENT_SCRIPT, Collections.singletonList(key(userId)), String.valueOf(TTL.toSeconds()));
     }
 
     private String key(UUID userId) {
