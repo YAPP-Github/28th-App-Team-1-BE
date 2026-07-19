@@ -11,5 +11,8 @@ public record JdValidateCommand(String jdUrl, UUID userId) {
         if (jdUrl == null || jdUrl.isBlank()) {
             throw new JdException(JdErrorCode.INVALID_JD_URL);
         }
+        if (userId == null) {
+            throw new IllegalArgumentException("userId는 null일 수 없어요.");
+        }
     }
 }
