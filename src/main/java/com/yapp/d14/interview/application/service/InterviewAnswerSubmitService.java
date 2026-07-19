@@ -149,7 +149,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
         markQuestionPlayed(question, command);
 
-        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of());
+        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of(), null);
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persistSkipped(
                 answer, question, plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         );
@@ -196,7 +196,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         markQuestionPlayed(question, command);
 
         NextQuestionPlan plan = planNextQuestion(
-                session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific, newProbeCandidates
+                session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific,
+                newProbeCandidates, openProbesForAxis
         );
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
@@ -382,7 +383,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             boolean ceilingReached,
             boolean hasRedFlag,
             boolean isUnusuallySpecific,
-            List<QuestionCandidate> newProbeCandidates
+            List<QuestionCandidate> newProbeCandidates,
+            List<QuestionCandidate> openProbesForCurrentAxis
     ) {
         TestType currentAxis = question.getTestType(); // 현재 축
         boolean isWrapUpForced = Boolean.TRUE.equals(command.isWrapUp()); // 랩업 강제
@@ -400,7 +402,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             completedAxisPlan.markCompleted(); // 전환 확정
         }
 
-        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 후보 선택
+        List<QuestionCandidate> knownOpenProbes = nextAxis == currentAxis ? openProbesForCurrentAxis : null; // 중복조회 방지
+        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates, knownOpenProbes); // 후보 선택
         String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장
         int nextDepthLevel = nextAxis == currentAxis ? question.getDepthLevel() + 1 : 1; // 깊이 계산
         Question nextQuestion = Question.create(
@@ -445,8 +448,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     // 선택 축(axis)의 기존 OPEN 후보와, 이번 턴에 새로 추출된 후보 중 같은 축인 것을 병합해 한 번에 선택한다.
     private Optional<QuestionCandidate> selectNextProbe(Long sessionId, TestType axis, List<QuestionCandidate> newProbeCandidates) {
+        return selectNextProbe(sessionId, axis, newProbeCandidates, null);
+    }
+
+    // knownOpenProbes가 있으면(같은 axis를 이미 조회해둔 경우) 재조회 없이 그대로 재사용한다.
+    private Optional<QuestionCandidate> selectNextProbe(
+            Long sessionId, TestType axis, List<QuestionCandidate> newProbeCandidates, List<QuestionCandidate> knownOpenProbes
+    ) {
         List<QuestionCandidate> candidatePool = new ArrayList<>(
-                questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, axis)
+                knownOpenProbes != null ? knownOpenProbes : questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, axis)
         );
         newProbeCandidates.stream()
                 .filter(candidate -> candidate.getTestType() == axis)

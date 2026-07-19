@@ -57,6 +57,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.BDDMockito.willThrow;
@@ -506,6 +507,8 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         verify(priorQaCache).append(eq(sessionId), eq(TestType.DEPTH), any());
         verifyNoInteractions(interviewSttResetPersister, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+        // axis가 전환되지 않으면 이미 조회해둔 OPEN 후보를 재사용해야 한다 — 같은 axis를 두 번 조회하지 않는다.
+        verify(questionCandidateRepository, times(1)).findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH);
     }
 
     @Test
