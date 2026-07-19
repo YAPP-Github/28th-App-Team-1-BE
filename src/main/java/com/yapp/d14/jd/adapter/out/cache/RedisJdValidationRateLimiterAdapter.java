@@ -20,6 +20,7 @@ class RedisJdValidationRateLimiterAdapter implements JdValidationRateLimiter {
     private static final Duration TTL = Duration.ofHours(25);
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
 
+    // INCR과 EXPIRE를 하나의 스크립트로 묶어 원자적으로 실행 (TTL 유실 방지)
     private static final RedisScript<Long> INCREMENT_SCRIPT = RedisScript.of("""
             local count = redis.call('INCR', KEYS[1])
             if count == 1 then
