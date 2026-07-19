@@ -41,13 +41,4 @@ class QuestionCandidateTest {
         assertThat(candidate.getStatus()).isEqualTo(QuestionCandidateStatus.STALE);
         assertThat(candidate.getStaleReason()).isEqualTo(QuestionCandidateStaleReason.CORRECTED);
     }
-
-    @Test
-    void markExhausted_호출_시_상태가_EXHAUSTED로_바뀐다() {
-        QuestionCandidate candidate = create();
-
-        candidate.markExhausted();
-
-        assertThat(candidate.getStatus()).isEqualTo(QuestionCandidateStatus.EXHAUSTED);
-    }
 }

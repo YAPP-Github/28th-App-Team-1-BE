@@ -161,26 +161,26 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleAnalysisTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
-        TranscriptionResult transcription = speechToTextTranscriber.transcribe(command.audioContent());
-        session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount());
+        TranscriptionResult transcription = speechToTextTranscriber.transcribe(command.audioContent()); // STT 변환
+        session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount()); // 실패율 갱신
         if (session.isSttFailureRateExceeded()) {
-            return handleSttReset(session, question, command, transcription);
+            return handleSttReset(session, question, command, transcription); // 세션 리셋
         }
 
-        TestType currentAxis = question.getTestType();
-        List<PriorTurn> priorQa = priorQaCache.get(session.getId(), currentAxis);
+        TestType currentAxis = question.getTestType(); // 현재 축
+        List<PriorTurn> priorQa = priorQaCache.get(session.getId(), currentAxis); // 이전 이력
         List<QuestionCandidate> openProbesForAxis =
-                questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis);
+                questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis); // 열린 후보
 
         LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
                 currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
-        );
+        ); // 답변 분석
         List<QuestionCandidate> newProbeCandidates =
-                toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel());
+                toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel()); // 새 후보 변환
         boolean hasContradiction = liveTurnResult.staleUpdates().stream()
-                .anyMatch(update -> update.reason() == QuestionCandidateStaleReason.CONTRADICTED);
-        boolean isUnusuallySpecific = isUnusuallySpecific(liveTurnResult.newProbes());
+                .anyMatch(update -> update.reason() == QuestionCandidateStaleReason.CONTRADICTED); // 위험 신호
+        boolean isUnusuallySpecific = isUnusuallySpecific(liveTurnResult.newProbes()); // 구체 판정
 
         Answer answer;
         try {
@@ -189,23 +189,23 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                     command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
                     false, sttFailureRatio(transcription), null, null, null,
                     liveTurnResult.ceiling().reached(), hasContradiction, currentAxis
-            );
+            ); // 답변 생성
         } catch (IllegalArgumentException e) {
             throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
         }
-        markQuestionPlayed(question, command);
+        markQuestionPlayed(question, command); // 재생 구간 기록
 
         NextQuestionPlan plan = planNextQuestion(
                 session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific,
                 newProbeCandidates, openProbesForAxis
-        );
+        ); // 다음 질문 계획
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
                 plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
-        );
-        appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text());
+        ); // 트랜잭션 반영
+        appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text()); // 이력 저장
 
-        return buildNextQuestionResult(persisted, plan);
+        return buildNextQuestionResult(persisted, plan); // 응답 반환
     }
 
     // 5-2/6-2장: 세션 누적 STT 인식 실패율이 30%를 초과하면 완전 리셋(무효화)하고 즉시 세션을 종료한다.

@@ -107,10 +107,6 @@ public class QuestionCandidate {
         this.contradictingTurnNumber = contradictingTurnNumber;
     }
 
-    public void markExhausted() {
-        this.status = QuestionCandidateStatus.EXHAUSTED;
-    }
-
     public static QuestionCandidate of(
             Long id,
             Long sessionId,

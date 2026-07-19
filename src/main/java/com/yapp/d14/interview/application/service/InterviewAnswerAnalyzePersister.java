@@ -110,9 +110,7 @@ class InterviewAnswerAnalyzePersister {
     }
 
     private void exhaustOpenProbes(Long sessionId, TestType testType) {
-        List<QuestionCandidate> openProbes = questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, testType);
-        openProbes.forEach(QuestionCandidate::markExhausted);
-        questionCandidateRepository.saveAll(openProbes);
+        questionCandidateRepository.exhaustOpenBySessionIdAndTestType(sessionId, testType);
     }
 
     private void applyStaleUpdates(List<StaleProbeUpdate> staleUpdates, int currentTurnLevel) {

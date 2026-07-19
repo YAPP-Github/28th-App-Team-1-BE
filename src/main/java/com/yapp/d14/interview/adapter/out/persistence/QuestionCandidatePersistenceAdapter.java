@@ -53,6 +53,11 @@ class QuestionCandidatePersistenceAdapter implements QuestionCandidateRepository
     }
 
     @Override
+    public void exhaustOpenBySessionIdAndTestType(Long sessionId, TestType testType) {
+        questionCandidateJpaRepository.exhaustOpenBySessionIdAndTestType(sessionId, testType);
+    }
+
+    @Override
     public void deleteBySessionId(Long sessionId) {
         questionCandidateJpaRepository.deleteAllBySessionId(sessionId);
     }
