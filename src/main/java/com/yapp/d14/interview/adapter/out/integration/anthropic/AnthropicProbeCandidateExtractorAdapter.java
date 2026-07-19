@@ -36,7 +36,8 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
             - 캐물지점은 반드시 포트폴리오 내용에 근거해야 합니다. JD 키워드만으로 캐물지점을 만들지 마세요.
             - jdKeywords와 겹치는 캐물지점이 있으면 jdMatch 필드에 그 키워드를 그대로 적으세요. 안 겹치면 null.
             - probeText는 "무엇을 캐물을지"에 대한 내부 메모(질문 문장 아님), echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
-            - strength는 신호가 진할수록 high, 약하면 low로 답니다.
+            - strength는 반드시 high/mid/low 중 하나로만 답합니다(medium 등 다른 표현 금지).
+              신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 개수를 인위적으로 채우거나 줄이지 마세요. 포트폴리오 분량에서 자연스럽게 나오는 만큼만 뽑습니다.
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 각 원소는 다음 필드를 가집니다:
@@ -90,7 +91,8 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
                 entry.probeText(),
                 entry.echoQuote(),
                 entry.jdMatch(),
-                QuestionCandidateStrength.valueOf(entry.strength().toUpperCase())
+                QuestionCandidateStrength.valueOf(entry.strength().toUpperCase()),
+                null
         );
     }
 

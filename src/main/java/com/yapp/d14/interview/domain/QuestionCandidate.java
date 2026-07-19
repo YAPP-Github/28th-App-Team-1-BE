@@ -25,6 +25,9 @@ public class QuestionCandidate {
     private Integer contradictingTurnNumber;
     private final LocalDateTime createdAt;
 
+    // run_live_turn이 이 캐물지점을 만들 때 참고한 전술 id(P1~P24). 채점 미사용, 디버깅/검증용.
+    private final String principleUsed;
+
     @Builder(access = AccessLevel.PRIVATE)
     private QuestionCandidate(
             Long id,
@@ -41,7 +44,8 @@ public class QuestionCandidate {
             QuestionCandidateStaleReason staleReason,
             Integer usedInTurn,
             Integer contradictingTurnNumber,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            String principleUsed
     ) {
         this.id = id;
         this.sessionId = sessionId;
@@ -58,6 +62,7 @@ public class QuestionCandidate {
         this.usedInTurn = usedInTurn;
         this.contradictingTurnNumber = contradictingTurnNumber;
         this.createdAt = createdAt;
+        this.principleUsed = principleUsed;
     }
 
     public static QuestionCandidate create(
@@ -69,7 +74,8 @@ public class QuestionCandidate {
             String probeText,
             String echoQuote,
             String jdMatch,
-            QuestionCandidateStrength strength
+            QuestionCandidateStrength strength,
+            String principleUsed
     ) {
         return QuestionCandidate.builder()
                 .sessionId(sessionId)
@@ -83,6 +89,7 @@ public class QuestionCandidate {
                 .strength(strength)
                 .status(QuestionCandidateStatus.OPEN)
                 .createdAt(LocalDateTime.now())
+                .principleUsed(principleUsed)
                 .build();
     }
 
@@ -90,6 +97,14 @@ public class QuestionCandidate {
     public void markUsed(int usedInTurn) {
         this.status = QuestionCandidateStatus.USED;
         this.usedInTurn = usedInTurn;
+    }
+
+    // 5-3장: 모순/자진정정 감지 시 이 캐물지점을 stale 처리. contradicted면 이 캐물지점이 만들어졌던 시점과
+    // 모순되는 답변이 나온 turnLevel을, corrected면 지원자가 스스로 정정한 turnLevel을 기록한다.
+    public void markStale(QuestionCandidateStaleReason reason, Integer contradictingTurnNumber) {
+        this.status = QuestionCandidateStatus.STALE;
+        this.staleReason = reason;
+        this.contradictingTurnNumber = contradictingTurnNumber;
     }
 
     public static QuestionCandidate of(
@@ -107,7 +122,8 @@ public class QuestionCandidate {
             QuestionCandidateStaleReason staleReason,
             Integer usedInTurn,
             Integer contradictingTurnNumber,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            String principleUsed
     ) {
         return QuestionCandidate.builder()
                 .id(id)
@@ -125,6 +141,7 @@ public class QuestionCandidate {
                 .usedInTurn(usedInTurn)
                 .contradictingTurnNumber(contradictingTurnNumber)
                 .createdAt(createdAt)
+                .principleUsed(principleUsed)
                 .build();
     }
 }

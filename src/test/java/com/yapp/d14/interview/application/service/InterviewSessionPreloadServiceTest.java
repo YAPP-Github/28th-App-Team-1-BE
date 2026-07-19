@@ -72,7 +72,7 @@ class InterviewSessionPreloadServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, JobType.BACKEND, 3, jdUrl, jdText, focusProject,
                 InterviewSessionStatus.PREPARING, null, null, null,
-                25, 20, 10, 20, 10, 15
+                25, 20, 10, 20, 10, 15, 0, 0
         );
     }
 
@@ -128,8 +128,8 @@ class InterviewSessionPreloadServiceTest {
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), eq("결제 시스템"), anyInt()))
                 .willReturn(List.of(new PortfolioChunkResult("청크1")));
         given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of(
-                new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH),
-                new ProbeCandidateDraft(TestType.CONFLICT, null, "probe2", "echo2", "키워드", QuestionCandidateStrength.MID)
+                new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null),
+                new ProbeCandidateDraft(TestType.CONFLICT, null, "probe2", "echo2", "키워드", QuestionCandidateStrength.MID, null)
         ));
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 

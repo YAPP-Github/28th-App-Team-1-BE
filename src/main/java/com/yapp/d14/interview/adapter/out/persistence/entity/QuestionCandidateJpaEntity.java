@@ -76,6 +76,9 @@ public class QuestionCandidateJpaEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "principle_used")
+    private String principleUsed;
+
     public static QuestionCandidateJpaEntity from(QuestionCandidate questionCandidate) {
         QuestionCandidateJpaEntity entity = new QuestionCandidateJpaEntity();
         entity.id = questionCandidate.getId();
@@ -93,6 +96,7 @@ public class QuestionCandidateJpaEntity {
         entity.usedInTurn = questionCandidate.getUsedInTurn();
         entity.contradictingTurnNumber = questionCandidate.getContradictingTurnNumber();
         entity.createdAt = questionCandidate.getCreatedAt();
+        entity.principleUsed = questionCandidate.getPrincipleUsed();
         return entity;
     }
 
@@ -112,7 +116,8 @@ public class QuestionCandidateJpaEntity {
                 staleReason,
                 usedInTurn,
                 contradictingTurnNumber,
-                createdAt
+                createdAt,
+                principleUsed
         );
     }
 }

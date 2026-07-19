@@ -6,6 +6,7 @@ record ProbeCandidateLlmEntry(
         String probeText,
         String echoQuote,
         String jdMatch,
-        String strength
+        String strength,
+        String principleUsed
 ) {
 }

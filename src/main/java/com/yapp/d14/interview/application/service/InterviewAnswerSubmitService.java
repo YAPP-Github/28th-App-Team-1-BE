@@ -41,6 +41,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final QuestionTextGenerator questionTextGenerator;
     private final InterviewAnswerSubmitPersister interviewAnswerSubmitPersister;
     private final InterviewAnswerTerminationPersister interviewAnswerTerminationPersister;
+    private final InterviewAnswerAnalyzePersister interviewAnswerAnalyzePersister;
+    private final InterviewSttResetPersister interviewSttResetPersister;
+    private final PriorQaCache priorQaCache;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
@@ -49,7 +52,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
-        if (session.getStatus() == InterviewSessionStatus.COMPLETED) {
+        if (session.getStatus() == InterviewSessionStatus.COMPLETED || session.getStatus() == InterviewSessionStatus.INVALID) {
             throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
         }
         Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
@@ -70,7 +73,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent()); // STT 변환
+        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text(); // STT 변환
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
@@ -120,11 +123,130 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
         InterviewEndType terminationEndType = resolveTerminationEndType(question, command);
-        if (terminationEndType == null) {
-            // TODO: 매 턴 루프(run_live_turn → select_next_axis → select_next_probe → generate_question_text) 미구현
+        if (terminationEndType != null) {
+            return handleTermination(session, question, command, terminationEndType);
+        }
+        if (command.endType() == InterviewEndType.SKIP) {
+            return handleSkippedTurn(session, question, command);
+        }
+        return handleAnalysisTurn(session, question, command);
+    }
+
+    // SKIP 턴(5-1/5-3장): STT·캐물지점 추출·모순 감지를 생략하고 "스킵됨" 컨텍스트만 기록한다.
+    // select_next_axis/probe/질문 생성은 다음 이슈 범위라 다음 질문을 만들 수 없어 UNSUPPORTED_TURN_LEVEL로 응답한다.
+    private InterviewAnswerSubmitResult handleSkippedTurn(
+            InterviewSession session, Question question, InterviewAnswerSubmitCommand command
+    ) {
+        Answer answer;
+        try {
+            answer = Answer.create(
+                    session.getId(), question.getId(), null,
+                    command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                    true, null, null, null, null, false, false, question.getTestType()
+            );
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
+        }
+        markQuestionPlayed(question, command);
+
+        interviewAnswerAnalyzePersister.persistSkipped(answer, question);
+        // TODO: 다음 질문 결정
+        throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+    }
+
+    // 5-2~5-4장: STT 변환 → 누적 인식률 갱신(초과 시 STT_RESET) → run_live_turn 일반화 → 결과 영속화.
+    private InterviewAnswerSubmitResult handleAnalysisTurn(
+            InterviewSession session, Question question, InterviewAnswerSubmitCommand command
+    ) {
+        TranscriptionResult transcription = speechToTextTranscriber.transcribe(command.audioContent());
+        session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount());
+        if (session.isSttFailureRateExceeded()) {
+            return handleSttReset(session, question, command, transcription);
+        }
+
+        TestType currentAxis = question.getTestType();
+        List<PriorTurn> priorQa = priorQaCache.get(session.getId(), currentAxis);
+        List<QuestionCandidate> openProbesForAxis =
+                questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis);
+
+        LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
+                session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
+                currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
+        );
+        List<QuestionCandidate> newProbeCandidates =
+                toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel());
+        boolean hasContradiction = liveTurnResult.staleUpdates().stream()
+                .anyMatch(update -> update.reason() == QuestionCandidateStaleReason.CONTRADICTED);
+
+        Answer answer;
+        try {
+            answer = Answer.create(
+                    session.getId(), question.getId(), transcription.text(),
+                    command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                    false, sttFailureRatio(transcription), null, null, null,
+                    liveTurnResult.ceiling().reached(), hasContradiction, currentAxis
+            );
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
+        }
+        markQuestionPlayed(question, command);
+
+        interviewAnswerAnalyzePersister.persist(
+                session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel()
+        );
+        appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text());
+
+        // TODO: 다음 질문 결정
+        throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+    }
+
+    // 5-2/6-2장: 세션 누적 STT 인식 실패율이 30%를 초과하면 완전 리셋(무효화)하고 즉시 세션을 종료한다.
+    private InterviewAnswerSubmitResult handleSttReset(
+            InterviewSession session, Question question, InterviewAnswerSubmitCommand command, TranscriptionResult transcription
+    ) {
+        Answer answer;
+        try {
+            answer = Answer.create(
+                    session.getId(), question.getId(), transcription.text(),
+                    command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
+                    false, sttFailureRatio(transcription), null, null, null, false, false, question.getTestType()
+            );
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
+        }
+        markQuestionPlayed(question, command);
+
+        InterviewSttResetPersister.PersistResult persisted = interviewSttResetPersister.persist(session, question, answer);
+        priorQaCache.clear(session.getId());
+
+        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
+    }
+
+    // 답변은 이미 커밋된 뒤라 캐시 추가 실패로 재시도 불가능한 요청 전체 실패를 만들지 않는다 — 로그만 남기고 삼킨다.
+    private void appendPriorQaSafely(Long sessionId, TestType currentAxis, Question question, String answerText) {
+        try {
+            priorQaCache.append(
+                    sessionId, currentAxis,
+                    new PriorTurn(question.getTurnLevel(), question.getContent(), answerText, currentAxis)
+            );
+        } catch (Exception e) {
+            log.error("[PRIOR QA CACHE] append 실패, 해당 턴은 캐시에서 누락됩니다: sessionId={}, axis={}", sessionId, currentAxis, e);
+        }
+    }
+
+    private void markQuestionPlayed(Question question, InterviewAnswerSubmitCommand command) {
+        try {
+            question.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec());
+        } catch (IllegalArgumentException e) {
+            throw new InterviewException(InterviewErrorCode.INVALID_PLAYBACK_RANGE);
+        }
+    }
+
+    private Float sttFailureRatio(TranscriptionResult transcription) {
+        if (transcription.totalSegmentCount() == 0) {
             return null;
         }
-        return handleTermination(session, question, command, terminationEndType);
+        return (float) transcription.failedSegmentCount() / transcription.totalSegmentCount();
     }
 
     private InterviewEndType resolveTerminationEndType(Question question, InterviewAnswerSubmitCommand command) {
@@ -143,18 +265,14 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command, InterviewEndType endType
     ) {
         Answer answer = buildTerminationAnswer(session, question, command);
-
-        try {
-            question.markPlayed(command.questionAudioStartSec(), command.questionAudioEndSec());
-        } catch (IllegalArgumentException e) {
-            throw new InterviewException(InterviewErrorCode.INVALID_PLAYBACK_RANGE);
-        }
+        markQuestionPlayed(question, command);
 
         InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
 
         String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
+        priorQaCache.clear(session.getId());
 
         triggerReportGeneration(session.getId());
 
@@ -165,7 +283,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         if (command.audioContent() == null) {
             return null;
         }
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent());
+        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text();
         try {
             return Answer.create(
                     session.getId(), question.getId(), sttText,
@@ -219,10 +337,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
         return liveTurnAnalyzer.analyze(
                 session.getId(),
+                session.getPortfolioId(),
                 summaryQuestion.getContent(),
                 sttText,
                 null,
                 session.getSnapshotJobType(),
+                List.of(),
                 List.of()
         );
     }
@@ -270,7 +390,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 draft.probeText(),
                 draft.echoQuote(),
                 draft.jdMatch(),
-                draft.strength()
+                draft.strength(),
+                draft.principleUsed()
         );
     }
 }

@@ -81,6 +81,12 @@ public class InterviewSessionJpaEntity {
     @Column(name = "weight_resilience")
     private Integer weightResilience;
 
+    @Column(name = "stt_failed_segment_count")
+    private Integer sttFailedSegmentCount;
+
+    @Column(name = "stt_total_segment_count")
+    private Integer sttTotalSegmentCount;
+
     public static InterviewSessionJpaEntity from(InterviewSession interviewSession) {
         InterviewSessionJpaEntity entity = new InterviewSessionJpaEntity();
         entity.id = interviewSession.getId();
@@ -101,6 +107,8 @@ public class InterviewSessionJpaEntity {
         entity.weightTradeoff = interviewSession.getWeightTradeoff();
         entity.weightConflict = interviewSession.getWeightConflict();
         entity.weightResilience = interviewSession.getWeightResilience();
+        entity.sttFailedSegmentCount = interviewSession.getSttFailedSegmentCount();
+        entity.sttTotalSegmentCount = interviewSession.getSttTotalSegmentCount();
         return entity;
     }
 
@@ -123,7 +131,9 @@ public class InterviewSessionJpaEntity {
                 weightConnection,
                 weightTradeoff,
                 weightConflict,
-                weightResilience
+                weightResilience,
+                sttFailedSegmentCount,
+                sttTotalSegmentCount
         );
     }
 }
