@@ -60,7 +60,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             new_probes 규칙:
             - 캐물지점은 반드시 방금 답변 내용에 근거해야 합니다.
             - probeText는 "무엇을 캐물을지"에 대한 내부 메모(질문 문장 아님), echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
-            - strength는 신호가 진할수록 high, 약하면 low로 답니다.
+            - strength는 반드시 high/mid/low 중 하나로만 답합니다(medium 등 다른 표현 금지).
+              신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑습니다.
 
             ceiling 규칙:
