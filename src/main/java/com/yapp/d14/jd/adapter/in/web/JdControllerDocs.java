@@ -25,6 +25,7 @@ public interface JdControllerDocs {
             description = "JD URL을 크롤링하고 OpenAI로 핵심 JD 내용을 정제해 Redis에 캐싱합니다.\n\n" +
                     "크롤링 실패, 추출된 본문 200자 미만, AI 정제 실패 중 하나라도 해당하면 `data.valid: false`로 응답합니다. " +
                     "이 경우 클라이언트는 JD 본문 직접 입력으로 폴백해야 합니다.\n\n" +
+                    "이미 캐싱된 URL이면 재크롤링 없이 캐시된 결과를 즉시 반환하며, 계정당 검증 성공 횟수는 1일 5회로 제한됩니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
@@ -83,6 +84,20 @@ public interface JdControllerDocs {
                                       "success": false,
                                       "code": "INVALID_JD_URL",
                                       "message": "올바른 URL 형식이 아니에요."
+                                    }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429",
+                    description = "1일 검증 횟수(5회) 초과",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "JD_VALIDATION_LIMIT_EXCEEDED",
+                                      "message": "공고 링크는 하루에 5번까지만 입력할 수 있어요"
                                     }
                                     """)
                     )
