@@ -43,7 +43,9 @@ public final class NextAxisSelector {
                 .filter(plan -> plan.getTier() == tier)
                 .filter(plan -> !plan.isCompleted())
                 .filter(plan -> plan.getTestType() != currentAxis)
-                .max(Comparator.comparing(plan -> weights.getOrDefault(plan.getTestType(), 0)))
+                .max(Comparator
+                        .comparing((InterviewAxisPlan plan) -> weights.getOrDefault(plan.getTestType(), 0))
+                        .thenComparing(plan -> plan.getTestType().name()))
                 .map(InterviewAxisPlan::getTestType);
     }
 
