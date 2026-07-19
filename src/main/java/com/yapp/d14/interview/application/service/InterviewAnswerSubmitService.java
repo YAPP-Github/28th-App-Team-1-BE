@@ -26,6 +26,7 @@ import java.util.concurrent.RejectedExecutionException;
 class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private static final int SUMMARY_TURN_LEVEL = 0;
+    private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
     private static final String SEED_QUESTION_TEXT = "조금 더 구체적으로 설명해 주실 수 있을까요?";
     private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
     private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
@@ -133,7 +134,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     }
 
     // SKIP 턴(5-1/5-3장): STT·캐물지점 추출·모순 감지를 생략하고 "스킵됨" 컨텍스트만 기록한다.
-    // select_next_axis/probe/질문 생성은 다음 이슈 범위라 다음 질문을 만들 수 없어 UNSUPPORTED_TURN_LEVEL로 응답한다.
     private InterviewAnswerSubmitResult handleSkippedTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
@@ -149,9 +149,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
         markQuestionPlayed(question, command);
 
-        interviewAnswerAnalyzePersister.persistSkipped(answer, question);
-        // TODO: 다음 질문 결정
-        throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of());
+        InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persistSkipped(
+                answer, question, plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
+        );
+
+        return buildNextQuestionResult(persisted, plan);
     }
 
     // 5-2~5-4장: STT 변환 → 누적 인식률 갱신(초과 시 STT_RESET) → run_live_turn 일반화 → 결과 영속화.
@@ -177,6 +180,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel());
         boolean hasContradiction = liveTurnResult.staleUpdates().stream()
                 .anyMatch(update -> update.reason() == QuestionCandidateStaleReason.CONTRADICTED);
+        boolean isUnusuallySpecific = isUnusuallySpecific(liveTurnResult.newProbes());
 
         Answer answer;
         try {
@@ -191,13 +195,16 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
         markQuestionPlayed(question, command);
 
-        interviewAnswerAnalyzePersister.persist(
-                session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel()
+        NextQuestionPlan plan = planNextQuestion(
+                session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific, newProbeCandidates
+        );
+        InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
+                session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
+                plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         );
         appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text());
 
-        // TODO: 다음 질문 결정
-        throw new InterviewException(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        return buildNextQuestionResult(persisted, plan);
     }
 
     // 5-2/6-2장: 세션 누적 STT 인식 실패율이 30%를 초과하면 완전 리셋(무효화)하고 즉시 세션을 종료한다.
@@ -355,6 +362,85 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 .filter(plan -> plan.getTestType() == nextAxis)
                 .findFirst()
                 .orElseThrow();
+    }
+
+    // 다음질문 계획
+    private record NextQuestionPlan(
+            InterviewAxisPlan nextAxisPlan,
+            InterviewAxisPlan completedAxisPlan,
+            QuestionCandidate selectedProbe,
+            Question nextQuestion,
+            int nextTurnLevel,
+            boolean isWrapUpForced
+    ) {
+    }
+
+    private NextQuestionPlan planNextQuestion(
+            InterviewSession session,
+            Question question,
+            InterviewAnswerSubmitCommand command,
+            boolean ceilingReached,
+            boolean hasRedFlag,
+            boolean isUnusuallySpecific,
+            List<QuestionCandidate> newProbeCandidates
+    ) {
+        TestType currentAxis = question.getTestType(); // 현재 축
+        boolean isWrapUpForced = Boolean.TRUE.equals(command.isWrapUp()); // 랩업 강제
+        int nextTurnLevel = question.getTurnLevel() + 1; // 다음 턴
+
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId()); // 축 계획 조회
+        TestType nextAxis = isWrapUpForced
+                ? currentAxis // 축 유지
+                : SelectNextAxis.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정
+
+        InterviewAxisPlan nextAxisPlan = findAxisPlan(axisPlans, nextAxis);
+        InterviewAxisPlan completedAxisPlan = null;
+        if (nextAxis != currentAxis) {
+            completedAxisPlan = findAxisPlan(axisPlans, currentAxis);
+            completedAxisPlan.markCompleted(); // 전환 확정
+        }
+
+        Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 후보 선택
+        String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장
+        int nextDepthLevel = nextAxis == currentAxis ? question.getDepthLevel() + 1 : 1; // 깊이 계산
+        Question nextQuestion = Question.create(
+                session.getId(), nextQuestionText, nextTurnLevel, nextDepthLevel, nextAxis, null, null, isWrapUpForced
+        ); // 질문 생성
+
+        return new NextQuestionPlan(
+                nextAxisPlan, completedAxisPlan, selectedProbe.orElse(null), nextQuestion, nextTurnLevel, isWrapUpForced
+        );
+    }
+
+    // 응답 변환
+    private InterviewAnswerSubmitResult buildNextQuestionResult(
+            InterviewAnswerAnalyzePersister.PersistResult persisted, NextQuestionPlan plan
+    ) {
+        return new InterviewAnswerSubmitResult(
+                persisted.answerId(),
+                new InterviewAnswerSubmitResult.NextQuestion(
+                        persisted.nextQuestion().getId(), plan.isWrapUpForced(), plan.nextTurnLevel(), persisted.nextQuestion().getDepthLevel()
+                ),
+                false,
+                null,
+                null
+        );
+    }
+
+    // 축 찾기
+    private InterviewAxisPlan findAxisPlan(List<InterviewAxisPlan> axisPlans, TestType testType) {
+        return axisPlans.stream()
+                .filter(plan -> plan.getTestType() == testType)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    // 구체 판정
+    private boolean isUnusuallySpecific(List<ProbeCandidateDraft> newProbes) {
+        long highStrengthCount = newProbes.stream()
+                .filter(probe -> probe.strength() == QuestionCandidateStrength.HIGH)
+                .count();
+        return highStrengthCount >= UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD;
     }
 
     // 선택 축(axis)의 기존 OPEN 후보와, 이번 턴에 새로 추출된 후보 중 같은 축인 것을 병합해 한 번에 선택한다.

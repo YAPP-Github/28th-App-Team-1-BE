@@ -122,7 +122,7 @@ class InterviewReportGenerateServiceTest {
     }
 
     private InterviewAxisPlan axisPlan(TestType testType, AxisTier tier) {
-        return InterviewAxisPlan.of(1L, 1L, testType, tier, 3, 0, LocalDateTime.now());
+        return InterviewAxisPlan.of(1L, 1L, testType, tier, 3, 0, false, LocalDateTime.now());
     }
 
     private QuestionCandidate contradictionCandidate(TestType testType, int originTurn, int contradictingTurn) {

@@ -15,6 +15,7 @@ public class InterviewAxisPlan {
     private final AxisTier tier;
     private final Integer budget;
     private Integer usedCount;
+    private boolean completed;
     private final LocalDateTime createdAt;
 
     @Builder(access = AccessLevel.PRIVATE)
@@ -25,6 +26,7 @@ public class InterviewAxisPlan {
             AxisTier tier,
             Integer budget,
             Integer usedCount,
+            boolean completed,
             LocalDateTime createdAt
     ) {
         this.id = id;
@@ -33,6 +35,7 @@ public class InterviewAxisPlan {
         this.tier = tier;
         this.budget = budget;
         this.usedCount = usedCount;
+        this.completed = completed;
         this.createdAt = createdAt;
     }
 
@@ -48,13 +51,21 @@ public class InterviewAxisPlan {
                 .tier(tier)
                 .budget(budget)
                 .usedCount(0)
+                .completed(false)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
 
-    // 이 축으로 질문을 하나 생성했을 때 호출 (5-6장): 예산 소진 여부 판단에 쓰이는 used_count 증가
     public void incrementUsedCount() {
         this.usedCount = this.usedCount + 1;
+    }
+
+    public void markCompleted() {
+        this.completed = true;
+    }
+
+    public boolean isCompleted() {
+        return completed;
     }
 
     public static InterviewAxisPlan of(
@@ -64,6 +75,7 @@ public class InterviewAxisPlan {
             AxisTier tier,
             Integer budget,
             Integer usedCount,
+            boolean completed,
             LocalDateTime createdAt
     ) {
         return InterviewAxisPlan.builder()
@@ -73,6 +85,7 @@ public class InterviewAxisPlan {
                 .tier(tier)
                 .budget(budget)
                 .usedCount(usedCount)
+                .completed(completed)
                 .createdAt(createdAt)
                 .build();
     }
