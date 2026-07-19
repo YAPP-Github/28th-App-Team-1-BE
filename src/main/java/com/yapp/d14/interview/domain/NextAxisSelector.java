@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class SelectNextAxis {
+public final class NextAxisSelector {
 
     public static TestType select(
             List<InterviewAxisPlan> axisPlans,

@@ -64,10 +64,6 @@ public class InterviewAxisPlan {
         this.completed = true;
     }
 
-    public boolean isCompleted() {
-        return completed;
-    }
-
     public static InterviewAxisPlan of(
             Long id,
             Long sessionId,

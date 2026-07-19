@@ -8,7 +8,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class SelectNextAxisTest {
+class NextAxisSelectorTest {
 
     private static InterviewAxisPlan plan(TestType testType, AxisTier tier, int budget, int usedCount, boolean completed) {
         InterviewAxisPlan plan = InterviewAxisPlan.create(1L, testType, tier, budget);
@@ -38,7 +38,7 @@ class SelectNextAxisTest {
                 plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
 
         assertThat(next).isEqualTo(TestType.DEPTH);
     }
@@ -50,7 +50,7 @@ class SelectNextAxisTest {
                 plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, true, true, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, true, true, false);
 
         assertThat(next).isEqualTo(TestType.DEPTH);
     }
@@ -62,7 +62,7 @@ class SelectNextAxisTest {
                 plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, true);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, true);
 
         assertThat(next).isEqualTo(TestType.DEPTH);
     }
@@ -75,7 +75,7 @@ class SelectNextAxisTest {
                 plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, false);
 
         assertThat(next).isEqualTo(TestType.BOUNDARY);
     }
@@ -88,7 +88,7 @@ class SelectNextAxisTest {
                 plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
 
         assertThat(next).isEqualTo(TestType.BOUNDARY);
     }
@@ -101,7 +101,7 @@ class SelectNextAxisTest {
                 plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
 
         assertThat(next).isEqualTo(TestType.TRADEOFF);
     }
@@ -115,7 +115,7 @@ class SelectNextAxisTest {
                 plan(TestType.CONNECTION, AxisTier.SUPPORT, 2, 0, false)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, false);
 
         assertThat(next).isEqualTo(TestType.CONNECTION);
     }
@@ -127,7 +127,7 @@ class SelectNextAxisTest {
                 plan(TestType.BOUNDARY, AxisTier.CORE, 3, 3, true)
         );
 
-        TestType next = SelectNextAxis.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, false);
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, false);
 
         assertThat(next).isEqualTo(TestType.DEPTH);
     }

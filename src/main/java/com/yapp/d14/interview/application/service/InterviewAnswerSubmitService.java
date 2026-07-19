@@ -391,7 +391,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId()); // 축 계획 조회
         TestType nextAxis = isWrapUpForced
                 ? currentAxis // 축 유지
-                : SelectNextAxis.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정
+                : NextAxisSelector.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정
 
         InterviewAxisPlan nextAxisPlan = findAxisPlan(axisPlans, nextAxis);
         InterviewAxisPlan completedAxisPlan = null;
