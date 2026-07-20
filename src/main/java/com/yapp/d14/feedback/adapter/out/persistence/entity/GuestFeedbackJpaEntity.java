@@ -42,9 +42,6 @@ public class GuestFeedbackJpaEntity {
     @BatchSize(size = 100)
     private List<AttitudeRatingEmbeddable> ratings = new ArrayList<>();
 
-    @Column(name = "overall_feedback", columnDefinition = "TEXT")
-    private String overallFeedback;
-
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
@@ -57,7 +54,6 @@ public class GuestFeedbackJpaEntity {
         entity.ratings = guestFeedback.getRatings().stream()
                 .map(AttitudeRatingEmbeddable::from)
                 .toList();
-        entity.overallFeedback = guestFeedback.getOverallFeedback();
         entity.submittedAt = guestFeedback.getSubmittedAt();
         return entity;
     }
@@ -69,7 +65,6 @@ public class GuestFeedbackJpaEntity {
                 nickname,
                 deviceId,
                 ratings.stream().map(AttitudeRatingEmbeddable::toDomain).toList(),
-                overallFeedback,
                 submittedAt
         );
     }

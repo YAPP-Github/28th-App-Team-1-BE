@@ -93,7 +93,7 @@ class GuestFeedbackSubmitServiceIntegrationTest {
 
     private GuestFeedbackSubmitCommand commandWith(String token, String deviceId) {
         return GuestFeedbackSubmitCommand.of(
-                token, deviceId, "지인", List.of(new GuestFeedbackSubmitCommand.RawRating("GAZE", 2, null)), "전반 피드백"
+                token, deviceId, "지인", List.of(new GuestFeedbackSubmitCommand.RawRating("GAZE", 2, null))
         );
     }
 

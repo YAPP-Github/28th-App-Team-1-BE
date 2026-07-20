@@ -12,8 +12,7 @@ public record GuestFeedbackSubmitCommand(
         String token,
         String deviceId,
         String nickname,
-        List<Rating> ratings,
-        String overallFeedback
+        List<Rating> ratings
 ) {
 
     public record Rating(AttitudeAxis axis, int level, String comment) {
@@ -23,8 +22,7 @@ public record GuestFeedbackSubmitCommand(
             String token,
             String deviceId,
             String nickname,
-            List<RawRating> rawRatings,
-            String overallFeedback
+            List<RawRating> rawRatings
     ) {
         if (deviceId == null || deviceId.isBlank()) {
             throw new FeedbackException(FeedbackErrorCode.MISSING_DEVICE_ID);
@@ -36,7 +34,7 @@ public record GuestFeedbackSubmitCommand(
                 .map(GuestFeedbackSubmitCommand::parseRating)
                 .toList();
         requireDistinctAxes(ratings);
-        return new GuestFeedbackSubmitCommand(token, deviceId, nickname, ratings, overallFeedback);
+        return new GuestFeedbackSubmitCommand(token, deviceId, nickname, ratings);
     }
 
     private static void requireDistinctAxes(List<Rating> ratings) {

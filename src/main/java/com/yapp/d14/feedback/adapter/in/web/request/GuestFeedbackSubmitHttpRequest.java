@@ -14,10 +14,7 @@ public record GuestFeedbackSubmitHttpRequest(
         String nickname,
 
         @Schema(description = "항목별 척도 응답. 지정된 항목을 모두 채워야 제출 성립.")
-        @NotEmpty @Valid List<Rating> ratings,
-
-        @Schema(description = "전반 피드백(기타). 선택 입력.", example = "전체적으로 편안해 보였어요.")
-        String overallFeedback
+        @NotEmpty @Valid List<Rating> ratings
 ) {
 
     public record Rating(
@@ -40,6 +37,6 @@ public record GuestFeedbackSubmitHttpRequest(
         List<GuestFeedbackSubmitCommand.RawRating> rawRatings = ratings.stream()
                 .map(r -> new GuestFeedbackSubmitCommand.RawRating(r.axis(), r.level(), r.comment()))
                 .toList();
-        return GuestFeedbackSubmitCommand.of(token, deviceId, nickname, rawRatings, overallFeedback);
+        return GuestFeedbackSubmitCommand.of(token, deviceId, nickname, rawRatings);
     }
 }
