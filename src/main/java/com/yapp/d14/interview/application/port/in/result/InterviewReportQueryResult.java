@@ -3,7 +3,6 @@ package com.yapp.d14.interview.application.port.in.result;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.RedFlagType;
 import com.yapp.d14.interview.domain.ReportStatus;
-import com.yapp.d14.interview.domain.TestType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,7 +35,6 @@ public record InterviewReportQueryResult(
     public record Card(
             int axisOrder,
             int depthLevel,
-            TestType testType,
             String questionText,
             String transcript,
             List<HighlightSpan> highlightSpans,

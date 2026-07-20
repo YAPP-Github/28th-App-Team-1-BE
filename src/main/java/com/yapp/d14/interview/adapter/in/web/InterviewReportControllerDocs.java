@@ -71,7 +71,6 @@ public interface InterviewReportControllerDocs {
                                                   {
                                                     "axisOrder": 1,
                                                     "depthLevel": 1,
-                                                    "testType": "DEPTH",
                                                     "questionText": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요. 무엇이 문제였나요?",
                                                     "transcript": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.",
                                                     "highlightSpans": null,
@@ -83,7 +82,6 @@ public interface InterviewReportControllerDocs {
                                                   {
                                                     "axisOrder": 1,
                                                     "depthLevel": 2,
-                                                    "testType": "DEPTH",
                                                     "questionText": "Q. 응답이 느렸던 근본 원인은 무엇이었고, 어떻게 진단하셨나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
@@ -111,7 +109,6 @@ public interface InterviewReportControllerDocs {
                                                   {
                                                     "axisOrder": 2,
                                                     "depthLevel": 1,
-                                                    "testType": "BOUNDARY",
                                                     "questionText": "Q. 트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
@@ -146,7 +143,6 @@ public interface InterviewReportControllerDocs {
                                                   {
                                                     "axisOrder": 1,
                                                     "depthLevel": 1,
-                                                    "testType": "BOUNDARY",
                                                     "questionText": "Q. 장애가 났을 때 어디부터 확인하시나요?",
                                                     "transcript": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...",
                                                     "highlightSpans": null,
@@ -198,7 +194,6 @@ public interface InterviewReportControllerDocs {
                                                   {
                                                     "axisOrder": 1,
                                                     "depthLevel": 1,
-                                                    "testType": "TRADEOFF",
                                                     "questionText": "Q. 그 결정을 내리기까지 어떤 대안들을 검토하셨나요?",
                                                     "transcript": "제가 Redis 캐시를 도입했습니다...",
                                                     "highlightSpans": null,

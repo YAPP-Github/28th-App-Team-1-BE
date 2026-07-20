@@ -77,9 +77,6 @@ public record InterviewReportHttpResponse(
             @Schema(description = "같은 항목(축) 안에서 이 카드(턴)의 순서(1부터) — 화면 표시용 \"질문 {axisOrder}-{depthLevel}\"의 뒷자리")
             int depthLevel,
 
-            @Schema(description = "내부 평가 항목(축) 코드 — 사용자에게 라벨을 직접 노출하지 않음")
-            String testType,
-
             @Schema(description = "질문 텍스트")
             String questionText,
 
@@ -106,7 +103,6 @@ public record InterviewReportHttpResponse(
             return new Card(
                     card.axisOrder(),
                     card.depthLevel(),
-                    card.testType().name(),
                     card.questionText(),
                     card.transcript(),
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
