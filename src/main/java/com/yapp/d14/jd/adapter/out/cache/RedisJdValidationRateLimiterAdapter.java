@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.UUID;
@@ -17,7 +18,6 @@ import java.util.UUID;
 class RedisJdValidationRateLimiterAdapter implements JdValidationRateLimiter {
 
     private static final String KEY_PREFIX = "jd:rate:";
-    private static final Duration TTL = Duration.ofHours(25);
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
 
     // INCR과 EXPIRE를 하나의 스크립트로 묶어 원자적으로 실행 (TTL 유실 방지)
@@ -39,7 +39,12 @@ class RedisJdValidationRateLimiterAdapter implements JdValidationRateLimiter {
 
     @Override
     public void increment(UUID userId) {
-        redisTemplate.execute(INCREMENT_SCRIPT, Collections.singletonList(key(userId)), String.valueOf(TTL.toSeconds()));
+        redisTemplate.execute(INCREMENT_SCRIPT, Collections.singletonList(key(userId)), String.valueOf(secondsUntilMidnight()));
+    }
+
+    private long secondsUntilMidnight() {
+        LocalDateTime now = LocalDateTime.now(ZONE);
+        return Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay()).getSeconds();
     }
 
     private String key(UUID userId) {
