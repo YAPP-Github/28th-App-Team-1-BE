@@ -82,3 +82,9 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "discord_webhook_url" {
+  description = "에러 로그(level=ERROR) 알림을 보낼 Discord 웹훅 URL"
+  type        = string
+  sensitive   = true
+}

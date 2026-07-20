@@ -61,3 +61,8 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+variable "discord_webhook_url" {
+  type      = string
+  sensitive = true
+}
