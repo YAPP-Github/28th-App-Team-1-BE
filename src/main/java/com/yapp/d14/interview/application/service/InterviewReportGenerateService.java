@@ -72,6 +72,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
 
     private record Turn(
             int turnNumber,
+            Long questionId,
+            int depthLevel,
             TestType testType,
             String questionContent,
             String answerText,
@@ -143,6 +145,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                     Answer answer = answersByQuestionId.get(question.getId());
                     return new Turn(
                             question.getTurnLevel(),
+                            question.getId(),
+                            question.getDepthLevel(),
                             question.getTestType(),
                             question.getContent(),
                             answer.getSttText(),
@@ -325,7 +329,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                         axisEvaluation.getTestType(),
                         turnsByAxis.getOrDefault(axisEvaluation.getTestType(), List.of()).stream()
                                 .map(turn -> new ReportCardContentContext.Turn(
-                                        turn.questionContent(), turn.answerText(), turn.skipped(), turn.answerStartSec(), turn.answerEndSec()
+                                        turn.questionId(), turn.depthLevel(), turn.questionContent(),
+                                        turn.answerText(), turn.skipped(), turn.answerStartSec(), turn.answerEndSec()
                                 ))
                                 .toList(),
                         axisEvaluation.getRationale(),
@@ -334,13 +339,14 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                 ))
                 .toList();
 
-        log.info("[INTERVIEW REPORT] 리포트 카드 생성 시작: sessionId={}, cardCount={}", sessionId, axisCards.size());
+        int turnCount = axisCards.stream().mapToInt(card -> card.turns().size()).sum();
+        log.info("[INTERVIEW REPORT] 리포트 카드 생성 시작: sessionId={}, axisCount={}, turnCount={}", sessionId, axisCards.size(), turnCount);
         List<ReportCardDraft> drafts = callWithRetry(() -> reportCardContentGenerator.generate(new ReportCardContentContext(axisCards)));
-        log.info("[INTERVIEW REPORT] 리포트 카드 생성 완료: sessionId={}", sessionId);
+        log.info("[INTERVIEW REPORT] 리포트 카드 생성 완료: sessionId={}, cardCount={}", sessionId, drafts.size());
 
         return drafts.stream()
                 .map(draft -> ReportCard.create(
-                        sessionId, draft.testType(), draft.questionIntentTranslation(),
+                        sessionId, draft.questionId(), draft.depthLevel(), draft.testType(), draft.questionIntentTranslation(),
                         draft.highlightSpans(), draft.actionKeywords(), draft.rewriteSuggestion()
                 ))
                 .toList();

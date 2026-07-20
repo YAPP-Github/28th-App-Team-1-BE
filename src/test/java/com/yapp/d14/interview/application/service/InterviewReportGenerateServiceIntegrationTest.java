@@ -196,7 +196,7 @@ class InterviewReportGenerateServiceIntegrationTest {
         ));
         given(reportCardContentGenerator.generate(any())).willReturn(List.of(
                 new ReportCardDraft(
-                        TestType.DEPTH, "이 질문은 실패 상황에서 데이터 정합성을 어떻게 보장했는지 확인하려는 의도예요.",
+                        depthQuestionId, 1, TestType.DEPTH, "이 질문은 실패 상황에서 데이터 정합성을 어떻게 보장했는지 확인하려는 의도예요.",
                         List.of(new HighlightSpan(new TimeRange(12.0f, 38.0f), HighlightTone.GOOD)),
                         List.of(new ActionKeyword(
                                 "멱등성 보장", "재시도 시 중복 결제가 발생할 위험이 있었어요.",
@@ -206,7 +206,7 @@ class InterviewReportGenerateServiceIntegrationTest {
                         null
                 ),
                 new ReportCardDraft(
-                        TestType.BOUNDARY, "이 질문은 실제 트래픽 규모와 병목 지점을 정확히 파악하고 있는지 확인하려는 의도예요.",
+                        boundaryQuestionId, 1, TestType.BOUNDARY, "이 질문은 실제 트래픽 규모와 병목 지점을 정확히 파악하고 있는지 확인하려는 의도예요.",
                         List.of(), List.of(), null
                 )
         ));

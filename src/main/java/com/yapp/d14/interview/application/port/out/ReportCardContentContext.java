@@ -20,6 +20,8 @@ public record ReportCardContentContext(
     }
 
     public record Turn(
+            Long questionId,
+            int depthLevel,
             String questionContent,
             String answerText,
             boolean skipped,

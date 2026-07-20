@@ -14,6 +14,8 @@ public class ReportCard {
 
     private final Long id;
     private final Long sessionId;
+    private final Long questionId;
+    private final int depthLevel;
     private final TestType testType;
     private final String questionIntentTranslation;
     private final List<HighlightSpan> highlightSpans;
@@ -25,6 +27,8 @@ public class ReportCard {
     private ReportCard(
             Long id,
             Long sessionId,
+            Long questionId,
+            int depthLevel,
             TestType testType,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans,
@@ -37,6 +41,8 @@ public class ReportCard {
         }
         this.id = id;
         this.sessionId = sessionId;
+        this.questionId = questionId;
+        this.depthLevel = depthLevel;
         this.testType = testType;
         this.questionIntentTranslation = questionIntentTranslation;
         this.highlightSpans = highlightSpans;
@@ -47,6 +53,8 @@ public class ReportCard {
 
     public static ReportCard create(
             Long sessionId,
+            Long questionId,
+            int depthLevel,
             TestType testType,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans,
@@ -55,6 +63,8 @@ public class ReportCard {
     ) {
         return ReportCard.builder()
                 .sessionId(sessionId)
+                .questionId(questionId)
+                .depthLevel(depthLevel)
                 .testType(testType)
                 .questionIntentTranslation(questionIntentTranslation)
                 .highlightSpans(highlightSpans)
@@ -67,6 +77,8 @@ public class ReportCard {
     public static ReportCard of(
             Long id,
             Long sessionId,
+            Long questionId,
+            int depthLevel,
             TestType testType,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans,
@@ -77,6 +89,8 @@ public class ReportCard {
         return ReportCard.builder()
                 .id(id)
                 .sessionId(sessionId)
+                .questionId(questionId)
+                .depthLevel(depthLevel)
                 .testType(testType)
                 .questionIntentTranslation(questionIntentTranslation)
                 .highlightSpans(highlightSpans)

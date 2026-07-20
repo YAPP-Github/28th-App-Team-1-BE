@@ -35,6 +35,12 @@ public class ReportCardJpaEntity {
     @Column(name = "session_id", nullable = false)
     private Long sessionId;
 
+    @Column(name = "question_id", nullable = false)
+    private Long questionId;
+
+    @Column(name = "depth_level", nullable = false)
+    private int depthLevel;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "test_type", nullable = false)
     private TestType testType;
@@ -65,6 +71,8 @@ public class ReportCardJpaEntity {
         ReportCardJpaEntity entity = new ReportCardJpaEntity();
         entity.id = reportCard.getId();
         entity.sessionId = reportCard.getSessionId();
+        entity.questionId = reportCard.getQuestionId();
+        entity.depthLevel = reportCard.getDepthLevel();
         entity.testType = reportCard.getTestType();
         entity.questionIntentTranslation = reportCard.getQuestionIntentTranslation();
         entity.highlightSpans = reportCard.getHighlightSpans().stream()
@@ -88,6 +96,8 @@ public class ReportCardJpaEntity {
         return ReportCard.of(
                 id,
                 sessionId,
+                questionId,
+                depthLevel,
                 testType,
                 questionIntentTranslation,
                 highlightSpans.stream().map(HighlightSpanEmbeddable::toDomain).toList(),

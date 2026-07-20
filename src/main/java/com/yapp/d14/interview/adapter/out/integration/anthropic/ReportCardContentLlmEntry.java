@@ -4,6 +4,8 @@ import java.util.List;
 
 record ReportCardContentLlmEntry(
         String axis,
+        Long questionId,
+        int depthLevel,
         String questionIntentTranslation,
         List<HighlightSpanLlmEntry> highlightSpans,
         List<ActionKeywordLlmEntry> actionKeywords,
