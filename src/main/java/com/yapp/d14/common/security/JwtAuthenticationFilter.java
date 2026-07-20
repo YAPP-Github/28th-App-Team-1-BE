@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,8 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final String USER_ID_MDC_KEY = "userId";
 
     private final TokenParser tokenParser;
     private final ObjectMapper objectMapper;
@@ -39,8 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        UUID userId;
         try {
-            UUID userId = tokenParser.parse(token);
+            userId = tokenParser.parse(token);
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userId, null, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -55,7 +59,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        filterChain.doFilter(request, response);
+        MDC.put(USER_ID_MDC_KEY, userId.toString());
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            MDC.remove(USER_ID_MDC_KEY);
+        }
     }
 
     private void writeErrorResponse(HttpServletResponse response, int status, String code, String message)

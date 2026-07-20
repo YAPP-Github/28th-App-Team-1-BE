@@ -3,7 +3,11 @@ spring:
     name: d14
 
   profiles:
-    active: dev
+    # 로컬 개발 기본값. 그룹 설정으로 dev의 공통 인프라 설정(datasource/redis/ai 등)도 함께 로드된다.
+    # EC2 배포 환경은 docker-compose 가 SPRING_PROFILES_ACTIVE=dev 로 덮어써 local 마커가 빠지므로 JSON 로깅으로 동작한다.
+    active: local
+    group:
+      local: dev
 
   servlet:
     multipart:

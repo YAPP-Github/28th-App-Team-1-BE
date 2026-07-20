@@ -53,6 +53,9 @@ dependencies {
     // .env 로컬 개발용
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
+    // 배포 환경(EC2) JSON 구조화 로깅 → CloudWatch 수집/검색·에러 필터링용
+    implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
+
     // PDF 페이지 수 검증 (Tika가 요구하는 pdfbox 버전과 맞춤)
     implementation 'org.apache.pdfbox:pdfbox:3.0.5'
     // PDF 텍스트 추출/검증
