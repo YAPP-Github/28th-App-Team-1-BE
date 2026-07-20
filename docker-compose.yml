@@ -68,6 +68,12 @@ services:
       # APPLE_TEAM_ID: ${APPLE_TEAM_ID}
       # APPLE_KEY_ID: ${APPLE_KEY_ID}
       # APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /d14/app
+        awslogs-stream: app
     depends_on:
       postgres:
         condition: service_healthy

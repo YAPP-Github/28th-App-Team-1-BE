@@ -16,24 +16,6 @@ terraform {
 }
 
 # ──────────────────────────────────────────────────────────────
-# AMI: Ubuntu 22.04 LTS
-# ──────────────────────────────────────────────────────────────
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-# ──────────────────────────────────────────────────────────────
 # VPC & Networking
 # ──────────────────────────────────────────────────────────────
 resource "aws_vpc" "main" {
@@ -171,9 +153,41 @@ resource "aws_iam_role_policy" "s3_access" {
   })
 }
 
+resource "aws_iam_role_policy" "cloudwatch_logs" {
+  name = "${var.project_name}-cloudwatch-logs"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        # 로그그룹은 아래 aws_cloudwatch_log_group.app 이 Terraform으로만 생성/관리한다.
+        # (docker awslogs-create-group 미사용 — 드라이버가 자동 생성하면 retention 미설정 상태로 만들어짐)
+        Resource = aws_cloudwatch_log_group.app.arn
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "${var.project_name}-ec2-profile"
   role = aws_iam_role.ec2_role.name
+}
+
+# ──────────────────────────────────────────────────────────────
+# CloudWatch Logs (앱 stdout → docker awslogs 드라이버 수집)
+# ──────────────────────────────────────────────────────────────
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/${var.project_name}/app"
+  retention_in_days = var.log_retention_days
+
+  tags = { Name = "${var.project_name}-app-logs" }
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -268,7 +282,7 @@ resource "aws_ecr_lifecycle_policy" "app" {
 # EC2 Spot Instance
 # ──────────────────────────────────────────────────────────────
 resource "aws_spot_instance_request" "app" {
-  ami                            = data.aws_ami.ubuntu.id
+  ami                            = var.ami_id
   instance_type                  = var.instance_type
   key_name                       = var.ec2_key_pair_name
   subnet_id                      = aws_subnet.public.id

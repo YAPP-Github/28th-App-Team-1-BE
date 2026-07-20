@@ -41,8 +41,10 @@ module "app" {
   ec2_key_pair_name       = var.ec2_key_pair_name
   allowed_ssh_cidr        = var.allowed_ssh_cidr
   instance_type           = var.instance_type
+  ami_id                  = var.ami_id
   spot_max_price          = var.spot_max_price
   root_volume_size        = var.root_volume_size
   s3_bucket_suffix        = var.s3_bucket_suffix
   s3_cors_allowed_origins = var.s3_cors_allowed_origins
+  log_retention_days      = var.log_retention_days
 }
