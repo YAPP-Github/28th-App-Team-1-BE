@@ -9,7 +9,6 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -145,7 +144,7 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
 
     private static String loadAxesYaml() {
         try {
-            return StreamUtils.copyToString(new ClassPathResource(AXES_YAML_PATH).getInputStream(), StandardCharsets.UTF_8);
+            return new ClassPathResource(AXES_YAML_PATH).getContentAsString(StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("axes.yaml 로드에 실패했어요.", e);
         }
