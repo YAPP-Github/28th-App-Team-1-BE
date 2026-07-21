@@ -13,7 +13,11 @@ exports.handler = async (event) => {
         zlib.gunzipSync(Buffer.from(event.awslogs.data, 'base64')).toString('utf8')
     );
 
-    await Promise.all(payload.logEvents.map((logEvent) => sendToDiscord(toDiscordPayload(logEvent))));
+    // Discord 웹훅은 레이트리밋이 낮아 병렬 전송 시 429가 발생하기 쉽고,
+    // 순서 보장·에러 전파를 위해서도 이벤트 순서대로 순차 전송한다.
+    for (const logEvent of payload.logEvents) {
+        await sendToDiscord(toDiscordPayload(logEvent));
+    }
 };
 
 function toDiscordPayload(logEvent) {
@@ -51,15 +55,27 @@ function truncate(text, maxLength) {
     return text.length > maxLength ? text.slice(0, maxLength) + '\n... (truncated)' : text;
 }
 
-async function sendToDiscord(body) {
+const MAX_RETRIES = 3;
+
+async function sendToDiscord(body, attempt = 0) {
     const response = await fetch(DISCORD_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
 
+    if (response.status === 429 && attempt < MAX_RETRIES) {
+        const retryAfterSeconds = Number(response.headers.get('retry-after')) || 1;
+        await sleep(retryAfterSeconds * 1000);
+        return sendToDiscord(body, attempt + 1);
+    }
+
     if (!response.ok) {
         const text = await response.text();
         throw new Error(`Discord webhook 전송 실패 (${response.status}): ${text}`);
     }
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

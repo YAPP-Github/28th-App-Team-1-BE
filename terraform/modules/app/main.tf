@@ -168,9 +168,14 @@ resource "aws_iam_role_policy" "cloudwatch_logs" {
         Effect = "Allow"
         Action = [
           "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "logs:DescribeLogStreams"
+          "logs:PutLogEvents"
         ]
+        # 로그 스트림 단위 액션이므로 리소스도 스트림 레벨(:*)로 지정한다.
+        Resource = "${aws_cloudwatch_log_group.app.arn}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = ["logs:DescribeLogStreams"]
         # 로그그룹은 아래 aws_cloudwatch_log_group.app 이 Terraform으로만 생성/관리한다.
         # (docker awslogs-create-group 미사용 — 드라이버가 자동 생성하면 retention 미설정 상태로 만들어짐)
         Resource = aws_cloudwatch_log_group.app.arn
