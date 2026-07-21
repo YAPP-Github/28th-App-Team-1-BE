@@ -8,6 +8,8 @@ import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.application.port.out.TokenRepository;
 import com.yapp.d14.auth.exception.AuthErrorCode;
 import com.yapp.d14.auth.exception.AuthException;
+import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
+import com.yapp.d14.user.application.port.in.result.UserProfileResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ class TokenReissueService implements TokenReissueUseCase {
 
     private final JwtProvider jwtProvider;
     private final TokenRepository tokenRepository;
+    private final UserProfileQueryUseCase userProfileQueryUseCase;
 
     @Override
     public AuthToken reissue(TokenReissueCommand command) {
@@ -47,6 +50,8 @@ class TokenReissueService implements TokenReissueUseCase {
         String newRefreshToken = jwtProvider.issueRefreshToken(claims.userId(), claims.provider());
         tokenRepository.save(claims.userId(), newRefreshToken);
 
-        return new AuthToken(newAccessToken, newRefreshToken);
+        UserProfileResult profile = userProfileQueryUseCase.getProfile(claims.userId());
+
+        return new AuthToken(newAccessToken, newRefreshToken, profile);
     }
 }

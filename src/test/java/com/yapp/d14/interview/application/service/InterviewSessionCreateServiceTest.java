@@ -11,6 +11,7 @@ import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketAvailabilityCheckUseCase;
 import com.yapp.d14.ticket.exception.TicketErrorCode;
 import com.yapp.d14.ticket.exception.TicketException;
+import com.yapp.d14.user.application.port.in.UserProfileInitializeUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -53,6 +54,9 @@ class InterviewSessionCreateServiceTest {
     @Mock
     private JdContentQueryUseCase jdContentQueryUseCase;
 
+    @Mock
+    private UserProfileInitializeUseCase userProfileInitializeUseCase;
+
     @InjectMocks
     private InterviewSessionCreateService service;
 
@@ -79,10 +83,11 @@ class InterviewSessionCreateServiceTest {
         assertThat(result.status()).isEqualTo(InterviewSessionStatus.PREPARING);
 
         InOrder inOrder = inOrder(
-                ticketAvailabilityCheckUseCase, interviewSessionCreateValidator,
+                ticketAvailabilityCheckUseCase, userProfileInitializeUseCase, interviewSessionCreateValidator,
                 interviewSessionPersister, interviewSessionPreloadUseCase
         );
         inOrder.verify(ticketAvailabilityCheckUseCase).checkAvailable(userId);
+        inOrder.verify(userProfileInitializeUseCase).initializeIfAbsent(userId, "BACKEND", 8);
         inOrder.verify(interviewSessionCreateValidator).validate(command);
         inOrder.verify(interviewSessionPersister).persist(any(), any(), any(), any());
         inOrder.verify(interviewSessionPreloadUseCase).preload(1L);
@@ -95,6 +100,7 @@ class InterviewSessionCreateServiceTest {
 
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(TicketException.class);
 
+        verify(userProfileInitializeUseCase, never()).initializeIfAbsent(any(), any(), any());
         verify(interviewSessionCreateValidator, never()).validate(any());
         verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());

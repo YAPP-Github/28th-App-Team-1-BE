@@ -18,7 +18,7 @@ class SocialUserProvisionService {
     public User provision(Provider provider, SocialUserInfo userInfo) {
         return userRepository.findByProviderAndProviderId(provider, userInfo.providerId())
                 .orElseGet(() -> userRepository.save(
-                        User.create(userInfo.email(), userInfo.name(), provider, userInfo.providerId())
+                        User.create(userInfo.email(), provider, userInfo.providerId())
                 ));
     }
 }
