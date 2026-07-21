@@ -246,13 +246,13 @@ class InterviewReportGenerateServiceLlmE2eTest {
         for (ReportCard c : reportCards) {
             log.info("[CARD] {} intent={}", c.getTestType(), c.getQuestionIntentTranslation());
             for (HighlightSpan h : c.getHighlightSpans()) {
-                log.info("    highlight {} [{}~{}]", h.tone(), h.range().startSec(), h.range().endSec());
-            }
-            for (ActionKeyword k : c.getActionKeywords()) {
-                log.info("    keyword({}) {} - {}", k.priority(), k.keyword(), k.applicationMethod());
-            }
-            if (c.getRewriteSuggestion() != null) {
-                log.info("    rewrite: {} -> {}", c.getRewriteSuggestion().originalQuote(), c.getRewriteSuggestion().rewrittenText());
+                log.info("    highlight {} [{}~{}]", h.tone(), h.range().startIndex(), h.range().endIndex());
+                for (ActionKeyword k : h.actionKeywords()) {
+                    log.info("        keyword: {} - {}", k.keyword(), k.suggestion());
+                    if (k.rewrittenText() != null) {
+                        log.info("        rewrittenText: {}", k.rewrittenText());
+                    }
+                }
             }
         }
         log.info("===============================================");

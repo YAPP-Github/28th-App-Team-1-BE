@@ -24,9 +24,7 @@ public record ReportCardContentContext(
             int depthLevel,
             String questionContent,
             String answerText,
-            boolean skipped,
-            Float answerStartSec,
-            Float answerEndSec
+            boolean skipped
     ) {
     }
 }

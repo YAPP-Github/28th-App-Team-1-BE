@@ -7,23 +7,21 @@ record ReportCardContentLlmEntry(
         Long questionId,
         int depthLevel,
         String questionIntentTranslation,
-        List<HighlightSpanLlmEntry> highlightSpans,
-        List<ActionKeywordLlmEntry> actionKeywords,
-        RewriteSuggestionLlmEntry rewriteSuggestion
+        List<HighlightSpanLlmEntry> highlightSpans
 ) {
 
-    record HighlightSpanLlmEntry(Float startSec, Float endSec, String tone) {
+    record HighlightSpanLlmEntry(
+            int startIndex,
+            int endIndex,
+            String tone,
+            List<ActionKeywordLlmEntry> actionKeywords
+    ) {
     }
 
     record ActionKeywordLlmEntry(
             String keyword,
-            String problemAnalysis,
-            String improvementReason,
-            String applicationMethod,
-            int priority
+            String suggestion,
+            String rewrittenText
     ) {
-    }
-
-    record RewriteSuggestionLlmEntry(String originalQuote, String rewrittenText) {
     }
 }

@@ -330,7 +330,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                         turnsByAxis.getOrDefault(axisEvaluation.getTestType(), List.of()).stream()
                                 .map(turn -> new ReportCardContentContext.Turn(
                                         turn.questionId(), turn.depthLevel(), turn.questionContent(),
-                                        turn.answerText(), turn.skipped(), turn.answerStartSec(), turn.answerEndSec()
+                                        turn.answerText(), turn.skipped()
                                 ))
                                 .toList(),
                         axisEvaluation.getRationale(),
@@ -347,7 +347,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         return drafts.stream()
                 .map(draft -> ReportCard.create(
                         sessionId, draft.questionId(), draft.depthLevel(), draft.testType(), draft.questionIntentTranslation(),
-                        draft.highlightSpans(), draft.actionKeywords(), draft.rewriteSuggestion()
+                        draft.highlightSpans()
                 ))
                 .toList();
     }
