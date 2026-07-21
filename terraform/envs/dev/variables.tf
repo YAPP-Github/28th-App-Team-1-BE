@@ -32,6 +32,11 @@ variable "instance_type" {
   default = "t3.micro"
 }
 
+variable "ami_id" {
+  type    = string
+  default = "ami-0afe1fd15675c3f15"
+}
+
 variable "spot_max_price" {
   type    = string
   default = "0.008"
@@ -50,4 +55,14 @@ variable "s3_bucket_suffix" {
 variable "s3_cors_allowed_origins" {
   type    = list(string)
   default = ["*"]
+}
+
+variable "log_retention_days" {
+  type    = number
+  default = 14
+}
+
+variable "discord_webhook_url" {
+  type      = string
+  sensitive = true
 }

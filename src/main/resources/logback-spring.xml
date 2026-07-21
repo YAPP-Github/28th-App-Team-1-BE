@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Spring Boot 기본 로그 패턴/색상 프로퍼티 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!--
+      로컬 개발(local 프로파일): 사람이 터미널에서 읽는 평문 콘솔.
+      기본 활성 프로파일이 local 이므로 개발자는 별도 설정 없이 이 출력을 본다.
+    -->
+    <springProfile name="local">
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!--
+      배포 환경(local 이 아닌 모든 프로파일, 현재는 EC2 의 dev):
+      컨테이너 stdout 으로 JSON 을 출력한다. docker awslogs 드라이버가 그대로 CloudWatch 로 전달하며,
+      CloudWatch 는 level 등 필드 기반으로 검색/에러 필터링(Subscription Filter)을 할 수 있다.
+      MDC 값(traceId/userId 등)은 LogstashEncoder 가 기본적으로 모두 포함한다.
+    -->
+    <springProfile name="!local">
+        <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>false</includeContext>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="JSON"/>
+        </root>
+    </springProfile>
+</configuration>

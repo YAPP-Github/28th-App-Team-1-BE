@@ -29,3 +29,7 @@ output "vpc_id" {
 output "ssh_command" {
   value = module.app.ssh_command
 }
+
+output "cloudwatch_log_group_name" {
+  value = module.app.cloudwatch_log_group_name
+}

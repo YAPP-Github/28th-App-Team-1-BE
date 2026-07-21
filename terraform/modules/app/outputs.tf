@@ -37,3 +37,8 @@ output "ssh_command" {
   description = "EC2 SSH 접속 명령어"
   value       = "ssh -i ~/.ssh/${var.ec2_key_pair_name}.pem ubuntu@${aws_eip.app.public_ip}"
 }
+
+output "cloudwatch_log_group_name" {
+  description = "앱 로그가 쌓이는 CloudWatch 로그그룹 이름"
+  value       = aws_cloudwatch_log_group.app.name
+}
