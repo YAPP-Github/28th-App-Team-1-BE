@@ -59,6 +59,8 @@ spring:
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}
+  access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:10800000}
+  refresh-token-expiry-ms: ${JWT_REFRESH_TOKEN_EXPIRY_MS:604800000}
 
 apple:
   client-id: ${APPLE_CLIENT_ID}
