@@ -5,7 +5,10 @@ import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.out.PdfMetadataReader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
+import com.yapp.d14.portfolio.domain.Portfolio;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
+import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
+import com.yapp.d14.portfolio.exception.PortfolioException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,9 +21,11 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +62,45 @@ class PortfolioRegisterServiceTest {
         assertThat(result.status()).isEqualTo(PortfolioStatus.PROCESSING);
         verify(portfolioProcessUseCase).process(userId, result.portfolioId(), command.fileContent());
         verify(portfolioRepository, org.mockito.Mockito.times(1)).save(any());
+    }
+
+    @Test
+    void 활성_포트폴리오가_있으면_PORTFOLIO_ALREADY_EXISTS() {
+        given(portfolioRepository.existsActiveByUserId(userId)).willReturn(true);
+
+        assertThatThrownBy(() -> portfolioRegisterService.register(command))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
+
+        verify(portfolioRepository, never()).save(any());
+    }
+
+    @Test
+    void 재업로드이고_이번달_재업로드_이력이_있으면_REPLACEMENT_LIMIT_EXCEEDED() {
+        given(portfolioRepository.existsAnyByUserId(userId)).willReturn(true);
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
+
+        assertThatThrownBy(() -> portfolioRegisterService.register(command))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.REPLACEMENT_LIMIT_EXCEEDED);
+
+        verify(portfolioRepository, never()).save(any());
+    }
+
+    @Test
+    void 재업로드이고_이번달_재업로드_이력이_없으면_replacement_true로_등록된다() {
+        given(portfolioRepository.existsAnyByUserId(userId)).willReturn(true);
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+        given(pdfMetadataReader.countPages(command.fileContent())).willReturn(5);
+        given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        portfolioRegisterService.register(command);
+
+        ArgumentCaptor<Portfolio> captor = ArgumentCaptor.forClass(Portfolio.class);
+        verify(portfolioRepository).save(captor.capture());
+        assertThat(captor.getValue().isReplacement()).isTrue();
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.util.UUID;
 public record PortfolioStatusResult(
         UUID portfolioId,
         PortfolioStatus status,
-        String message
+        String message,
+        String fileName
 ) {
 }

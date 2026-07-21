@@ -126,7 +126,7 @@ class InterviewAnswerSubmitServiceTest {
 
     private InterviewSession session() {
         return InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -345,7 +345,7 @@ class InterviewAnswerSubmitServiceTest {
     @Test
     void 이미_종료된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
         InterviewSession completedSession = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -362,7 +362,7 @@ class InterviewAnswerSubmitServiceTest {
     @Test
     void 무효화된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
         InterviewSession invalidSession = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -420,7 +420,7 @@ class InterviewAnswerSubmitServiceTest {
         // 가중치: depth 20, boundary 30, connection 10, tradeoff 20, conflict 10, resilience 10
         // → CORE(depth/boundary/tradeoff) 중 boundary(30)가 가장 높아 boundary가 선택돼야 한다
         InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 20, 30, 10, 20, 10, 10, 0, 0
         );
@@ -599,7 +599,7 @@ class InterviewAnswerSubmitServiceTest {
 
     private InterviewSession sessionWithTradeoffWeighted() {
         return InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 20, 15, 10, 30, 10, 15, 0, 0
         );

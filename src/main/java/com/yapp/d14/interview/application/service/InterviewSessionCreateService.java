@@ -36,14 +36,14 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
     public InterviewSessionCreateResult create(InterviewSessionCreateCommand command) {
         ticketAvailabilityCheckUseCase.checkAvailable(command.userId());
 
-        interviewSessionCreateValidator.validate(command);
+        String portfolioFileName = interviewSessionCreateValidator.validate(command);
 
         String jdText = resolveJdText(command);
 
         Map<TestType, Integer> weights = AxisWeightCalculator.compute(command.jobRole(), command.careerYears());
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
-        InterviewSession session = interviewSessionPersister.persist(command, jdText, weights, assignments);
+        InterviewSession session = interviewSessionPersister.persist(command, jdText, portfolioFileName, weights, assignments);
 
         triggerPreload(session.getId());
 

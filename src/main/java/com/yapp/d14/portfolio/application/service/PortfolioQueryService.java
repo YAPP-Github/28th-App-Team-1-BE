@@ -22,24 +22,30 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     public PortfolioStatusResult getStatus(UUID userId, UUID portfolioId) {
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
 
-        return new PortfolioStatusResult(portfolio.getId(), portfolio.getStatus(), portfolio.getMessage());
+        return new PortfolioStatusResult(portfolio.getId(), portfolio.getStatus(), portfolio.getMessage(), portfolio.getFileName());
     }
 
     @Override
     public List<PortfolioSummary> getList(UUID userId) {
-        return portfolioRepository.findAllByUserId(userId).stream()
+        return portfolioRepository.findAllActiveByUserId(userId).stream()
                 .map(this::toSummary)
                 .toList();
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {
+        boolean blocked = portfolioRepository.existsReplacementSince(
+                portfolio.getUserId(), PortfolioReplacementPolicy.currentMonthStart()
+        );
+
         return new PortfolioSummary(
                 portfolio.getId(),
                 portfolio.getFileName(),
                 portfolio.getFileSize(),
                 portfolio.getPageCount(),
                 portfolio.getStatus(),
-                portfolio.getUploadedAt()
+                portfolio.getUploadedAt(),
+                !blocked,
+                blocked ? PortfolioReplacementPolicy.nextMonthStart() : null
         );
     }
 }

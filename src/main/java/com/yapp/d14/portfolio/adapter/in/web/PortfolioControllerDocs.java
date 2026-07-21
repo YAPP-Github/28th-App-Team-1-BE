@@ -28,7 +28,8 @@ public interface PortfolioControllerDocs {
             description = "PDF 포트폴리오를 업로드합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 등록 즉시 `PROCESSING` 상태로 202를 반환하고, S3 업로드·파싱·임베딩은 비동기로 처리됩니다.\n" +
-                    "- 계정당 포트폴리오는 1개만 등록할 수 있습니다."
+                    "- 계정당 포트폴리오는 1개만 등록할 수 있습니다(기존 포트폴리오가 있으면 먼저 삭제해야 함).\n" +
+                    "- 삭제 후 재업로드(교체)는 캘린더 월 1회로 제한됩니다(매월 1일 0시 서버 시간 리셋). 최초 업로드는 이 제한과 무관합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -74,16 +75,25 @@ public interface PortfolioControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "이미 포트폴리오가 존재함",
+                    description = "이미 포트폴리오가 존재하거나, 이번 달 재업로드 횟수를 이미 사용함",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "PORTFOLIO_ALREADY_EXISTS",
-                                      "message": "이미 등록된 포트폴리오가 있어요. 기존 포트폴리오를 삭제한 뒤 새로 올려주세요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "활성 포트폴리오 존재", value = """
+                                            {
+                                              "success": false,
+                                              "code": "PORTFOLIO_ALREADY_EXISTS",
+                                              "message": "이미 등록된 포트폴리오가 있어요. 기존 포트폴리오를 삭제한 뒤 새로 올려주세요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "이번 달 재업로드 횟수 소진", value = """
+                                            {
+                                              "success": false,
+                                              "code": "REPLACEMENT_LIMIT_EXCEEDED",
+                                              "message": "포트폴리오 재업로드는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })
@@ -128,7 +138,9 @@ public interface PortfolioControllerDocs {
             summary = "내 포트폴리오 목록 조회",
             description = "로그인한 사용자가 등록한 포트폴리오 목록을 조회합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다."
+                    "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
+                    "- 소프트 삭제된 포트폴리오는 응답에서 제외됩니다.\n" +
+                    "- `replaceAvailable`: 이번 달 재업로드(삭제 후 교체) 가능 여부. `nextAvailableAt`: 재업로드가 막혀 있을 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

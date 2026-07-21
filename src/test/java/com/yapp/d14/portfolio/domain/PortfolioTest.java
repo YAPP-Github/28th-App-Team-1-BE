@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PortfolioTest {
 
     private final Portfolio portfolio = Portfolio.create(
-            UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf"
+            UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf", false
     );
 
     @Test
@@ -31,5 +31,24 @@ class PortfolioTest {
         String text = "   짧음   ";
 
         assertThat(portfolio.hasEnoughExtractedText(text)).isFalse();
+    }
+
+    @Test
+    void 재업로드로_생성되면_replacement가_true다() {
+        Portfolio replacement = Portfolio.create(
+                UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf", true
+        );
+
+        assertThat(replacement.isReplacement()).isTrue();
+    }
+
+    @Test
+    void softDelete하면_deleted_상태와_시각이_기록된다() {
+        assertThat(portfolio.isDeleted()).isFalse();
+
+        portfolio.softDelete();
+
+        assertThat(portfolio.isDeleted()).isTrue();
+        assertThat(portfolio.getDeletedAt()).isNotNull();
     }
 }

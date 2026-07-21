@@ -260,7 +260,7 @@ class InterviewReportGenerateServiceLlmE2eTest {
 
     private Long createSession() {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
-                null, UUID.randomUUID(), UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         ));

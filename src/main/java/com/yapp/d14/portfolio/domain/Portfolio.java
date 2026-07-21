@@ -22,6 +22,9 @@ public class Portfolio {
     private String message;
     private final LocalDateTime createdAt;
     private LocalDateTime uploadedAt;
+    private final boolean replacement;
+    private boolean deleted;
+    private LocalDateTime deletedAt;
 
     @Builder(access = AccessLevel.PRIVATE)
     private Portfolio(
@@ -34,7 +37,10 @@ public class Portfolio {
             PortfolioStatus status,
             String message,
             LocalDateTime createdAt,
-            LocalDateTime uploadedAt
+            LocalDateTime uploadedAt,
+            boolean replacement,
+            boolean deleted,
+            LocalDateTime deletedAt
     ) {
         this.id = id;
         this.userId = userId;
@@ -46,9 +52,12 @@ public class Portfolio {
         this.message = message;
         this.createdAt = createdAt;
         this.uploadedAt = uploadedAt;
+        this.replacement = replacement;
+        this.deleted = deleted;
+        this.deletedAt = deletedAt;
     }
 
-    public static Portfolio create(UUID id, UUID userId, String fileName, long fileSize, int pageCount, String s3Key) {
+    public static Portfolio create(UUID id, UUID userId, String fileName, long fileSize, int pageCount, String s3Key, boolean replacement) {
         return Portfolio.builder()
                 .id(id)
                 .userId(userId)
@@ -59,6 +68,8 @@ public class Portfolio {
                 .status(PortfolioStatus.PROCESSING)
                 .message("포트폴리오를 분석하고 있어요.")
                 .createdAt(LocalDateTime.now())
+                .replacement(replacement)
+                .deleted(false)
                 .build();
     }
 
@@ -72,7 +83,10 @@ public class Portfolio {
             PortfolioStatus status,
             String message,
             LocalDateTime createdAt,
-            LocalDateTime uploadedAt
+            LocalDateTime uploadedAt,
+            boolean replacement,
+            boolean deleted,
+            LocalDateTime deletedAt
     ) {
         return Portfolio.builder()
                 .id(id)
@@ -85,6 +99,9 @@ public class Portfolio {
                 .message(message)
                 .createdAt(createdAt)
                 .uploadedAt(uploadedAt)
+                .replacement(replacement)
+                .deleted(deleted)
+                .deletedAt(deletedAt)
                 .build();
     }
 
@@ -106,5 +123,10 @@ public class Portfolio {
     public void failSystem(String message) {
         this.status = PortfolioStatus.FAILED_SYSTEM;
         this.message = message;
+    }
+
+    public void softDelete() {
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
     }
 }

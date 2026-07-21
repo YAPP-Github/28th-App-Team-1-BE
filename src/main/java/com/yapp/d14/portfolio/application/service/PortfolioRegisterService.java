@@ -28,8 +28,13 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
 
     @Override
     public PortfolioRegisterResult register(PortfolioRegisterCommand command) {
-        if (portfolioRepository.existsByUserId(command.userId())) {
+        if (portfolioRepository.existsActiveByUserId(command.userId())) {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
+        }
+
+        boolean replacement = portfolioRepository.existsAnyByUserId(command.userId());
+        if (replacement && portfolioRepository.existsReplacementSince(command.userId(), PortfolioReplacementPolicy.currentMonthStart())) {
+            throw new PortfolioException(PortfolioErrorCode.REPLACEMENT_LIMIT_EXCEEDED);
         }
 
         int pageCount = pdfMetadataReader.countPages(command.fileContent());
@@ -45,7 +50,8 @@ class PortfolioRegisterService implements PortfolioRegisterUseCase {
                 command.fileName(),
                 command.fileContent().length,
                 pageCount,
-                s3Key
+                s3Key,
+                replacement
         );
         Portfolio saved = portfolioRepository.save(portfolio);
 

@@ -54,7 +54,7 @@ class PortfolioProcessServiceTest {
         fileContent = "fake-pdf-bytes".getBytes();
         portfolio = Portfolio.create(
                 UUID.randomUUID(), userId, "resume.pdf", fileContent.length, 5,
-                "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID())
+                "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
         );
     }
 
