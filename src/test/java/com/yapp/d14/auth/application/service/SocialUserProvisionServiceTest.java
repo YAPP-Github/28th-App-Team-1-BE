@@ -1,6 +1,7 @@
 package com.yapp.d14.auth.application.service;
 
 import com.yapp.d14.auth.application.port.out.SocialUserInfo;
+import com.yapp.d14.ticket.application.port.in.TicketInitializeUseCase;
 import com.yapp.d14.user.application.port.out.UserRepository;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
@@ -24,11 +25,14 @@ class SocialUserProvisionServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TicketInitializeUseCase ticketInitializeUseCase;
+
     @InjectMocks
     private SocialUserProvisionService service;
 
     @Test
-    void 기존_유저면_그대로_반환하고_저장하지_않는다() {
+    void 기존_유저면_그대로_반환하고_저장이나_이용권_초기화를_하지_않는다() {
         User existing = User.create("a@a.com", Provider.KAKAO, "pid");
         given(userRepository.findByProviderAndProviderId(Provider.KAKAO, "pid")).willReturn(Optional.of(existing));
 
@@ -36,18 +40,20 @@ class SocialUserProvisionServiceTest {
 
         assertThat(result).isEqualTo(existing);
         verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any());
+        verify(ticketInitializeUseCase, never()).initialize(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
-    void 신규_유저면_소셜_닉네임과_무관하게_이름없이_생성된다() {
+    void 신규_유저면_소셜_닉네임과_무관하게_이름없이_생성되고_이용권이_초기화된다() {
         given(userRepository.findByProviderAndProviderId(Provider.KAKAO, "pid")).willReturn(Optional.empty());
         given(userRepository.save(org.mockito.ArgumentMatchers.any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임"));
+        User result = service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임"));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getName()).isNull();
         assertThat(captor.getValue().isNameRegistered()).isFalse();
+        verify(ticketInitializeUseCase).initialize(result.getId());
     }
 }
