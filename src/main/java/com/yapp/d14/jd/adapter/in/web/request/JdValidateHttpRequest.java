@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+import java.util.UUID;
+
 public record JdValidateHttpRequest(
         @Schema(description = "크롤링할 JD URL", example = "https://example.com/careers/123")
         @NotBlank(message = "JD URL을 입력해주세요.")
@@ -12,7 +14,7 @@ public record JdValidateHttpRequest(
         String jdUrl
 ) {
 
-    public JdValidateCommand toCommand() {
-        return new JdValidateCommand(jdUrl);
+    public JdValidateCommand toCommand(UUID userId) {
+        return new JdValidateCommand(jdUrl, userId);
     }
 }

@@ -29,7 +29,8 @@ class JdController implements JdControllerDocs {
             @CurrentUser UUID userId,
             @Valid @RequestBody JdValidateHttpRequest request
     ) {
-        JdCrawlResult result = jdValidateUseCase.validate(request.toCommand());
+        JdCrawlResult result = jdValidateUseCase.validate(request.toCommand(userId));
         return ResponseEntity.ok(ApiResponse.ok(JdValidateHttpResponse.from(result)));
     }
 }
+
