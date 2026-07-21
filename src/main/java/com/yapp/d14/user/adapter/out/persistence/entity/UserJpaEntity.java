@@ -1,6 +1,6 @@
 package com.yapp.d14.user.adapter.out.persistence.entity;
 
-import com.yapp.d14.job.domain.Job;
+import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
 import jakarta.persistence.Column;
@@ -46,7 +46,7 @@ public class UserJpaEntity {
     private String providerId;
 
     @Enumerated(EnumType.STRING)
-    private Job jobRole;
+    private JobRole jobRole;
 
     private Integer careerYears;
 

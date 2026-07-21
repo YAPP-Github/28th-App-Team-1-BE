@@ -1,7 +1,7 @@
 package com.yapp.d14.user.application.service;
 
-import com.yapp.d14.job.domain.Job;
 import com.yapp.d14.user.application.port.out.UserRepository;
+import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class UserProfileInitializeServiceTest {
 
         service.initializeIfAbsent(userId, "BACKEND", 3);
 
-        assertThat(user.getJobRole()).isEqualTo(Job.BACKEND);
+        assertThat(user.getJobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(user.getCareerYears()).isEqualTo(3);
         verify(userRepository).save(user);
     }
@@ -54,19 +54,19 @@ class UserProfileInitializeServiceTest {
 
         service.initializeIfAbsent(userId, "FRONTEND", 3);
 
-        assertThat(user.getJobRole()).isEqualTo(Job.FRONTEND);
+        assertThat(user.getJobRole()).isEqualTo(JobRole.FRONTEND);
         assertThat(user.getCareerYears()).isEqualTo(7);
     }
 
     @Test
     void 둘다_있으면_아무것도_하지_않는다() {
         User user = emptyProfileUser();
-        user.updateProfile(Job.BACKEND, 5);
+        user.updateProfile(JobRole.BACKEND, 5);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
         service.initializeIfAbsent(userId, "FRONTEND", 1);
 
-        assertThat(user.getJobRole()).isEqualTo(Job.BACKEND);
+        assertThat(user.getJobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(user.getCareerYears()).isEqualTo(5);
         verify(userRepository, never()).save(user);
     }

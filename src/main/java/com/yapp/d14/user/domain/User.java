@@ -1,6 +1,5 @@
 package com.yapp.d14.user.domain;
 
-import com.yapp.d14.job.domain.Job;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +16,7 @@ public class User {
     private boolean nameRegistered;
     private final Provider provider;
     private final String providerId;
-    private Job jobRole;
+    private JobRole jobRole;
     private Integer careerYears;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -30,7 +29,7 @@ public class User {
             boolean nameRegistered,
             Provider provider,
             String providerId,
-            Job jobRole,
+            JobRole jobRole,
             Integer careerYears,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
@@ -70,7 +69,7 @@ public class User {
             boolean nameRegistered,
             Provider provider,
             String providerId,
-            Job jobRole,
+            JobRole jobRole,
             Integer careerYears,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
@@ -95,7 +94,7 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateProfile(Job jobRole, Integer careerYears) {
+    public void updateProfile(JobRole jobRole, Integer careerYears) {
         this.jobRole = jobRole;
         this.careerYears = careerYears;
         this.updatedAt = LocalDateTime.now();

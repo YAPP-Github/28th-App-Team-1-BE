@@ -1,8 +1,8 @@
 package com.yapp.d14.user.application.service;
 
-import com.yapp.d14.job.domain.Job;
 import com.yapp.d14.user.application.port.in.UserProfileInitializeUseCase;
 import com.yapp.d14.user.application.port.out.UserRepository;
+import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,16 +31,16 @@ class UserProfileInitializeService implements UserProfileInitializeUseCase {
             return;
         }
 
-        Job resolvedJobRole = user.getJobRole() != null ? user.getJobRole() : parseJobOrNull(rawJobRole, userId);
+        JobRole resolvedJobRole = user.getJobRole() != null ? user.getJobRole() : parseJobOrNull(rawJobRole, userId);
         Integer resolvedCareerYears = user.getCareerYears() != null ? user.getCareerYears() : careerYears;
 
         user.updateProfile(resolvedJobRole, resolvedCareerYears);
         userRepository.save(user);
     }
 
-    private Job parseJobOrNull(String rawJobRole, UUID userId) {
+    private JobRole parseJobOrNull(String rawJobRole, UUID userId) {
         try {
-            return Job.valueOf(rawJobRole);
+            return JobRole.valueOf(rawJobRole);
         } catch (IllegalArgumentException | NullPointerException e) {
             log.warn("[USER PROFILE INIT] jobRole 매핑 실패, 해당 필드는 비워둡니다: userId={}, rawJobRole={}", userId, rawJobRole);
             return null;

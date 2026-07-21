@@ -1,9 +1,9 @@
 package com.yapp.d14.user.application.service;
 
-import com.yapp.d14.job.domain.Job;
 import com.yapp.d14.ticket.application.port.in.TicketRemainingQueryUseCase;
 import com.yapp.d14.user.application.port.in.result.UserProfileResult;
 import com.yapp.d14.user.application.port.out.UserRepository;
+import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
 import com.yapp.d14.user.exception.UserErrorCode;
@@ -39,7 +39,7 @@ class UserProfileQueryServiceTest {
     void 유저정보와_잔여이용권을_조합해_반환한다() {
         User user = User.create("a@a.com", Provider.KAKAO, "pid");
         user.registerName("홍길동");
-        user.updateProfile(Job.BACKEND, 3);
+        user.updateProfile(JobRole.BACKEND, 3);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(ticketRemainingQueryUseCase.getRemaining(userId)).willReturn(2);
 
@@ -47,7 +47,7 @@ class UserProfileQueryServiceTest {
 
         assertThat(result.name()).isEqualTo("홍길동");
         assertThat(result.nameRegistered()).isTrue();
-        assertThat(result.jobRole()).isEqualTo(Job.BACKEND);
+        assertThat(result.jobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(result.careerYears()).isEqualTo(3);
         assertThat(result.remainingTicketCount()).isEqualTo(2);
     }

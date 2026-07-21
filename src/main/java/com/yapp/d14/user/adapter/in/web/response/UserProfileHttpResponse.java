@@ -1,7 +1,7 @@
 package com.yapp.d14.user.adapter.in.web.response;
 
-import com.yapp.d14.job.domain.Job;
 import com.yapp.d14.user.application.port.in.result.UserProfileResult;
+import com.yapp.d14.user.domain.JobRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record UserProfileHttpResponse(
@@ -22,7 +22,7 @@ public record UserProfileHttpResponse(
 ) {
 
     public static UserProfileHttpResponse from(UserProfileResult result) {
-        Job jobRole = result.jobRole();
+        JobRole jobRole = result.jobRole();
         return new UserProfileHttpResponse(
                 result.name(),
                 jobRole != null ? jobRole.name() : null,

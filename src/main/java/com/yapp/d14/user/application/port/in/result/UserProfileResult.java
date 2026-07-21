@@ -1,6 +1,6 @@
 package com.yapp.d14.user.application.port.in.result;
 
-import com.yapp.d14.job.domain.Job;
+import com.yapp.d14.user.domain.JobRole;
 
 import java.util.UUID;
 
@@ -9,7 +9,7 @@ public record UserProfileResult(
         String email,
         String name,
         boolean nameRegistered,
-        Job jobRole,
+        JobRole jobRole,
         Integer careerYears,
         int remainingTicketCount
 ) {
