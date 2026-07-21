@@ -23,14 +23,14 @@ public interface InterviewReportControllerDocs {
             description = "채점 파이프라인(#31)이 만들어 둔 결과를, 점수·판정·천장 같은 내부 원값 없이 " +
                     "사용자용 리포트 화면(한 줄 요약 + 항목 카드 + 영상 메타 + 지인 피드백 섹션) 형태로 반환합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- 첫 화면이 곧 상세입니다. 별도 요약 화면·상세 시트 API 없이, 카드마다 `detail`(키워드·고쳐쓰기)이 함께 내려옵니다.\n" +
+                    "- 첫 화면이 곧 상세입니다. 별도 요약 화면·상세 시트 API 없이, 대본 하이라이트(`highlightSpans`)마다 `actionKeywords`(키워드·고쳐쓰기)가 함께 내려옵니다.\n" +
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
                     "(화면 표시는 \"질문 {axisOrder}-{depthLevel}\", 예: 1-1, 1-2, 2-1 ...).\n" +
                     "- `status`는 채점 파이프라인의 진행 상태만 나타냅니다 — `GENERATING`(채점 중) / `READY`(생성 완료) / `INSUFFICIENT_ANALYSIS`(분석 부족) / `FAILED`(생성 실패).\n" +
                     "- `status=GENERATING`이면 `headline`/`cards`/`video`/`guestFeedback`이 모두 `null`입니다. 3~5초 간격으로 폴링하세요.\n" +
                     "- `status=INSUFFICIENT_ANALYSIS`이면 채점된 범위의 카드만 내려옵니다.\n" +
                     "- 심각한 레드플래그가 있는지는 `status`가 아니라 `redFlagNotices`가 비어 있는지로 판단합니다. `status=READY`이면서 `redFlagNotices`가 있으면 헤드라인이 중립 사실 요약으로 대체됩니다.\n" +
-                    "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `detail`은 `null`입니다.\n" +
+                    "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `highlightSpans`는 빈 배열입니다.\n" +
                     "- 레드플래그는 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 내려옵니다.\n" +
                     "- `video.url`은 영상이 만료되면 `null`이며, 그때도 카드의 대본·하이라이트는 그대로 유지됩니다.\n" +
                     "- `guestFeedback`은 지인이 한 명도 제출하지 않았으면 `null`입니다."
@@ -73,11 +73,10 @@ public interface InterviewReportControllerDocs {
                                                     "depthLevel": 1,
                                                     "questionText": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요. 무엇이 문제였나요?",
                                                     "transcript": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.",
-                                                    "highlightSpans": null,
+                                                    "highlightSpans": [],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
-                                                    "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
-                                                    "detail": null
+                                                    "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다."
                                                   },
                                                   {
                                                     "axisOrder": 1,
@@ -85,26 +84,22 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 응답이 느렸던 근본 원인은 무엇이었고, 어떻게 진단하셨나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startSec": 12.0, "endSec": 18.4, "tone": "GOOD" }
+                                                      {
+                                                        "startIndex": 12,
+                                                        "endIndex": 48,
+                                                        "tone": "GOOD",
+                                                        "actionKeywords": [
+                                                          {
+                                                            "keyword": "구체적인 사례 제시",
+                                                            "suggestion": "면접관은 무엇을 했는지보다 왜 그렇게 결정했는지를 평가해요. 다음 면접에서는 문제 → 원인 → 해결 → 결과 순서로 사례를 설명해보세요.",
+                                                            "rewrittenText": "API 응답이 느린 문제를 캐시를 도입해 해결했습니다."
+                                                          }
+                                                        ]
+                                                      }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
-                                                    "questionIntent": "근본 원인을 어떤 체계적인 방법으로 찾아냈는지 확인하는 질문입니다.",
-                                                    "detail": {
-                                                      "actionKeywords": [
-                                                        {
-                                                          "keyword": "구체적인 사례 제시",
-                                                          "problemAnalysis": "\\"캐시를 써서 빨라졌어요\\"까지만 답해서, 무엇이 문제였고 왜 그 방법이 통했는지가 드러나지 않았습니다.",
-                                                          "improvementReason": "면접관은 무엇을 했는지보다 왜 그렇게 결정했는지를 평가합니다.",
-                                                          "applicationMethod": "다음 면접에서는 문제 → 원인 → 해결 → 결과 순서로 사례를 설명해보세요.",
-                                                          "priority": 1
-                                                        }
-                                                      ],
-                                                      "rewrite": {
-                                                        "originalQuote": "제가 만든 API가 좀 느렸는데, 캐시 붙여서 해결했어요.",
-                                                        "rewrittenText": "API 응답이 느린 문제를 캐시를 도입해 해결했습니다."
-                                                      }
-                                                    }
+                                                    "questionIntent": "근본 원인을 어떤 체계적인 방법으로 찾아냈는지 확인하는 질문입니다."
                                                   },
                                                   {
                                                     "axisOrder": 2,
@@ -112,15 +107,11 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startSec": 5.0, "endSec": 20.0, "tone": "GOOD" }
+                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD", "actionKeywords": [] }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
-                                                    "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다.",
-                                                    "detail": {
-                                                      "actionKeywords": [],
-                                                      "rewrite": null
-                                                    }
+                                                    "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
                                                   }
                                                 ],
                                                 "guestFeedback": null
@@ -145,11 +136,10 @@ public interface InterviewReportControllerDocs {
                                                     "depthLevel": 1,
                                                     "questionText": "Q. 장애가 났을 때 어디부터 확인하시나요?",
                                                     "transcript": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...",
-                                                    "highlightSpans": null,
+                                                    "highlightSpans": [],
                                                     "resolutionNotice": "질문의 의도와 다른 방향의 답변이었어요. 다음 연습 때는 질문이 묻는 것부터 짚고 시작해보세요.",
                                                     "cardRedFlagNotices": null,
-                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다.",
-                                                    "detail": null
+                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
                                                   }
                                                 ],
                                                 "guestFeedback": null
@@ -196,7 +186,7 @@ public interface InterviewReportControllerDocs {
                                                     "depthLevel": 1,
                                                     "questionText": "Q. 그 결정을 내리기까지 어떤 대안들을 검토하셨나요?",
                                                     "transcript": "제가 Redis 캐시를 도입했습니다...",
-                                                    "highlightSpans": null,
+                                                    "highlightSpans": [],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": [
                                                       {
@@ -204,8 +194,7 @@ public interface InterviewReportControllerDocs {
                                                         "message": "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
                                                       }
                                                     ],
-                                                    "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다.",
-                                                    "detail": null
+                                                    "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다."
                                                   }
                                                 ],
                                                 "guestFeedback": null

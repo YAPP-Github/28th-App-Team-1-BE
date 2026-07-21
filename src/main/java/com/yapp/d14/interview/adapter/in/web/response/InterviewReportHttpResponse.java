@@ -83,7 +83,7 @@ public record InterviewReportHttpResponse(
             @Schema(description = "답변 대본(STT)")
             String transcript,
 
-            @Schema(description = "대본 위 하이라이트 구간(잘함/개선)")
+            @Schema(description = "대본(transcript) 위 하이라이트 구간. 하이라이트마다 그 근거로 단 행동형 키워드를 갖는다. 해상도 낮음 카드는 빈 배열")
             List<HighlightSpan> highlightSpans,
 
             @Schema(description = "해상도 낮음 안내 문구. 정상 카드는 null")
@@ -93,10 +93,7 @@ public record InterviewReportHttpResponse(
             List<RedFlagNotice> cardRedFlagNotices,
 
             @Schema(description = "질문 분석(질문 의도 설명, probe_text 번역)")
-            String questionIntent,
-
-            @Schema(description = "상세 시트 내용(키워드·고쳐쓰기). 해상도 낮음 카드는 null")
-            Detail detail
+            String questionIntent
     ) {
 
         private static Card from(InterviewReportQueryResult.Card card) {
@@ -108,43 +105,31 @@ public record InterviewReportHttpResponse(
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
                     card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
-                    card.questionIntent(),
-                    Detail.from(card.detail())
+                    card.questionIntent()
             );
         }
     }
 
     public record HighlightSpan(
-            @Schema(description = "구간 시작 시각(초)")
-            Float startSec,
+            @Schema(description = "대본(transcript) 문자열 기준 하이라이트 시작 인덱스(0부터, 포함)")
+            int startIndex,
 
-            @Schema(description = "구간 종료 시각(초)")
-            Float endSec,
+            @Schema(description = "대본(transcript) 문자열 기준 하이라이트 종료 인덱스(미포함)")
+            int endIndex,
 
             @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
-            String tone
+            String tone,
+
+            @Schema(description = "이 하이라이트 구간을 근거로 단 행동형 키워드(하이라이트당 최대 3개). 탭하면 열리는 상세 시트 내용")
+            List<ActionKeyword> actionKeywords
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(span.startSec(), span.endSec(), span.tone().name());
-        }
-    }
-
-    public record Detail(
-            @Schema(description = "행동형 키워드 목록(카드당 최대 3개)")
-            List<ActionKeyword> actionKeywords,
-
-            @Schema(description = "'이렇게 바꿔 말해보세요' 고쳐쓰기 제안. 재료가 없으면 null")
-            Rewrite rewrite
-    ) {
-
-        private static Detail from(InterviewReportQueryResult.Detail detail) {
-            if (detail == null) {
-                return null;
-            }
-            return new Detail(
-                    detail.actionKeywords() == null ? null : detail.actionKeywords().stream().map(ActionKeyword::from).toList(),
-                    Rewrite.from(detail.rewrite())
+            return new HighlightSpan(
+                    span.startIndex(),
+                    span.endIndex(),
+                    span.tone().name(),
+                    span.actionKeywords() == null ? null : span.actionKeywords().stream().map(ActionKeyword::from).toList()
             );
         }
     }
@@ -153,43 +138,15 @@ public record InterviewReportHttpResponse(
             @Schema(description = "행동형 키워드")
             String keyword,
 
-            @Schema(description = "문제 분석")
-            String problemAnalysis,
+            @Schema(description = "그 방향으로 가야 하는 이유와 다음 면접에서 어떻게 적용하면 되는지를 담은 방향성 제안")
+            String suggestion,
 
-            @Schema(description = "개선 이유")
-            String improvementReason,
-
-            @Schema(description = "다음 면접에서 적용하는 방법")
-            String applicationMethod,
-
-            @Schema(description = "우선순위(1~4순위)")
-            int priority
-    ) {
-
-        private static ActionKeyword from(InterviewReportQueryResult.ActionKeyword keyword) {
-            return new ActionKeyword(
-                    keyword.keyword(),
-                    keyword.problemAnalysis(),
-                    keyword.improvementReason(),
-                    keyword.applicationMethod(),
-                    keyword.priority()
-            );
-        }
-    }
-
-    public record Rewrite(
-            @Schema(description = "사용자가 실제로 말한 원문")
-            String originalQuote,
-
-            @Schema(description = "고쳐 쓴 문장")
+            @Schema(description = "'이렇게 바꿔 말해보세요' 고쳐 쓴 문장. 재료가 없으면 null")
             String rewrittenText
     ) {
 
-        private static Rewrite from(InterviewReportQueryResult.Rewrite rewrite) {
-            if (rewrite == null) {
-                return null;
-            }
-            return new Rewrite(rewrite.originalQuote(), rewrite.rewrittenText());
+        private static ActionKeyword from(InterviewReportQueryResult.ActionKeyword keyword) {
+            return new ActionKeyword(keyword.keyword(), keyword.suggestion(), keyword.rewrittenText());
         }
     }
 

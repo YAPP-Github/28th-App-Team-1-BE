@@ -40,35 +40,22 @@ public record InterviewReportQueryResult(
             List<HighlightSpan> highlightSpans,
             String resolutionNotice,
             List<RedFlagNotice> cardRedFlagNotices,
-            String questionIntent,
-            Detail detail
+            String questionIntent
     ) {
     }
 
+    // 하이라이트 하나가 그 근거가 된 행동형 키워드(최대 3개)를 갖는다.
     public record HighlightSpan(
-            Float startSec,
-            Float endSec,
-            HighlightTone tone
-    ) {
-    }
-
-    public record Detail(
-            List<ActionKeyword> actionKeywords,
-            Rewrite rewrite
+            int startIndex,
+            int endIndex,
+            HighlightTone tone,
+            List<ActionKeyword> actionKeywords
     ) {
     }
 
     public record ActionKeyword(
             String keyword,
-            String problemAnalysis,
-            String improvementReason,
-            String applicationMethod,
-            int priority
-    ) {
-    }
-
-    public record Rewrite(
-            String originalQuote,
+            String suggestion,
             String rewrittenText
     ) {
     }
