@@ -21,7 +21,12 @@ import org.springframework.util.StreamUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -72,8 +77,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 배열의 원소 개수는 입력으로 받은
             턴의 총 개수와 정확히 같아야 하며, 각 원소는 다음 필드를 가집니다:
-            axis(depth/boundary/connection/tradeoff/conflict/resilience 중 하나),
-            questionId(입력에서 받은 값을 그대로 echo), depthLevel(입력에서 받은 값을 그대로 echo),
+            questionId(입력에서 받은 값을 그대로 echo — 어느 턴의 카드인지 식별하는 데만 쓰이니
+            입력에 없던 값을 지어내지 마세요),
             questionIntentTranslation(문자열),
             highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/analysis(문자열)/
             followUpQuestions(문자열 배열, 0~3개, 비어 있을 수 있음)의 배열, 비어 있을 수 있음).
@@ -93,6 +98,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     @Override
     public List<ReportCardDraft> generate(ReportCardContentContext context) {
         String userMessage = buildUserMessage(context);
+        Map<Long, TurnRef> turnRefsById = indexTurnsByQuestionId(context);
 
         try {
             List<ReportCardContentLlmEntry> entries = chatClient.prompt()
@@ -101,11 +107,49 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                     .call()
                     .entity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
                     });
-            return entries.stream().map(this::toDraft).toList();
+            return toDrafts(entries, turnRefsById);
         } catch (Exception e) {
             log.error("[REPORT CARD CONTENT GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("리포트 카드 생성에 실패했어요.", e);
         }
+    }
+
+    // questionId → 그 턴의 서버 확정값(testType·depthLevel). LLM echo가 아니라 이 값을 카드에 쓴다.
+    private Map<Long, TurnRef> indexTurnsByQuestionId(ReportCardContentContext context) {
+        Map<Long, TurnRef> turnRefsById = new HashMap<>();
+        for (AxisCardInput card : context.axisCards()) {
+            for (Turn turn : card.turns()) {
+                turnRefsById.put(turn.questionId(), new TurnRef(card.testType(), turn.depthLevel()));
+            }
+        }
+        return turnRefsById;
+    }
+
+    // LLM이 questionId를 누락·환각하거나 같은 턴을 중복 반환하면 그 엔트리는 카드로 만들지 않는다
+    // (없는 questionId로 카드를 만들면 저장 실패 또는 질문/대본이 빈 카드가 된다).
+    private List<ReportCardDraft> toDrafts(List<ReportCardContentLlmEntry> entries, Map<Long, TurnRef> turnRefsById) {
+        List<ReportCardDraft> drafts = new ArrayList<>();
+        Set<Long> usedQuestionIds = new HashSet<>();
+        for (ReportCardContentLlmEntry entry : entries) {
+            Long questionId = entry.questionId();
+            TurnRef turnRef = questionId == null ? null : turnRefsById.get(questionId);
+            if (turnRef == null) {
+                log.warn("[REPORT CARD CONTENT GENERATE] 입력에 없는 questionId 카드 무시: questionId={}", questionId);
+                continue;
+            }
+            if (!usedQuestionIds.add(questionId)) {
+                log.warn("[REPORT CARD CONTENT GENERATE] 중복 questionId 카드 무시: questionId={}", questionId);
+                continue;
+            }
+            drafts.add(toDraft(entry, turnRef));
+        }
+        if (drafts.size() != turnRefsById.size()) {
+            log.warn("[REPORT CARD CONTENT GENERATE] 카드 수 불일치: 턴={}, 생성={}", turnRefsById.size(), drafts.size());
+        }
+        return drafts;
+    }
+
+    private record TurnRef(TestType testType, int depthLevel) {
     }
 
     private String buildUserMessage(ReportCardContentContext context) {
@@ -128,7 +172,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         return sb.toString();
     }
 
-    private ReportCardDraft toDraft(ReportCardContentLlmEntry entry) {
+    private ReportCardDraft toDraft(ReportCardContentLlmEntry entry, TurnRef turnRef) {
         List<HighlightSpan> highlightSpans = entry.highlightSpans() == null
                 ? List.of()
                 : entry.highlightSpans().stream()
@@ -137,8 +181,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
         return new ReportCardDraft(
                 entry.questionId(),
-                entry.depthLevel(),
-                TestType.valueOf(entry.axis().toUpperCase()),
+                turnRef.depthLevel(),
+                turnRef.testType(),
                 entry.questionIntentTranslation(),
                 highlightSpans
         );
