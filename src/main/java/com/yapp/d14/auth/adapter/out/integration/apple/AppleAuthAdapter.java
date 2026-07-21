@@ -96,7 +96,11 @@ class AppleAuthAdapter implements AppleSocialClient {
 
     private PrivateKey getPrivateKey() {
         try {
-            byte[] keyBytes = Decoders.BASE64.decode(appleProperties.getPrivateKey());
+            String rawKey = appleProperties.getPrivateKey()
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replaceAll("\\s", "");
+            byte[] keyBytes = Decoders.BASE64.decode(rawKey);
             return KeyFactory.getInstance("EC")
                     .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
         } catch (Exception e) {

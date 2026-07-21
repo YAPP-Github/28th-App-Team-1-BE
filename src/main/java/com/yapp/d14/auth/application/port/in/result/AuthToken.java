@@ -1,4 +1,6 @@
 package com.yapp.d14.auth.application.port.in.result;
 
-public record AuthToken(String accessToken, String refreshToken) {
+import com.yapp.d14.user.application.port.in.result.UserProfileResult;
+
+public record AuthToken(String accessToken, String refreshToken, UserProfileResult profile) {
 }
