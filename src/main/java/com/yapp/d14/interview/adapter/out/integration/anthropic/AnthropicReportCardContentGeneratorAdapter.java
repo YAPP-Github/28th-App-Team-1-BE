@@ -41,7 +41,11 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                구간마다 하나씩 만듭니다. startIndex/endIndex는 answerText 문자열의 0부터
                시작하는 문자 인덱스입니다(startIndex 포함, endIndex 미포함). 반드시 그 턴의
                answerText 길이 범위 안에서 고르고, 다른 하이라이트 구간과 겹치지 않게 합니다.
-               tone은 GOOD(잘함) 또는 IMPROVE(개선)입니다.
+               tone은 GOOD(잘함) 또는 IMPROVE(개선)입니다. analysis(답변 분석)는 그 구간이
+               왜 GOOD인지 또는 왜 IMPROVE인지를 1~2문장으로 설명합니다 — 근거가 된 사실을
+               짚고, IMPROVE라면 무엇이 부족한지를, GOOD이라면 무엇이 효과적인지를 씁니다.
+               답변에 없는 것은 추측해서 쓰지 않습니다(자신감·긴장·표정·목소리 톤·성격·감정
+               같은 인상 표현 금지, 관찰된 사실만 근거로 씁니다).
 
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
@@ -55,7 +59,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
             axis(depth/boundary/connection/tradeoff/conflict/resilience 중 하나),
             questionId(입력에서 받은 값을 그대로 echo), depthLevel(입력에서 받은 값을 그대로 echo),
             questionIntentTranslation(문자열),
-            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)의 배열, 비어 있을 수 있음).
+            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/analysis(문자열)의 배열,
+            비어 있을 수 있음).
             """;
 
     private final ChatClient chatClient;
@@ -121,7 +126,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     private HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
         return new HighlightSpan(
                 new TextRange(entry.startIndex(), entry.endIndex()),
-                HighlightTone.valueOf(entry.tone().toUpperCase())
+                HighlightTone.valueOf(entry.tone().toUpperCase()),
+                entry.analysis()
         );
     }
 }

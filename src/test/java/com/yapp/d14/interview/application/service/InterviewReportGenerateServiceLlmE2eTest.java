@@ -245,7 +245,7 @@ class InterviewReportGenerateServiceLlmE2eTest {
         for (ReportCard c : reportCards) {
             log.info("[CARD] {} intent={}", c.getTestType(), c.getQuestionIntentTranslation());
             for (HighlightSpan h : c.getHighlightSpans()) {
-                log.info("    highlight {} [{}~{}]", h.tone(), h.range().startIndex(), h.range().endIndex());
+                log.info("    highlight {} [{}~{}] - {}", h.tone(), h.range().startIndex(), h.range().endIndex(), h.analysis());
             }
         }
         log.info("===============================================");

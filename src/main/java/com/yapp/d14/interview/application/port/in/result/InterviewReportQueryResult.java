@@ -47,7 +47,8 @@ public record InterviewReportQueryResult(
     public record HighlightSpan(
             int startIndex,
             int endIndex,
-            HighlightTone tone
+            HighlightTone tone,
+            String analysis
     ) {
     }
 

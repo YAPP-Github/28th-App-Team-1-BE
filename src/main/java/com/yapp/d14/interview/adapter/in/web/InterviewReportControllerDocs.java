@@ -84,7 +84,7 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 응답이 느렸던 근본 원인은 무엇이었고, 어떻게 진단하셨나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startIndex": 12, "endIndex": 48, "tone": "GOOD" }
+                                                      { "startIndex": 12, "endIndex": 48, "tone": "GOOD", "analysis": "구체적인 수치(50개, 분석 결과)를 근거로 원인을 설명해 신뢰도가 높습니다." }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
@@ -96,7 +96,7 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD" }
+                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD", "analysis": "병목 지점을 구체적으로 짚어 설명했습니다." }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,

@@ -197,7 +197,10 @@ class InterviewReportGenerateServiceIntegrationTest {
         given(reportCardContentGenerator.generate(any())).willReturn(List.of(
                 new ReportCardDraft(
                         depthQuestionId, 1, TestType.DEPTH, "이 질문은 실패 상황에서 데이터 정합성을 어떻게 보장했는지 확인하려는 의도예요.",
-                        List.of(new HighlightSpan(new TextRange(0, 30), HighlightTone.GOOD))
+                        List.of(new HighlightSpan(
+                                new TextRange(0, 30), HighlightTone.GOOD,
+                                "요청 UUID를 멱등키로 발급해 재시도 시 중복 결제를 방지한 구체적인 근거를 제시했습니다."
+                        ))
                 ),
                 new ReportCardDraft(
                         boundaryQuestionId, 1, TestType.BOUNDARY, "이 질문은 실제 트래픽 규모와 병목 지점을 정확히 파악하고 있는지 확인하려는 의도예요.",

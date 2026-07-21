@@ -118,11 +118,14 @@ public record InterviewReportHttpResponse(
             int endIndex,
 
             @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
-            String tone
+            String tone,
+
+            @Schema(description = "이 구간이 왜 GOOD인지 또는 왜 IMPROVE인지에 대한 답변 분석")
+            String analysis
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name());
+            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name(), span.analysis());
         }
     }
 

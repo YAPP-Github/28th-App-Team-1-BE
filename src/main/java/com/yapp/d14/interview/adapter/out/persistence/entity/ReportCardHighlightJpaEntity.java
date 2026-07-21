@@ -40,16 +40,20 @@ public class ReportCardHighlightJpaEntity {
     @Column(name = "tone", nullable = false)
     private HighlightTone tone;
 
+    @Column(name = "analysis", columnDefinition = "TEXT")
+    private String analysis;
+
     public static ReportCardHighlightJpaEntity from(ReportCardJpaEntity reportCard, HighlightSpan highlightSpan) {
         ReportCardHighlightJpaEntity entity = new ReportCardHighlightJpaEntity();
         entity.reportCard = reportCard;
         entity.startIndex = highlightSpan.range().startIndex();
         entity.endIndex = highlightSpan.range().endIndex();
         entity.tone = highlightSpan.tone();
+        entity.analysis = highlightSpan.analysis();
         return entity;
     }
 
     public HighlightSpan toDomain() {
-        return new HighlightSpan(new TextRange(startIndex, endIndex), tone);
+        return new HighlightSpan(new TextRange(startIndex, endIndex), tone, analysis);
     }
 }
