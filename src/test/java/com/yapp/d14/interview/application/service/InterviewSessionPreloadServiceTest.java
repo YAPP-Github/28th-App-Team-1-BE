@@ -3,6 +3,8 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
+import com.yapp.d14.interview.application.port.out.JdOpenerContext;
+import com.yapp.d14.interview.application.port.out.JdOpenerContextCache;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
@@ -46,6 +48,9 @@ class InterviewSessionPreloadServiceTest {
 
     @Mock
     private JdKeywordExtractor jdKeywordExtractor;
+
+    @Mock
+    private JdOpenerContextCache jdOpenerContextCache;
 
     @Mock
     private ProbeCandidateExtractor probeCandidateExtractor;
@@ -120,6 +125,54 @@ class InterviewSessionPreloadServiceTest {
 
         verify(jdKeywordExtractor).extractKeywords("JD 원문");
         verify(probeCandidateExtractor).extract(any(), eq(List.of("키워드1")));
+    }
+
+    @Test
+    void JD_키워드가_있으면_포폴을_재검색해_조건부_오프너_소재를_캐시에_저장한다() {
+        given(interviewSessionRepository.findById(1L))
+                .willReturn(Optional.of(session(null, "JD 원문", null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
+        given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
+                .willReturn(List.of(new PortfolioChunkResult("관련 청크")));
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
+
+        service.preload(1L);
+
+        ArgumentCaptor<JdOpenerContext> captor = ArgumentCaptor.forClass(JdOpenerContext.class);
+        verify(jdOpenerContextCache).save(eq(1L), captor.capture());
+        assertThat(captor.getValue().jdKeywords()).containsExactly("키워드1");
+        assertThat(captor.getValue().relatedPortfolioChunks()).containsExactly("관련 청크");
+    }
+
+    @Test
+    void JD_키워드가_없으면_조건부_오프너_소재를_저장하지_않는다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
+
+        service.preload(1L);
+
+        verify(jdOpenerContextCache, never()).save(any(), any());
+    }
+
+    @Test
+    void 조건부_오프너_소재_저장이_실패해도_preload_전체는_성공한다() {
+        given(interviewSessionRepository.findById(1L))
+                .willReturn(Optional.of(session(null, "JD 원문", null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
+        given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
+                .willThrow(new RuntimeException("포폴 재검색 실패"));
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
+
+        service.preload(1L);
+
+        verify(interviewPreloadFailureHandler, never()).markFailed(any());
+        verify(interviewPreloadResultPersister).persist(any(), any(), any());
     }
 
     @Test

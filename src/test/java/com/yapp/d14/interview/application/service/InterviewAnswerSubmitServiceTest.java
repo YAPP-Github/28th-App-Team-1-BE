@@ -7,6 +7,8 @@ import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.CeilingAssessment;
 import com.yapp.d14.interview.application.port.out.InterviewAxisPlanRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.JdOpenerContext;
+import com.yapp.d14.interview.application.port.out.JdOpenerContextCache;
 import com.yapp.d14.interview.application.port.out.LiveTurnAnalyzer;
 import com.yapp.d14.interview.application.port.out.LiveTurnResult;
 import com.yapp.d14.interview.application.port.out.PriorQaCache;
@@ -103,6 +105,9 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private PriorQaCache priorQaCache;
+
+    @Mock
+    private JdOpenerContextCache jdOpenerContextCache;
 
     @Mock
     private InterviewReportGenerateUseCase interviewReportGenerateUseCase;
@@ -278,7 +283,9 @@ class InterviewAnswerSubmitServiceTest {
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
-        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3)).willReturn("여는 질문");
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.empty());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
         Answer savedAnswer = Answer.of(
                 12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
                 false, null, null, null, null, false, false, null, LocalDateTime.now()
@@ -292,7 +299,40 @@ class InterviewAnswerSubmitServiceTest {
         service.submit(userId, command());
 
         verify(questionTextGenerator, never()).generate(any(), any());
-        verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3);
+        verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
+    }
+
+    @Test
+    void 후보가_없어도_캐시에_JD_오프너_소재가_있으면_함께_넘겨_여는_질문을_생성한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        JdOpenerContext cachedContext = new JdOpenerContext(List.of("대용량 트래픽"), List.of("포폴 청크1"));
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.of(cachedContext));
+        given(questionTextGenerator.generateOpener(
+                TestType.DEPTH, JobType.BACKEND, 3, List.of("대용량 트래픽"), List.of("포폴 청크1")
+        )).willReturn("조건부 여는 질문");
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "조건부 여는 질문", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        service.submit(userId, command());
+
+        verify(questionTextGenerator, never()).generate(any(), any());
+        verify(questionTextGenerator).generateOpener(
+                TestType.DEPTH, JobType.BACKEND, 3, List.of("대용량 트래픽"), List.of("포폴 청크1")
+        );
     }
 
     @Test
@@ -524,7 +564,8 @@ class InterviewAnswerSubmitServiceTest {
         given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(true, CeilingKind.TOPPED_OUT, "위로 닿음"), List.of()));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
-        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3)).willReturn("여는 질문");
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
         Question savedNextQuestion = Question.of(
                 14L, sessionId, "여는 질문", 2, 1, TestType.DEPTH, null, null, null, null, true, LocalDateTime.now()
         );
@@ -542,7 +583,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(nextQuestionCaptor.getValue().getTestType()).isEqualTo(TestType.DEPTH);
         assertThat(nextQuestionCaptor.getValue().getIsWrapUp()).isTrue();
         verify(questionTextGenerator, never()).generate(any(), any());
-        verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3);
+        verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
     }
 
     @Test
@@ -561,6 +602,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
         verify(priorQaCache).clear(sessionId);
+        verify(jdOpenerContextCache).clear(sessionId);
         verifyNoInteractions(liveTurnAnalyzer, interviewAnswerAnalyzePersister, interviewReportGenerateUseCase);
     }
 
@@ -570,7 +612,8 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.TRADEOFF)).willReturn(List.of());
-        given(questionTextGenerator.generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3)).willReturn("여는 질문");
+        given(questionTextGenerator.generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
         Question savedNextQuestion = Question.of(
                 14L, sessionId, "여는 질문", 2, 1, TestType.TRADEOFF, null, null, null, null, false, LocalDateTime.now()
         );
@@ -585,7 +628,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         verify(interviewAnswerAnalyzePersister).persistSkipped(any(), any(), isNull(), eq(2), any(), any(), any());
         verify(questionTextGenerator, never()).generate(any(), any());
-        verify(questionTextGenerator).generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3);
+        verify(questionTextGenerator).generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3, List.of(), List.of());
         verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, priorQaCache, interviewSttResetPersister);
     }
 

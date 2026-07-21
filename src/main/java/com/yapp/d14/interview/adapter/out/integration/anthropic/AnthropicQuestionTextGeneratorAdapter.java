@@ -14,6 +14,7 @@ import org.springframework.util.StreamUtils;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -51,11 +52,16 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
             - ⑥ 성장·복원력: "일하면서 예상과 다르게 흘러갔거나 실패했던 경험, 그리고 거기서 무엇을 배우셨는지 말씀해 주실 수 있을까요?"
 
             규칙:
-            - 입력으로 받는 지원자의 직무와 연차에 맞춰 질문의 소재·눈높이를 조정합니다.
+            - 기본은 입력으로 받는 지원자의 직무와 연차에 맞춘 일반적인 질문입니다.
               예를 들어 주니어에게는 팀이 이미 정해준 방향 안에서의 경험을, 시니어에게는
               스스로 의사결정하거나 남을 설득한 경험을 묻는 식으로 결을 맞춥니다.
-            - 지원자가 이미 한 말이나 채용 공고(JD) 문구를 인용하지 않습니다.
-              이 질문은 특정 답변·포트폴리오·JD와 무관하게 그 항목을 처음 여는 일반 질문입니다.
+            - [JD 키워드]와 [관련 포트폴리오 내용]이 함께 주어질 수 있습니다.
+              그 포트폴리오 내용이 특정 JD 키워드를 실제로 뒷받침할 때만 그 키워드를 소재로
+              자연스럽게 녹인 질문을 만드세요. 포트폴리오가 뒷받침하지 않는 JD 키워드는 절대 쓰지
+              않고, 그럴 땐 그냥 직무·연차 기반 일반 질문으로 돌아갑니다. 이 둘이 주어지지 않으면
+              무시합니다.
+            - 지원자가 이미 한 말이나 채용 공고(JD) 문구를 그대로 인용하지 않습니다. 소재만
+              참고하고 질문 문장은 새로 만듭니다.
             - 실제 면접관이 대화하듯 묻는 자연스러운 구어체 한 문장으로 답합니다.
             - 한 번에 하나의 질문만 합니다.
 
@@ -95,12 +101,11 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
     }
 
     @Override
-    public String generateOpener(TestType axis, JobType jobType, Integer yearsOfExperience) {
-        String userMessage = """
-                [여는 질문을 만들 항목] %s
-                [지원자 직무] %s
-                [지원자 연차] %s년
-                """.formatted(axis.getLabel(), jobType.getLabel(), yearsOfExperience);
+    public String generateOpener(
+            TestType axis, JobType jobType, Integer yearsOfExperience,
+            List<String> jdKeywords, List<String> relatedPortfolioChunks
+    ) {
+        String userMessage = buildOpenerUserMessage(axis, jobType, yearsOfExperience, jdKeywords, relatedPortfolioChunks);
 
         try {
             String content = chatClient.prompt()
@@ -116,6 +121,26 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
             log.error("[QUESTION TEXT GENERATE] 여는 질문(opener) Anthropic 호출/파싱 실패: axis={}", axis, e);
             throw new RuntimeException("여는 질문 생성에 실패했어요.", e);
         }
+    }
+
+    private String buildOpenerUserMessage(
+            TestType axis, JobType jobType, Integer yearsOfExperience,
+            List<String> jdKeywords, List<String> relatedPortfolioChunks
+    ) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[여는 질문을 만들 항목] ").append(axis.getLabel()).append("\n");
+        sb.append("[지원자 직무] ").append(jobType.getLabel()).append("\n");
+        sb.append("[지원자 연차] ").append(yearsOfExperience).append("년\n");
+        if (jdKeywords != null && !jdKeywords.isEmpty()) {
+            sb.append("[JD 키워드] ").append(String.join(", ", jdKeywords)).append("\n");
+        }
+        if (relatedPortfolioChunks != null && !relatedPortfolioChunks.isEmpty()) {
+            sb.append("[관련 포트폴리오 내용]\n");
+            for (String chunk : relatedPortfolioChunks) {
+                sb.append("- ").append(chunk).append("\n");
+            }
+        }
+        return sb.toString();
     }
 
     private static String loadAxesYaml() {

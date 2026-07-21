@@ -27,6 +27,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private static final int SUMMARY_TURN_LEVEL = 0;
     private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
+    private static final JdOpenerContext EMPTY_JD_OPENER_CONTEXT = new JdOpenerContext(List.of(), List.of());
     private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
     private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
     private static final String NORMAL_END_MESSAGE = "수고하셨습니다. 오늘 면접은 여기까지입니다.";
@@ -44,6 +45,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewAnswerAnalyzePersister interviewAnswerAnalyzePersister;
     private final InterviewSttResetPersister interviewSttResetPersister;
     private final PriorQaCache priorQaCache;
+    private final JdOpenerContextCache jdOpenerContextCache;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
@@ -225,6 +227,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         InterviewSttResetPersister.PersistResult persisted = interviewSttResetPersister.persist(session, question, answer);
         priorQaCache.clear(session.getId());
+        jdOpenerContextCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
     }
@@ -280,6 +283,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
         priorQaCache.clear(session.getId());
+        jdOpenerContextCache.clear(session.getId());
 
         triggerReportGeneration(session.getId());
 
@@ -466,9 +470,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
         return selectedProbe
                 .map(probe -> questionTextGenerator.generate(probe.getProbeText(), probe.getEchoQuote()))
-                .orElseGet(() -> questionTextGenerator.generateOpener(
-                        axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience()
-                ));
+                .orElseGet(() -> generateOpenerText(axis, session));
+    }
+
+    private String generateOpenerText(TestType axis, InterviewSession session) {
+        JdOpenerContext context = jdOpenerContextCache.get(session.getId()).orElse(EMPTY_JD_OPENER_CONTEXT);
+        return questionTextGenerator.generateOpener(
+                axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
+                context.jdKeywords(), context.relatedPortfolioChunks()
+        );
     }
 
     private List<QuestionCandidate> toQuestionCandidates(Long sessionId, LiveTurnResult liveTurnResult, int turnLevel) {
