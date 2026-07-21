@@ -11,7 +11,6 @@ import com.yapp.d14.user.application.port.in.UserNameRegisterUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileUpdateUseCase;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -48,9 +47,10 @@ class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/name/check")
     public ResponseEntity<ApiResponse<UserNameCheckHttpResponse>> checkName(
-            @RequestParam @NotBlank(message = "이름을 입력해주세요.") String name
+            @CurrentUser UUID userId,
+            @RequestParam String name
     ) {
-        boolean available = userNameDuplicateCheckUseCase.isAvailable(name);
+        boolean available = userNameDuplicateCheckUseCase.isAvailable(userId, name);
         return ResponseEntity.ok(ApiResponse.ok(new UserNameCheckHttpResponse(available)));
     }
 

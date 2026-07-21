@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 
 import java.util.UUID;
@@ -41,7 +42,7 @@ public interface UserControllerDocs {
 
     @Operation(
             summary = "이름 중복 확인",
-            description = "이름 사용 가능 여부를 확인합니다.\n\n" +
+            description = "이름 사용 가능 여부를 확인합니다. 본인이 이미 등록한 이름은 충돌로 보지 않습니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
@@ -51,7 +52,10 @@ public interface UserControllerDocs {
                     content = @Content(schema = @Schema(implementation = UserNameCheckHttpResponse.class))
             )
     })
-    ResponseEntity<ApiResponse<UserNameCheckHttpResponse>> checkName(String name);
+    ResponseEntity<ApiResponse<UserNameCheckHttpResponse>> checkName(
+            @Parameter(hidden = true) UUID userId,
+            @NotBlank(message = "이름을 입력해주세요.") String name
+    );
 
     @Operation(
             summary = "회원 프로필 조회",
