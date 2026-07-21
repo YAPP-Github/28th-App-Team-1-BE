@@ -10,7 +10,6 @@ import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
-import com.yapp.d14.interview.domain.ActionKeyword;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.AxisTier;
@@ -247,12 +246,6 @@ class InterviewReportGenerateServiceLlmE2eTest {
             log.info("[CARD] {} intent={}", c.getTestType(), c.getQuestionIntentTranslation());
             for (HighlightSpan h : c.getHighlightSpans()) {
                 log.info("    highlight {} [{}~{}]", h.tone(), h.range().startIndex(), h.range().endIndex());
-                for (ActionKeyword k : h.actionKeywords()) {
-                    log.info("        keyword: {} - {}", k.keyword(), k.suggestion());
-                    if (k.rewrittenText() != null) {
-                        log.info("        rewrittenText: {}", k.rewrittenText());
-                    }
-                }
             }
         }
         log.info("===============================================");

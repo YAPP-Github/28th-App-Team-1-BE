@@ -44,19 +44,10 @@ public record InterviewReportQueryResult(
     ) {
     }
 
-    // 하이라이트 하나가 그 근거가 된 행동형 키워드(최대 3개)를 갖는다.
     public record HighlightSpan(
             int startIndex,
             int endIndex,
-            HighlightTone tone,
-            List<ActionKeyword> actionKeywords
-    ) {
-    }
-
-    public record ActionKeyword(
-            String keyword,
-            String suggestion,
-            String rewrittenText
+            HighlightTone tone
     ) {
     }
 

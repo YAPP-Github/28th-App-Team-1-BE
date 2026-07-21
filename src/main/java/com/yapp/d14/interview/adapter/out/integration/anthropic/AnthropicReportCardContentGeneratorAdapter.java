@@ -5,7 +5,6 @@ import com.yapp.d14.interview.application.port.out.ReportCardContentContext.Axis
 import com.yapp.d14.interview.application.port.out.ReportCardContentContext.Turn;
 import com.yapp.d14.interview.application.port.out.ReportCardContentGenerator;
 import com.yapp.d14.interview.application.port.out.ReportCardDraft;
-import com.yapp.d14.interview.domain.ActionKeyword;
 import com.yapp.d14.interview.domain.HighlightSpan;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.TestType;
@@ -23,19 +22,13 @@ import java.util.List;
 @Component
 class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGenerator {
 
-    private static final int MAX_ACTION_KEYWORDS = 3;
-
     private static final String SYSTEM_PROMPT = """
             당신은 AI 면접 코치를 위해 리포트의 카드 내용을 작성하는 역할입니다. 카드는
             질문/답변 턴 하나당 하나입니다(축 전체를 묶은 카드가 아닙니다). 입력으로 axis별
             질문-답변 턴 목록과, 그 axis 전체에 적용되는 채점 근거(rationale)·해상도
             (resolutionLevel)를 받습니다. 같은 axis에 턴이 여러 개면, 그 턴들끼리는 서로
-            문맥(같은 채점 근거)을 공유하되, 산출물(질문 분석·하이라이트·키워드·고쳐쓰기)은
-            턴마다 독립적으로 작성합니다.
-
-            카드 안의 구조는 다음과 같은 계층입니다: 카드(턴) → highlightSpans(대본
-            하이라이트, 여러 개) → 하이라이트마다 actionKeywords(행동형 키워드, 최대 3개).
-            즉 행동형 키워드는 카드가 아니라 그 키워드의 근거가 된 하이라이트 하나에 속합니다.
+            문맥(같은 채점 근거)을 공유하되, 산출물(질문 분석·하이라이트)은 턴마다
+            독립적으로 작성합니다.
 
             턴(카드)마다 아래를 만듭니다.
 
@@ -50,40 +43,19 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                answerText 길이 범위 안에서 고르고, 다른 하이라이트 구간과 겹치지 않게 합니다.
                tone은 GOOD(잘함) 또는 IMPROVE(개선)입니다.
 
-            3. actionKeywords(행동형 키워드) - 하이라이트 하나당 최대 3개. 각 키워드는
-               keyword(행동형 키워드)와 suggestion(그 방향으로 가야 하는 이유 + 다음 면접에서
-               구체적으로 어떻게 하면 되는지를 합친 방향성 제안, 2~3문장) 두 가지로 구성합니다.
-               - keyword 좋은 예: "구체적인 사례 제시", "결론 먼저 말하기", "성과를 수치로 설명하기"
-               - keyword 금지 예: "근거 부족", "자신감 부족", "답변이 길다", "전달력이 부족하다" 등
-                 주관적이거나 음성만으로 판단하기 모호한 표현
-               - 우선순위(한 하이라이트에 개선점이 여러 개면 이 순서로 최대 3개만 고른다):
-                 1) 질문 적합성(질문 의도와 다른 방향 답변) 2) 전달력 핵심(결론 먼저 말하기 등)
-                 3) 직군 핵심 역량 개선 4) 표현·구조 개선
-               - 같은 행동으로 해결되는 개선점은 하나로 묶습니다.
-               - 답변에 없는 것은 추측해서 쓰지 않습니다(자신감·긴장·표정·목소리 톤·성격·감정 금지).
-               - rewrittenText(이렇게 바꿔 말해보세요) - 그 키워드가 속한 하이라이트 구간에서
-                 사용자가 실제로 말한 문장만 재료로 더 나은 표현으로 고쳐 씁니다. 사용자가
-                 말하지 않은 경험·사실·수치를 새로 만들어 넣지 않습니다. 원 답변이 너무 빈약해
-                 고쳐 쓸 재료가 없으면 null로 생략합니다.
-
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
               분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTranslation만
               작성합니다.
             - resolutionLowReason=OFF_TOPIC(딴 답): questionIntentTranslation은 작성하고,
-              질문과 무관하게 답한 구간 하나를 tone=IMPROVE 하이라이트로 잡아 질문 적합성
-              키워드("질문이 묻는 것부터 답하기" 류) 하나만 답니다. rewrittenText는 답변이
-              질문과 무관하므로 생략(null)합니다.
+              질문과 무관하게 답한 구간 하나를 tone=IMPROVE 하이라이트로 잡습니다.
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 배열의 원소 개수는 입력으로 받은
             턴의 총 개수와 정확히 같아야 하며, 각 원소는 다음 필드를 가집니다:
             axis(depth/boundary/connection/tradeoff/conflict/resilience 중 하나),
             questionId(입력에서 받은 값을 그대로 echo), depthLevel(입력에서 받은 값을 그대로 echo),
             questionIntentTranslation(문자열),
-            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/actionKeywords의 배열,
-            비어 있을 수 있음). 각 actionKeywords 원소는 keyword/suggestion/rewrittenText
-            (rewrittenText는 문자열 또는 null)를 가지며, 하이라이트당 최대 3개까지 우선순위
-            (1. 질문 적합성 2. 전달력 핵심 3. 직군 핵심 역량 4. 표현·구조) 순서로 배열에 담습니다.
+            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)의 배열, 비어 있을 수 있음).
             """;
 
     private final ChatClient chatClient;
@@ -147,21 +119,9 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     }
 
     private HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
-        List<ActionKeyword> actionKeywords = entry.actionKeywords() == null
-                ? List.of()
-                : entry.actionKeywords().stream()
-                        .limit(MAX_ACTION_KEYWORDS)
-                        .map(this::toActionKeyword)
-                        .toList();
-
         return new HighlightSpan(
                 new TextRange(entry.startIndex(), entry.endIndex()),
-                HighlightTone.valueOf(entry.tone().toUpperCase()),
-                actionKeywords
+                HighlightTone.valueOf(entry.tone().toUpperCase())
         );
-    }
-
-    private ActionKeyword toActionKeyword(ReportCardContentLlmEntry.ActionKeywordLlmEntry entry) {
-        return new ActionKeyword(entry.keyword(), entry.suggestion(), entry.rewrittenText());
     }
 }

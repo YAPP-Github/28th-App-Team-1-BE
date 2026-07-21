@@ -10,18 +10,6 @@ record ReportCardContentLlmEntry(
         List<HighlightSpanLlmEntry> highlightSpans
 ) {
 
-    record HighlightSpanLlmEntry(
-            int startIndex,
-            int endIndex,
-            String tone,
-            List<ActionKeywordLlmEntry> actionKeywords
-    ) {
-    }
-
-    record ActionKeywordLlmEntry(
-            String keyword,
-            String suggestion,
-            String rewrittenText
-    ) {
+    record HighlightSpanLlmEntry(int startIndex, int endIndex, String tone) {
     }
 }

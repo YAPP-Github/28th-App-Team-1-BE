@@ -83,7 +83,7 @@ public record InterviewReportHttpResponse(
             @Schema(description = "답변 대본(STT)")
             String transcript,
 
-            @Schema(description = "대본(transcript) 위 하이라이트 구간. 하이라이트마다 그 근거로 단 행동형 키워드를 갖는다. 해상도 낮음 카드는 빈 배열")
+            @Schema(description = "대본(transcript) 위 하이라이트 구간(잘함/개선). 해상도 낮음 카드는 빈 배열")
             List<HighlightSpan> highlightSpans,
 
             @Schema(description = "해상도 낮음 안내 문구. 정상 카드는 null")
@@ -118,35 +118,11 @@ public record InterviewReportHttpResponse(
             int endIndex,
 
             @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
-            String tone,
-
-            @Schema(description = "이 하이라이트 구간을 근거로 단 행동형 키워드(하이라이트당 최대 3개). 탭하면 열리는 상세 시트 내용")
-            List<ActionKeyword> actionKeywords
+            String tone
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(
-                    span.startIndex(),
-                    span.endIndex(),
-                    span.tone().name(),
-                    span.actionKeywords() == null ? null : span.actionKeywords().stream().map(ActionKeyword::from).toList()
-            );
-        }
-    }
-
-    public record ActionKeyword(
-            @Schema(description = "행동형 키워드")
-            String keyword,
-
-            @Schema(description = "그 방향으로 가야 하는 이유와 다음 면접에서 어떻게 적용하면 되는지를 담은 방향성 제안")
-            String suggestion,
-
-            @Schema(description = "'이렇게 바꿔 말해보세요' 고쳐 쓴 문장. 재료가 없으면 null")
-            String rewrittenText
-    ) {
-
-        private static ActionKeyword from(InterviewReportQueryResult.ActionKeyword keyword) {
-            return new ActionKeyword(keyword.keyword(), keyword.suggestion(), keyword.rewrittenText());
+            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name());
         }
     }
 
