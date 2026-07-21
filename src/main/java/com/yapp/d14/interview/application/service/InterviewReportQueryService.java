@@ -189,7 +189,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
 
         List<InterviewReportQueryResult.HighlightSpan> highlightSpans = card.getHighlightSpans().stream()
                 .map(span -> new InterviewReportQueryResult.HighlightSpan(
-                        span.range().startIndex(), span.range().endIndex(), span.tone(), span.analysis()))
+                        span.range().startIndex(), span.range().endIndex(), span.tone(), span.analysis(), span.followUpQuestions()))
                 .toList();
 
         return new InterviewReportQueryResult.Card(

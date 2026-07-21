@@ -14,15 +14,23 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
 @Component
 class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGenerator {
 
-    private static final String SYSTEM_PROMPT = """
+    // 꼬리질문(followUpQuestions) 생성 전술의 근거로 재사용한다.
+    private static final String PRINCIPLES_YAML_PATH = "interview-rubric/principles.yaml";
+
+    private static final String SYSTEM_PROMPT_TEMPLATE = """
             당신은 AI 면접 코치를 위해 리포트의 카드 내용을 작성하는 역할입니다. 카드는
             질문/답변 턴 하나당 하나입니다(축 전체를 묶은 카드가 아닙니다). 입력으로 axis별
             질문-답변 턴 목록과, 그 axis 전체에 적용되는 채점 근거(rationale)·해상도
@@ -47,6 +55,14 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                답변에 없는 것은 추측해서 쓰지 않습니다(자신감·긴장·표정·목소리 톤·성격·감정
                같은 인상 표현 금지, 관찰된 사실만 근거로 씁니다).
 
+               각 하이라이트에는 followUpQuestions(추가 질문)도 0~3개 만듭니다. 이는 그
+               구간(하이라이트가 잡은 답변 부분)을 두고 면접관이 실제로 이어서 던질 법한
+               꼬리질문입니다. 아래 [꼬리질문 생성 원칙]을 전술로 삼되, 원칙 번호나 내부 용어는
+               질문에 노출하지 말고, 그 구간의 실제 내용에 밀착한 구체적 질문을 만듭니다(일반론
+               금지). tone=GOOD이면 더 깊이 파고들어 진위·한계를 시험하는 질문을, tone=IMPROVE이면
+               부족한 부분을 드러내거나 해명을 요구하는 질문을 위주로 만듭니다. 마땅한 질문거리가
+               없으면 빈 배열로 둡니다. 각 질문은 실제 면접관이 말하듯 한 문장으로 씁니다.
+
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
               분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTranslation만
@@ -59,14 +75,19 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
             axis(depth/boundary/connection/tradeoff/conflict/resilience 중 하나),
             questionId(입력에서 받은 값을 그대로 echo), depthLevel(입력에서 받은 값을 그대로 echo),
             questionIntentTranslation(문자열),
-            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/analysis(문자열)의 배열,
-            비어 있을 수 있음).
+            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/analysis(문자열)/
+            followUpQuestions(문자열 배열, 0~3개, 비어 있을 수 있음)의 배열, 비어 있을 수 있음).
+
+            [꼬리질문 생성 원칙]
+            %s
             """;
 
     private final ChatClient chatClient;
+    private final String systemPrompt;
 
     AnthropicReportCardContentGeneratorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
         this.chatClient = ChatClient.builder(chatModel).build();
+        this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadPrinciplesYaml());
     }
 
     @Override
@@ -75,7 +96,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
         try {
             List<ReportCardContentLlmEntry> entries = chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
+                    .system(systemPrompt)
                     .user(userMessage)
                     .call()
                     .entity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
@@ -124,10 +145,22 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     }
 
     private HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
+        List<String> followUpQuestions = entry.followUpQuestions() == null
+                ? List.of()
+                : entry.followUpQuestions();
         return new HighlightSpan(
                 new TextRange(entry.startIndex(), entry.endIndex()),
                 HighlightTone.valueOf(entry.tone().toUpperCase()),
-                entry.analysis()
+                entry.analysis(),
+                followUpQuestions
         );
+    }
+
+    private static String loadPrinciplesYaml() {
+        try {
+            return StreamUtils.copyToString(new ClassPathResource(PRINCIPLES_YAML_PATH).getInputStream(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("principles.yaml 로드에 실패했어요.", e);
+        }
     }
 }

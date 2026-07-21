@@ -108,7 +108,7 @@ class InterviewReportQueryServiceTest {
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 card(1L, 21L, 2, TestType.DEPTH, "깊이 의도2", List.of()),
                 card(2L, 10L, 1, TestType.BOUNDARY, "경계 의도", List.of(
-                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, "좋은 근거"))),
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, "좋은 근거", List.of("추가 질문1", "추가 질문2")))),
                 card(3L, 20L, 1, TestType.DEPTH, "깊이 의도1", List.of())
         ));
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
@@ -150,6 +150,8 @@ class InterviewReportQueryServiceTest {
         assertThat(boundaryCard.transcript()).isEqualTo("경계 답변");
         assertThat(boundaryCard.resolutionNotice()).isNull();
         assertThat(boundaryCard.highlightSpans()).hasSize(1);
+        assertThat(boundaryCard.highlightSpans().get(0).followUpQuestions())
+                .containsExactly("추가 질문1", "추가 질문2");
 
         InterviewReportQueryResult.Card depthCard = cards.get(1);
         assertThat(depthCard.resolutionNotice()).isNotNull();

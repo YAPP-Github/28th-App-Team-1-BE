@@ -121,11 +121,14 @@ public record InterviewReportHttpResponse(
             String tone,
 
             @Schema(description = "이 구간이 왜 GOOD인지 또는 왜 IMPROVE인지에 대한 답변 분석")
-            String analysis
+            String analysis,
+
+            @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(0~3개). 없으면 빈 배열")
+            List<String> followUpQuestions
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name(), span.analysis());
+            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name(), span.analysis(), span.followUpQuestions());
         }
     }
 

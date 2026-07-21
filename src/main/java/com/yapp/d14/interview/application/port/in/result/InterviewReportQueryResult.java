@@ -48,7 +48,8 @@ public record InterviewReportQueryResult(
             int startIndex,
             int endIndex,
             HighlightTone tone,
-            String analysis
+            String analysis,
+            List<String> followUpQuestions
     ) {
     }
 
