@@ -36,11 +36,11 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
 
     @Override
     public InterviewSessionCreateResult create(InterviewSessionCreateCommand command) {
+        interviewSessionCreateValidator.validate(command);
+
         ticketAvailabilityCheckUseCase.checkAvailable(command.userId());
 
         userProfileInitializeUseCase.initializeIfAbsent(command.userId(), command.jobRole().name(), command.careerYears());
-
-        interviewSessionCreateValidator.validate(command);
 
         String jdText = resolveJdText(command);
 

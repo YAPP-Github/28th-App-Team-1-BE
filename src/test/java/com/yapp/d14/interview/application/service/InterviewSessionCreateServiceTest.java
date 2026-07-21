@@ -74,7 +74,7 @@ class InterviewSessionCreateServiceTest {
     }
 
     @Test
-    void 정상_흐름이면_이용권확인_검증_저장_preload_순서로_실행된다() {
+    void 정상_흐름이면_검증_이용권확인_저장_preload_순서로_실행된다() {
         given(interviewSessionPersister.persist(any(), any(), any(), any())).willReturn(sessionWithId(1L));
 
         InterviewSessionCreateResult result = service.create(command);
@@ -83,12 +83,12 @@ class InterviewSessionCreateServiceTest {
         assertThat(result.status()).isEqualTo(InterviewSessionStatus.PREPARING);
 
         InOrder inOrder = inOrder(
-                ticketAvailabilityCheckUseCase, userProfileInitializeUseCase, interviewSessionCreateValidator,
+                interviewSessionCreateValidator, ticketAvailabilityCheckUseCase, userProfileInitializeUseCase,
                 interviewSessionPersister, interviewSessionPreloadUseCase
         );
+        inOrder.verify(interviewSessionCreateValidator).validate(command);
         inOrder.verify(ticketAvailabilityCheckUseCase).checkAvailable(userId);
         inOrder.verify(userProfileInitializeUseCase).initializeIfAbsent(userId, "BACKEND", 8);
-        inOrder.verify(interviewSessionCreateValidator).validate(command);
         inOrder.verify(interviewSessionPersister).persist(any(), any(), any(), any());
         inOrder.verify(interviewSessionPreloadUseCase).preload(1L);
     }
@@ -101,17 +101,18 @@ class InterviewSessionCreateServiceTest {
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(TicketException.class);
 
         verify(userProfileInitializeUseCase, never()).initializeIfAbsent(any(), any(), any());
-        verify(interviewSessionCreateValidator, never()).validate(any());
         verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());
     }
 
     @Test
-    void 검증이_실패하면_저장은_실행되지_않는다() {
+    void 검증이_실패하면_이후_단계는_실행되지_않는다() {
         doThrow(new RuntimeException("검증 실패")).when(interviewSessionCreateValidator).validate(command);
 
         assertThatThrownBy(() -> service.create(command)).isInstanceOf(RuntimeException.class);
 
+        verify(ticketAvailabilityCheckUseCase, never()).checkAvailable(any());
+        verify(userProfileInitializeUseCase, never()).initializeIfAbsent(any(), any(), any());
         verify(interviewSessionPersister, never()).persist(any(), any(), any(), any());
         verify(interviewSessionPreloadUseCase, never()).preload(any());
     }
