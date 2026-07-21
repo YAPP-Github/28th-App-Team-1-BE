@@ -18,5 +18,7 @@ public interface QuestionCandidateRepository {
 
     List<QuestionCandidate> findOpenBySessionIdAndTestType(Long sessionId, TestType testType);
 
+    void exhaustOpenBySessionIdAndTestType(Long sessionId, TestType testType);
+
     void deleteBySessionId(Long sessionId);
 }

@@ -43,6 +43,9 @@ public class InterviewAxisPlanJpaEntity {
     @Column(name = "used_count")
     private Integer usedCount;
 
+    @Column(name = "completed", nullable = false)
+    private boolean completed;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -54,6 +57,7 @@ public class InterviewAxisPlanJpaEntity {
         entity.tier = interviewAxisPlan.getTier();
         entity.budget = interviewAxisPlan.getBudget();
         entity.usedCount = interviewAxisPlan.getUsedCount();
+        entity.completed = interviewAxisPlan.isCompleted();
         entity.createdAt = interviewAxisPlan.getCreatedAt();
         return entity;
     }
@@ -66,6 +70,7 @@ public class InterviewAxisPlanJpaEntity {
                 tier,
                 budget,
                 usedCount,
+                completed,
                 createdAt
         );
     }

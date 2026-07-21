@@ -21,6 +21,7 @@ import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisTier;
+import com.yapp.d14.interview.domain.CeilingKind;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
 import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
@@ -56,6 +57,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.BDDMockito.willThrow;
@@ -472,7 +474,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void 종료_사유도_SKIP도_아니면_run_live_turn을_수행하고_결과를_영속화한_뒤_UNSUPPORTED_TURN_LEVEL을_던진다() {
+    void 종료_사유도_SKIP도_아니면_run_live_turn_결과로_다음_질문을_생성한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent))
@@ -487,15 +489,56 @@ class InterviewAnswerSubmitServiceTest {
                 new CeilingAssessment(false, null, "아직 새 내용이 나오는 중"),
                 List.of()
         ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionTextGenerator.generate("probe", "echo")).willReturn("생성된 꼬리 질문");
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "생성된 꼬리 질문", 2, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persist(
+                any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), any()
+        )).willReturn(new InterviewAnswerAnalyzePersister.PersistResult(15L, savedNextQuestion));
 
-        assertThatThrownBy(() -> service.submit(userId, command()))
-                .isInstanceOf(InterviewException.class)
-                .extracting("errorCode")
-                .isEqualTo(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
 
-        verify(interviewAnswerAnalyzePersister).persist(any(), any(), any(), any(), any(), eq(1));
+        assertThat(result.answerId()).isEqualTo(15L);
+        assertThat(result.nextQuestion().questionId()).isEqualTo(14L);
+        assertThat(result.nextQuestion().isLast()).isFalse();
+        assertThat(result.nextQuestion().turnLevel()).isEqualTo(2);
+        assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         verify(priorQaCache).append(eq(sessionId), eq(TestType.DEPTH), any());
         verifyNoInteractions(interviewSttResetPersister, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+        // axis가 전환되지 않으면 이미 조회해둔 OPEN 후보를 재사용해야 한다 — 같은 axis를 두 번 조회하지 않는다.
+        verify(questionCandidateRepository, times(1)).findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH);
+    }
+
+    @Test
+    void isWrapUp이_처음_true로_전환되면_axis_전환_없이_마무리_질문으로_표시한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(priorQaCache.get(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(true, CeilingKind.TOPPED_OUT, "위로 닿음"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 2, 1, TestType.DEPTH, null, null, null, null, true, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persist(
+                any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), any()
+        )).willReturn(new InterviewAnswerAnalyzePersister.PersistResult(17L, savedNextQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(null, audioContent, true));
+
+        assertThat(result.nextQuestion().isLast()).isTrue();
+
+        ArgumentCaptor<Question> nextQuestionCaptor = ArgumentCaptor.forClass(Question.class);
+        verify(interviewAnswerAnalyzePersister)
+                .persist(any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), nextQuestionCaptor.capture());
+        assertThat(nextQuestionCaptor.getValue().getTestType()).isEqualTo(TestType.DEPTH);
+        assertThat(nextQuestionCaptor.getValue().getIsWrapUp()).isTrue();
+        verify(questionTextGenerator, never()).generate(any(), any());
     }
 
     @Test
@@ -518,16 +561,25 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void endType이_SKIP이면_분석_없이_스킵됨_컨텍스트만_기록하고_UNSUPPORTED_TURN_LEVEL을_던진다() {
-        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+    void endType이_SKIP이면_분석_없이_해당_axis_사용량만_소모하고_예산_소진이면_다음_axis로_전환한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithTradeoffWeighted()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.TRADEOFF)).willReturn(List.of());
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "조금 더 구체적으로 설명해 주실 수 있을까요?", 2, 1, TestType.TRADEOFF, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persistSkipped(any(), any(), isNull(), eq(2), any(), any(), any()))
+                .willReturn(new InterviewAnswerAnalyzePersister.PersistResult(16L, savedNextQuestion));
 
-        assertThatThrownBy(() -> service.submit(userId, regularTurnCommand(InterviewEndType.SKIP, null)))
-                .isInstanceOf(InterviewException.class)
-                .extracting("errorCode")
-                .isEqualTo(InterviewErrorCode.UNSUPPORTED_TURN_LEVEL);
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.SKIP, null));
 
-        verify(interviewAnswerAnalyzePersister).persistSkipped(any(), any());
+        assertThat(result.answerId()).isEqualTo(16L);
+        assertThat(result.nextQuestion().questionId()).isEqualTo(14L);
+        assertThat(result.nextQuestion().turnLevel()).isEqualTo(2);
+        assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
+        verify(interviewAnswerAnalyzePersister).persistSkipped(any(), any(), isNull(), eq(2), any(), any(), any());
+        verify(questionTextGenerator, never()).generate(any(), any());
         verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, priorQaCache, interviewSttResetPersister);
     }
 
@@ -538,7 +590,19 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     private InterviewAnswerSubmitCommand regularTurnCommand(InterviewEndType endType, byte[] audio) {
-        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audio, 100f, 110f, 0f, 5f, 5f, endType, false);
+        return regularTurnCommand(endType, audio, false);
+    }
+
+    private InterviewAnswerSubmitCommand regularTurnCommand(InterviewEndType endType, byte[] audio, boolean isWrapUp) {
+        return new InterviewAnswerSubmitCommand(sessionId, summaryQuestionId, audio, 100f, 110f, 0f, 5f, 5f, endType, isWrapUp);
+    }
+
+    private InterviewSession sessionWithTradeoffWeighted() {
+        return InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), JobType.BACKEND, 3, null, null, null,
+                InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
+                20, 15, 10, 30, 10, 15, 0, 0
+        );
     }
 
     @Test
