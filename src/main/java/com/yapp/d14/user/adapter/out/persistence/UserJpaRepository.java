@@ -10,4 +10,8 @@ import java.util.UUID;
 interface UserJpaRepository extends JpaRepository<UserJpaEntity, UUID> {
 
     Optional<UserJpaEntity> findByProviderAndProviderId(Provider provider, String providerId);
+
+    boolean existsByName(String name);
+
+    boolean existsByNameAndIdNot(String name, UUID id);
 }

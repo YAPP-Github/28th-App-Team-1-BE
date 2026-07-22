@@ -12,5 +12,9 @@ public interface UserRepository {
 
     Optional<User> findByProviderAndProviderId(Provider provider, String providerId);
 
+    boolean existsByName(String name);
+
+    boolean existsByNameAndIdNot(String name, UUID id);
+
     User save(User user);
 }
