@@ -60,7 +60,7 @@ class GuestFeedbackSubmitService implements GuestFeedbackSubmitUseCase {
         String nickname = resolveNickname(command.nickname(), existingCount);
 
         GuestFeedback saved = guestFeedbackRepository.save(
-                GuestFeedback.create(sessionId, nickname, command.deviceId(), ratings, command.overallFeedback())
+                GuestFeedback.create(sessionId, nickname, command.deviceId(), ratings)
         );
 
         // 지인 1명 제출 = 최종 레포트 성립(Step4, +30일). 최종 레포트 성립 트리거 자체는 별도 이슈 범위다.

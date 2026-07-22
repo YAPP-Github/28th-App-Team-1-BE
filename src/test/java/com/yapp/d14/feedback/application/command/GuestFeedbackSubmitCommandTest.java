@@ -22,7 +22,7 @@ class GuestFeedbackSubmitCommandTest {
     @Test
     void 정상_입력이면_생성한다() {
         GuestFeedbackSubmitCommand command = GuestFeedbackSubmitCommand.of(
-                TOKEN, DEVICE_ID, "지인1", ratings(2), "전반 피드백"
+                TOKEN, DEVICE_ID, "지인1", ratings(2)
         );
 
         assertThat(command.ratings()).containsExactly(new GuestFeedbackSubmitCommand.Rating(AttitudeAxis.GAZE, 2, "코멘트"));
@@ -30,7 +30,7 @@ class GuestFeedbackSubmitCommandTest {
 
     @Test
     void deviceId가_없으면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, null, "지인1", ratings(2), null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, null, "지인1", ratings(2)))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.MISSING_DEVICE_ID);
@@ -38,7 +38,7 @@ class GuestFeedbackSubmitCommandTest {
 
     @Test
     void deviceId가_공백이면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, "  ", "지인1", ratings(2), null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, "  ", "지인1", ratings(2)))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.MISSING_DEVICE_ID);
@@ -46,7 +46,7 @@ class GuestFeedbackSubmitCommandTest {
 
     @Test
     void ratings가_비어있으면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", List.of(), null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", List.of()))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INCOMPLETE_RATINGS);
@@ -54,7 +54,7 @@ class GuestFeedbackSubmitCommandTest {
 
     @Test
     void ratings가_null이면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", null, null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", null))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INCOMPLETE_RATINGS);
@@ -62,12 +62,12 @@ class GuestFeedbackSubmitCommandTest {
 
     @Test
     void level이_범위를_벗어나면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", ratings(0), null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", ratings(0)))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INVALID_RATING_LEVEL);
 
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", ratings(5), null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", ratings(5)))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INVALID_RATING_LEVEL);
@@ -77,7 +77,7 @@ class GuestFeedbackSubmitCommandTest {
     void level이_null이면_예외를_던진다() {
         List<GuestFeedbackSubmitCommand.RawRating> raw = List.of(new GuestFeedbackSubmitCommand.RawRating("GAZE", null, null));
 
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw, null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INVALID_RATING_LEVEL);
@@ -90,7 +90,7 @@ class GuestFeedbackSubmitCommandTest {
                 new GuestFeedbackSubmitCommand.RawRating("GAZE", 3, null)
         );
 
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw, null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.DUPLICATE_RATING_AXIS);
@@ -100,7 +100,7 @@ class GuestFeedbackSubmitCommandTest {
     void 정의되지_않은_axis면_예외를_던진다() {
         List<GuestFeedbackSubmitCommand.RawRating> raw = List.of(new GuestFeedbackSubmitCommand.RawRating("FOO", 2, null));
 
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw, null))
+        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", raw))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.INVALID_ATTITUDE_AXIS);

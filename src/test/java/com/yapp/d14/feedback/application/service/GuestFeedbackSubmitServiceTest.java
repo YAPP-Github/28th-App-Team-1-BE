@@ -61,7 +61,7 @@ class GuestFeedbackSubmitServiceTest {
         List<GuestFeedbackSubmitCommand.RawRating> raw = axes.stream()
                 .map(axis -> new GuestFeedbackSubmitCommand.RawRating(axis.name(), 2, null))
                 .toList();
-        return GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, nickname, raw, "전반 피드백");
+        return GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, nickname, raw);
     }
 
     private void stubOpenVideo() {
@@ -170,7 +170,7 @@ class GuestFeedbackSubmitServiceTest {
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(0L);
         given(guestFeedbackRepository.save(any())).willAnswer(invocation -> {
             GuestFeedback fb = invocation.getArgument(0);
-            return GuestFeedback.of(99L, fb.getSessionId(), fb.getNickname(), fb.getDeviceId(), fb.getRatings(), fb.getOverallFeedback(), fb.getSubmittedAt());
+            return GuestFeedback.of(99L, fb.getSessionId(), fb.getNickname(), fb.getDeviceId(), fb.getRatings(), fb.getSubmittedAt());
         });
 
         GuestFeedbackSubmitResult result = service.submit(commandWith("재원", List.of(AttitudeAxis.GAZE)));
