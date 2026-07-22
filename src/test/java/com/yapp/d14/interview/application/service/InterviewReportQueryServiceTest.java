@@ -195,6 +195,27 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void 영상이_업로드됐고_만료전이면_재생url을_발급한다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, NOW.plusDays(3), false, true)));
+        given(interviewVideoStorage.presignPlayback(USER_ID, SESSION_ID)).willReturn("https://s3/play");
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.video().url()).isEqualTo("https://s3/play");
+        assertThat(result.video().expired()).isFalse();
+    }
+
+    @Test
     void 지인_피드백이_있으면_섹션을_조립한다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
