@@ -8,6 +8,7 @@ import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryRes
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
@@ -67,6 +68,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final InterviewVideoRepository interviewVideoRepository;
+    private final InterviewVideoStorage interviewVideoStorage;
     private final GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
     @Override
@@ -107,7 +109,13 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 .toList();
 
         InterviewReportQueryResult.Video video = interviewVideoRepository.findBySessionId(sessionId)
-                .map(v -> new InterviewReportQueryResult.Video(null, v.isExpired(), v.getExpiresAt()))
+                .map(v -> {
+                    // 업로드가 끝났고(uploaded) 아직 만료 전일 때만 재생 URL을 발급한다.
+                    String url = v.isUploaded() && !v.isExpired()
+                            ? interviewVideoStorage.presignPlayback(userId, sessionId)
+                            : null;
+                    return new InterviewReportQueryResult.Video(url, v.isExpired(), v.getExpiresAt());
+                })
                 .orElse(null);
 
         return new InterviewReportQueryResult(

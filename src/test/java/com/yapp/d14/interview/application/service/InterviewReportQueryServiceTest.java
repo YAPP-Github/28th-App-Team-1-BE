@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryRes
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
@@ -67,6 +68,8 @@ class InterviewReportQueryServiceTest {
     @Mock
     private InterviewVideoRepository interviewVideoRepository;
     @Mock
+    private InterviewVideoStorage interviewVideoStorage;
+    @Mock
     private GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
     @InjectMocks
@@ -122,8 +125,9 @@ class InterviewReportQueryServiceTest {
                 axisEval(TestType.BOUNDARY, ResolutionLevel.NORMAL, null)
         ));
         given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // 업로드 전(uploaded=false)이므로 재생 URL은 발급되지 않는다.
         given(interviewVideoRepository.findBySessionId(SESSION_ID))
-                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, NOW.plusDays(3), false)));
+                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, NOW.plusDays(3), false, false)));
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
                 .willReturn(new GuestFeedbackReportView(0, List.of()));
 
