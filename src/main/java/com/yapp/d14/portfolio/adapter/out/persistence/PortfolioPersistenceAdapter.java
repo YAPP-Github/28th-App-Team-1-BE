@@ -40,7 +40,7 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
 
     @Override
     public boolean existsReplacementSince(UUID userId, LocalDateTime since) {
-        return portfolioJpaRepository.existsByUserIdAndReplacementTrueAndStatusAndCreatedAtGreaterThanEqual(
+        return portfolioJpaRepository.existsByUserIdAndReplacementTrueAndStatusAndUploadedAtGreaterThanEqual(
                 userId, PortfolioStatus.READY, since
         );
     }
