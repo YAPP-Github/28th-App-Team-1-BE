@@ -17,6 +17,11 @@ public final class S3KeyGenerator {
         return "users/%s/sessions/%s/questions/%s.mp3".formatted(userId, sessionId, turnLevel);
     }
 
+    // 프론트 녹화본. 세션당 1개로 고정되며 userId+sessionId로 결정적 계산 가능(s3-policy.md §3.4).
+    public static String interviewRecordingKey(UUID userId, Long sessionId) {
+        return "users/%s/sessions/%s/recording/raw.webm".formatted(userId, sessionId);
+    }
+
     public static String wrapUpMessageKey(String variant) {
         return "system/interview/wrapup-messages/%s.mp3".formatted(variant);
     }

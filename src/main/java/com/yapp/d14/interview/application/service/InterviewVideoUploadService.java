@@ -4,26 +4,30 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnershipCheck
 import com.yapp.d14.interview.application.port.in.InterviewVideoUploadCompleteUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoUploadUrlIssueUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewVideoUploadUrlResult;
+import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
+import com.yapp.d14.interview.application.port.out.InterviewVideoStorage.PresignedUpload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-// TODO(#63 Step2~3): presigned URL 발급·업로드 완료 표시를 실제로 구현한다. 현재는 계약 확정용 스텁이다.
 @Service
 @RequiredArgsConstructor
 class InterviewVideoUploadService implements InterviewVideoUploadUrlIssueUseCase, InterviewVideoUploadCompleteUseCase {
 
     private final InterviewSessionOwnershipCheckUseCase interviewSessionOwnershipCheckUseCase;
+    private final InterviewVideoStorage interviewVideoStorage;
 
     @Override
     public InterviewVideoUploadUrlResult issue(UUID userId, Long sessionId) {
         interviewSessionOwnershipCheckUseCase.requireOwned(userId, sessionId);
-        return new InterviewVideoUploadUrlResult("https://stub.local/upload-url", "video/webm", 600L);
+        PresignedUpload upload = interviewVideoStorage.presignUpload(userId, sessionId);
+        return new InterviewVideoUploadUrlResult(upload.url(), upload.contentType(), upload.expiresInSeconds());
     }
 
     @Override
     public void complete(UUID userId, Long sessionId) {
         interviewSessionOwnershipCheckUseCase.requireOwned(userId, sessionId);
+        // TODO(#63 Step3): InterviewVideo에 uploaded=true 표시(없으면 upsert)한다.
     }
 }
