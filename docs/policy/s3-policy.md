@@ -85,4 +85,5 @@ video_expires_at > NOW() 확인
 - 업로드: `POST /api/v1/portfolios` 등록 시 비동기로 S3 업로드 (`PortfolioProcessService`, `S3PortfolioFileUploaderAdapter`).
 - 삭제: 포트폴리오 삭제는 **소프트 삭제**다. `portfolios` row는 재업로드 월 1회 제한 판정을 위한 이력으로 보존되고(`deleted=true`, `deleted_at` 기록), S3 원본 파일과 pgvector 임베딩은 이력 보존과 무관하게 즉시 물리 삭제된다. `PortfolioDeleteService.delete()`는 `@Transactional`로 DB 갱신(소프트 삭제 `save`)을 감싸고, `AfterCommitExecutor.runAfterCommit(...)`을 통해 트랜잭션이 커밋된 이후에만 `PortfolioFileUploader.delete(key)`를 실행한다 — DB 갱신이 롤백됐는데 S3 파일은 이미 지워지는 불일치를 방지하기 위함이다.
   - pgvector 청크 삭제(`PortfolioEmbeddingStore.deleteByPortfolioId`)는 같은 PostgreSQL 데이터소스를 쓰므로 DB 갱신과 같은 트랜잭션 안에서 처리한다. S3 삭제만 그 트랜잭션 커밋 후 별도로 실행한다 (전부-또는-전무 원칙 — pgvector 삭제가 실패하면 DB 갱신도 함께 롤백된다).
-  - 소프트 삭제된 포트폴리오는 상태 조회·목록·재삭제 등 API에서는 존재하지 않는 것으로 취급된다(404). row 보존은 순수하게 재업로드 제한 판정용이다.
+  - 소프트 삭제된 포트폴리오는 ID 기반 상태 조회·재삭제 API에서는 존재하지 않는 것으로 취급된다(404).
+    목록 조회에서는 제외되며, 목록 API 자체는 200으로 반환된다. row 보존은 순수하게 재업로드 제한 판정용이다.
