@@ -27,7 +27,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private static final int SUMMARY_TURN_LEVEL = 0;
     private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
-    private static final String SEED_QUESTION_TEXT = "조금 더 구체적으로 설명해 주실 수 있을까요?";
+    private static final JdOpenerContext EMPTY_JD_OPENER_CONTEXT = new JdOpenerContext(List.of(), List.of());
     private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
     private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
     private static final String NORMAL_END_MESSAGE = "수고하셨습니다. 오늘 면접은 여기까지입니다.";
@@ -45,6 +45,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewAnswerAnalyzePersister interviewAnswerAnalyzePersister;
     private final InterviewSttResetPersister interviewSttResetPersister;
     private final PriorQaCache priorQaCache;
+    private final JdOpenerContextCache jdOpenerContextCache;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
@@ -83,7 +84,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session); // 다음 axis 선택
         TestType nextAxis = nextAxisPlan.getTestType(); // axis 값 추출
         Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 기존 OPEN 후보 + 신규 후보를 병합해 한 번만 선택
-        String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장 생성
+        String nextQuestionText = generateNextQuestionText(selectedProbe, nextAxis, session); // 질문 문장 생성
 
         int nextTurnLevel = SUMMARY_TURN_LEVEL + 1;
         Question nextQuestion = Question.create(
@@ -226,6 +227,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         InterviewSttResetPersister.PersistResult persisted = interviewSttResetPersister.persist(session, question, answer);
         priorQaCache.clear(session.getId());
+        jdOpenerContextCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
     }
@@ -281,6 +283,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
         priorQaCache.clear(session.getId());
+        jdOpenerContextCache.clear(session.getId());
 
         triggerReportGeneration(session.getId());
 
@@ -404,7 +407,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         List<QuestionCandidate> knownOpenProbes = nextAxis == currentAxis ? openProbesForCurrentAxis : null; // 중복조회 방지
         Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates, knownOpenProbes); // 후보 선택
-        String nextQuestionText = generateNextQuestionText(selectedProbe); // 질문 문장
+        String nextQuestionText = generateNextQuestionText(selectedProbe, nextAxis, session); // 질문 문장
         int nextDepthLevel = nextAxis == currentAxis ? question.getDepthLevel() + 1 : 1; // 깊이 계산
         Question nextQuestion = Question.create(
                 session.getId(), nextQuestionText, nextTurnLevel, nextDepthLevel, nextAxis, null, null, isWrapUpForced
@@ -464,10 +467,18 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         return NextProbeSelector.select(candidatePool);
     }
 
-    private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe) {
+    private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
         return selectedProbe
                 .map(probe -> questionTextGenerator.generate(probe.getProbeText(), probe.getEchoQuote()))
-                .orElse(SEED_QUESTION_TEXT); //TODO 여는 질문 로직 구현 예정
+                .orElseGet(() -> generateOpenerText(axis, session));
+    }
+
+    private String generateOpenerText(TestType axis, InterviewSession session) {
+        JdOpenerContext context = jdOpenerContextCache.get(session.getId()).orElse(EMPTY_JD_OPENER_CONTEXT);
+        return questionTextGenerator.generateOpener(
+                axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
+                context.jdKeywords(), context.relatedPortfolioChunks()
+        );
     }
 
     private List<QuestionCandidate> toQuestionCandidates(Long sessionId, LiveTurnResult liveTurnResult, int turnLevel) {

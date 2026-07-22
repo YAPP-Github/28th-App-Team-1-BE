@@ -4,6 +4,8 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
+import com.yapp.d14.interview.application.port.out.JdOpenerContext;
+import com.yapp.d14.interview.application.port.out.JdOpenerContextCache;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
@@ -38,6 +40,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     private final InterviewSessionRepository interviewSessionRepository;
     private final PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
     private final JdKeywordExtractor jdKeywordExtractor;
+    private final JdOpenerContextCache jdOpenerContextCache;
     private final ProbeCandidateExtractor probeCandidateExtractor;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
@@ -60,6 +63,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             List<String> chunks = searchPortfolioChunks(session);
             List<String> jdKeywords = extractJdKeywords(session);
             List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords);
+            saveJdOpenerContextSafely(session, jdKeywords);
 
             String questionText = buildSummaryQuestionText(session.getFocusProject());
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 합성 시작: sessionId={}", sessionId);
@@ -111,6 +115,24 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 완료: sessionId={}, keywordCount={}, elapsedSeconds={}",
                 session.getId(), jdKeywords.size(), elapsedSeconds(startedAt));
         return jdKeywords;
+    }
+
+    // 조건부 opener(핵심 항목이 비었을 때 JD∩포폴 키워드로 여는 질문)용 소재를 preload 시점에 미리 계산해 캐시에 저장한다.
+    // 타이머가 안 도는 preload 단계에서 끝내둬야 라이브 턴 중 추가 지연이 생기지 않는다.
+    // 부가 기능이라 실패해도 preload 전체를 실패시키지 않고 로그만 남긴다(일반 seed로 fallback 가능).
+    private void saveJdOpenerContextSafely(InterviewSession session, List<String> jdKeywords) {
+        if (jdKeywords.isEmpty()) {
+            return;
+        }
+        try {
+            List<String> relatedChunks = portfolioChunkSearchUseCase
+                    .searchChunks(session.getPortfolioId(), String.join(", ", jdKeywords), TOP_K).stream()
+                    .map(PortfolioChunkResult::text)
+                    .toList();
+            jdOpenerContextCache.save(session.getId(), new JdOpenerContext(jdKeywords, relatedChunks));
+        } catch (Exception e) {
+            log.warn("[INTERVIEW PRELOAD] JD 오프너 소재 캐시 저장 실패, 일반 seed로 대체됩니다: sessionId={}", session.getId(), e);
+        }
     }
 
     private List<QuestionCandidate> buildQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
