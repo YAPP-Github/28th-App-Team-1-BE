@@ -38,13 +38,13 @@ class InterviewVideoUploadServiceTest {
     @Test
     void 업로드_URL_발급은_소유권을_확인하고_presigned_PUT을_반환한다() {
         given(interviewVideoStorage.presignUpload(USER_ID, SESSION_ID))
-                .willReturn(new PresignedUpload("https://s3/put", "video/webm", 600L));
+                .willReturn(new PresignedUpload("https://s3/put", "video/mp4", 600L));
 
         InterviewVideoUploadUrlResult result = service.issue(USER_ID, SESSION_ID);
 
         verify(interviewSessionOwnershipCheckUseCase).requireOwned(USER_ID, SESSION_ID);
         assertThat(result.uploadUrl()).isEqualTo("https://s3/put");
-        assertThat(result.contentType()).isEqualTo("video/webm");
+        assertThat(result.contentType()).isEqualTo("video/mp4");
         assertThat(result.expiresInSeconds()).isEqualTo(600L);
     }
 

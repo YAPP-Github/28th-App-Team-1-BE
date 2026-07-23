@@ -18,8 +18,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 class S3InterviewVideoStorageAdapter implements InterviewVideoStorage {
 
-    // 녹화본은 webm 컨테이너로 고정한다(s3-policy.md의 recording/raw.webm). 서명에 포함되므로 업로드 시 동일 헤더 필요.
-    private static final String CONTENT_TYPE = "video/webm";
+    // 녹화본은 mp4 컨테이너로 고정한다(네이티브 iOS/Android 기본 녹화 포맷, s3-policy.md의 recording/raw.mp4).
+    // 서명에 포함되므로 업로드 시 동일 헤더 필요.
+    private static final String CONTENT_TYPE = "video/mp4";
     // presigned URL 자체의 서명 유효시간. 콘텐츠 접근 만료(video_expires_at)와는 별개다(s3-policy.md §2).
     private static final Duration UPLOAD_TTL = Duration.ofMinutes(10);
     private static final Duration PLAYBACK_TTL = Duration.ofMinutes(10);

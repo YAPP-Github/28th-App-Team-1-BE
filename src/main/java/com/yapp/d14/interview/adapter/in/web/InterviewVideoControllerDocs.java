@@ -37,8 +37,8 @@ public interface InterviewVideoControllerDocs {
                                     {
                                       "success": true,
                                       "data": {
-                                        "uploadUrl": "https://bucket.s3.ap-northeast-2.amazonaws.com/users/1/sessions/42/recording/raw.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=600&...",
-                                        "contentType": "video/webm",
+                                        "uploadUrl": "https://bucket.s3.ap-northeast-2.amazonaws.com/users/1/sessions/42/recording/raw.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=600&...",
+                                        "contentType": "video/mp4",
                                         "expiresInSeconds": 600
                                       }
                                     }
