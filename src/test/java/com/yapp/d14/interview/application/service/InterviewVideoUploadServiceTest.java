@@ -13,8 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,29 +49,15 @@ class InterviewVideoUploadServiceTest {
     }
 
     @Test
-    void 완료_확정은_기존_영상을_업로드됨으로_표시하고_저장한다() {
-        InterviewVideo existing = InterviewVideo.create(SESSION_ID, LocalDateTime.now());
-        given(interviewVideoRepository.findBySessionIdForUpdate(SESSION_ID)).willReturn(Optional.of(existing));
-
+    void 완료_확정은_소유권을_확인하고_uploaded_upsert를_호출한다() {
         service.complete(USER_ID, SESSION_ID);
 
         verify(interviewSessionOwnershipCheckUseCase).requireOwned(USER_ID, SESSION_ID);
         ArgumentCaptor<InterviewVideo> captor = ArgumentCaptor.forClass(InterviewVideo.class);
-        verify(interviewVideoRepository).save(captor.capture());
-        assertThat(captor.getValue().isUploaded()).isTrue();
-    }
-
-    @Test
-    void 완료_확정_시_보관_레코드가_없으면_생성해_업로드됨으로_저장한다() {
-        given(interviewVideoRepository.findBySessionIdForUpdate(SESSION_ID)).willReturn(Optional.empty());
-
-        service.complete(USER_ID, SESSION_ID);
-
-        ArgumentCaptor<InterviewVideo> captor = ArgumentCaptor.forClass(InterviewVideo.class);
-        verify(interviewVideoRepository).save(captor.capture());
-        InterviewVideo saved = captor.getValue();
-        assertThat(saved.getSessionId()).isEqualTo(SESSION_ID);
-        assertThat(saved.isUploaded()).isTrue();
-        assertThat(saved.isExpired()).isFalse();
+        verify(interviewVideoRepository).upsertUploaded(captor.capture());
+        InterviewVideo candidate = captor.getValue();
+        // 레코드가 없을 때 INSERT될 보관 타이머 값. expires_at은 미래(만료 전)여야 한다.
+        assertThat(candidate.getSessionId()).isEqualTo(SESSION_ID);
+        assertThat(candidate.isExpired()).isFalse();
     }
 }

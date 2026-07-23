@@ -28,4 +28,14 @@ class InterviewVideoPersistenceAdapter implements InterviewVideoRepository {
     public Optional<InterviewVideo> findBySessionIdForUpdate(Long sessionId) {
         return interviewVideoJpaRepository.findBySessionIdForUpdate(sessionId).map(InterviewVideoJpaEntity::toDomain);
     }
+
+    @Override
+    public void insertRetentionIfAbsent(InterviewVideo v) {
+        interviewVideoJpaRepository.insertRetentionIfAbsent(v.getSessionId(), v.getBaseAt(), v.getExpiresAt());
+    }
+
+    @Override
+    public void upsertUploaded(InterviewVideo v) {
+        interviewVideoJpaRepository.upsertUploaded(v.getSessionId(), v.getBaseAt(), v.getExpiresAt());
+    }
 }

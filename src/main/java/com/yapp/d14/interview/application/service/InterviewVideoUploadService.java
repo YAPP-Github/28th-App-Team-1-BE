@@ -30,15 +30,13 @@ class InterviewVideoUploadService implements InterviewVideoUploadUrlIssueUseCase
         return new InterviewVideoUploadUrlResult(upload.url(), upload.contentType(), upload.expiresInSeconds());
     }
 
-    // 업로드가 리포트 채점보다 먼저 끝날 수 있어(둘 다 종료 후 비동기), 아직 보관 레코드가 없으면 여기서 만든다.
-    // 이후 리포트 채점의 ensureVideoRetentionStarted는 레코드가 있으면 건너뛰므로 중복 생성되지 않는다.
+    // 업로드가 리포트 채점보다 먼저 끝날 수 있어(둘 다 종료 후 비동기), 레코드가 없으면 보관 타이머와 함께 만든다.
+    // DB upsert(ON CONFLICT DO UPDATE SET uploaded)라 채점의 최초 INSERT와 동시에 실행돼도 충돌하지 않고,
+    // uploaded 한 컬럼만 건드려 보관기간 연장과의 Lost Update도 없다.
     @Override
     @Transactional
     public void complete(UUID userId, Long sessionId) {
         interviewSessionOwnershipCheckUseCase.requireOwned(userId, sessionId);
-        InterviewVideo video = interviewVideoRepository.findBySessionIdForUpdate(sessionId)
-                .orElseGet(() -> InterviewVideo.create(sessionId, LocalDateTime.now()));
-        video.markUploaded();
-        interviewVideoRepository.save(video);
+        interviewVideoRepository.upsertUploaded(InterviewVideo.create(sessionId, LocalDateTime.now()));
     }
 }

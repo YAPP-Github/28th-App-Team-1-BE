@@ -65,11 +65,6 @@ public class InterviewVideo {
                 .build();
     }
 
-    /** 프론트 S3 업로드 완료 확정. 멱등하다. */
-    public void markUploaded() {
-        this.uploaded = true;
-    }
-
     /** 항상 더 긴 쪽을 적용한다. 여러 번 호출해도 안전(idempotent)하다. */
     public void extend(VideoRetentionTrigger trigger) {
         LocalDateTime candidate = baseAt.plus(trigger.getExtension());
