@@ -229,25 +229,16 @@ public interface InterviewReportControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "세션이 존재하지 않거나 본인 소유가 아니거나, 보고서가 아직 생성되지 않음",
+                    description = "세션이 존재하지 않거나 본인 소유가 아님 (보고서가 아직 없으면 404가 아니라 status=GENERATING으로 응답)",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = {
-                                    @ExampleObject(name = "세션 없음", value = """
-                                            {
-                                              "success": false,
-                                              "code": "INTERVIEW_SESSION_NOT_FOUND",
-                                              "message": "면접 세션을 찾을 수 없어요."
-                                            }
-                                            """),
-                                    @ExampleObject(name = "보고서 없음", value = """
-                                            {
-                                              "success": false,
-                                              "code": "INTERVIEW_REPORT_NOT_FOUND",
-                                              "message": "면접 보고서를 찾을 수 없어요."
-                                            }
-                                            """)
-                            }
+                            examples = @ExampleObject(name = "세션 없음", value = """
+                                    {
+                                      "success": false,
+                                      "code": "INTERVIEW_SESSION_NOT_FOUND",
+                                      "message": "면접 세션을 찾을 수 없어요."
+                                    }
+                                    """)
                     )
             )
     })
