@@ -173,8 +173,9 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         return byAxis;
     }
 
+    // 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(계약: "비어 있는지"를 null 유무로 판단, GENERATING/FAILED와 동일).
     private List<InterviewReportQueryResult.RedFlagNotice> topLevelNotices(List<RedFlag> redFlags) {
-        return redFlags.stream()
+        List<InterviewReportQueryResult.RedFlagNotice> notices = redFlags.stream()
                 .map(RedFlag::getType)
                 .filter(RedFlagType::isExposed)
                 .distinct()
@@ -182,6 +183,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 .limit(MAX_TOP_LEVEL_NOTICES)
                 .map(type -> new InterviewReportQueryResult.RedFlagNotice(type, RED_FLAG_NOTICE.get(type)))
                 .toList();
+        return notices.isEmpty() ? null : notices;
     }
 
     private InterviewReportQueryResult.Card toCard(
@@ -207,7 +209,8 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 transcriptByQuestionId.get(card.getQuestionId()),
                 highlightSpans,
                 resolutionNotice,
-                cardNoticesByAxis.getOrDefault(card.getTestType(), List.of()),
+                // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
+                cardNoticesByAxis.get(card.getTestType()),
                 card.getQuestionIntentTranslation()
         );
     }
