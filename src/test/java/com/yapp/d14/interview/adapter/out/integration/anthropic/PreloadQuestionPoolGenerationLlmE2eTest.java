@@ -47,7 +47,6 @@ import static org.awaitility.Awaitility.await;
 class PreloadQuestionPoolGenerationLlmE2eTest {
 
     private static final Logger log = LoggerFactory.getLogger(PreloadQuestionPoolGenerationLlmE2eTest.class);
-    private static final int CAREER_YEARS = 3;
 
     @Autowired
     private InterviewSessionRepository interviewSessionRepository;
@@ -87,28 +86,30 @@ class PreloadQuestionPoolGenerationLlmE2eTest {
 
     static Stream<Arguments> portfolioScenarios() {
         return Stream.of(
-                Arguments.of("user1-BACKEND", "00000000-0000-0000-0000-000000000001",
-                        "fb7f2a69-b31d-4c43-8c44-fa2f0f41492f", JobType.BACKEND),
-                Arguments.of("user2-BACKEND", "00000000-0000-0000-0000-000000000002",
-                        "e60b3b41-bd1c-4846-b6dd-15e196a28905", JobType.BACKEND),
-                Arguments.of("user3-IOS", "00000000-0000-0000-0000-000000000003",
-                        "f48120b4-5272-4b46-b9ce-30319d8cac84", JobType.IOS),
-                Arguments.of("user4-IOS", "00000000-0000-0000-0000-000000000004",
-                        "e98c8816-c5d5-4a47-878a-f073f2ac90b3", JobType.IOS),
-                Arguments.of("user5-ANDROID", "00000000-0000-0000-0000-000000000005",
-                        "4b23917f-621c-48a9-bdf1-2c1173b5d3ef", JobType.ANDROID),
-                Arguments.of("user6-FRONTEND", "00000000-0000-0000-0000-000000000006",
-                        "b1922625-7918-4b78-9968-bae9cf6a602c", JobType.FRONTEND)
+                Arguments.of("user1-BACKEND-1년차", "00000000-0000-0000-0000-000000000001",
+                        "fb7f2a69-b31d-4c43-8c44-fa2f0f41492f", JobType.BACKEND, 1),
+                Arguments.of("user2-BACKEND-신입", "00000000-0000-0000-0000-000000000002",
+                        "e60b3b41-bd1c-4846-b6dd-15e196a28905", JobType.BACKEND, 0),
+                Arguments.of("user3-IOS-1년차", "00000000-0000-0000-0000-000000000003",
+                        "f48120b4-5272-4b46-b9ce-30319d8cac84", JobType.IOS, 1),
+                Arguments.of("user4-IOS-5년차", "00000000-0000-0000-0000-000000000004",
+                        "e98c8816-c5d5-4a47-878a-f073f2ac90b3", JobType.IOS, 5),
+                Arguments.of("user5-ANDROID-신입", "00000000-0000-0000-0000-000000000005",
+                        "4b23917f-621c-48a9-bdf1-2c1173b5d3ef", JobType.ANDROID, 0),
+                Arguments.of("user6-FRONTEND-1년차", "00000000-0000-0000-0000-000000000006",
+                        "b1922625-7918-4b78-9968-bae9cf6a602c", JobType.FRONTEND, 1)
         );
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("portfolioScenarios")
-    void 실제_preload_후보풀로_다음_면접_질문을_생성한다(String label, String userId, String portfolioId, JobType jobRole) {
-        log.info("========== [LLM E2E] {} 시작 (jobRole={}) ==========", label, jobRole);
+    void 실제_preload_후보풀로_다음_면접_질문을_생성한다(
+            String label, String userId, String portfolioId, JobType jobRole, int careerYears
+    ) {
+        log.info("========== [LLM E2E] {} 시작 (jobRole={}, careerYears={}) ==========", label, jobRole, careerYears);
 
         Instant preloadStartedAt = Instant.now();
-        sessionId = createSession(UUID.fromString(userId), UUID.fromString(portfolioId), jobRole);
+        sessionId = createSession(UUID.fromString(userId), UUID.fromString(portfolioId), jobRole, careerYears);
         interviewSessionPreloadUseCase.preload(sessionId);
 
         await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofSeconds(2)).untilAsserted(() -> {
@@ -129,7 +130,9 @@ class PreloadQuestionPoolGenerationLlmE2eTest {
 
         for (QuestionCandidate candidate : candidates) {
             Instant questionStartedAt = Instant.now();
-            String questionText = questionTextGenerator.generate(candidate.getProbeText(), candidate.getEchoQuote());
+            String questionText = questionTextGenerator.generate(
+                    candidate.getProbeText(), candidate.getEchoQuote(), jobRole, careerYears
+            );
             double questionElapsedSeconds = elapsedSeconds(questionStartedAt);
 
             log.info("  - axis={} strength={} elapsedSeconds={}",
@@ -144,9 +147,9 @@ class PreloadQuestionPoolGenerationLlmE2eTest {
         log.info("========== [LLM E2E] {} 종료 (총 {}건) ==========", label, candidates.size());
     }
 
-    private Long createSession(UUID userId, UUID portfolioId, JobType jobRole) {
+    private Long createSession(UUID userId, UUID portfolioId, JobType jobRole, int careerYears) {
         InterviewSession session = InterviewSession.create(
-                userId, portfolioId, jobRole, CAREER_YEARS, null, null, null
+                userId, portfolioId, jobRole, careerYears, null, null, null
         );
         return interviewSessionRepository.save(session).getId();
     }
