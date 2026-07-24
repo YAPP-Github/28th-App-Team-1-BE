@@ -75,7 +75,7 @@ class InterviewSessionPreloadServiceTest {
 
     private InterviewSession session(String jdUrl, String jdText, String focusProject) {
         return InterviewSession.of(
-                1L, userId, portfolioId, JobType.BACKEND, 3, jdUrl, jdText, focusProject,
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, jdUrl, jdText, focusProject,
                 InterviewSessionStatus.PREPARING, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );

@@ -36,7 +36,7 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
 
     @Override
     public InterviewSessionCreateResult create(InterviewSessionCreateCommand command) {
-        interviewSessionCreateValidator.validate(command);
+        String portfolioFileName = interviewSessionCreateValidator.validate(command);
 
         ticketAvailabilityCheckUseCase.checkAvailable(command.userId());
 
@@ -47,7 +47,7 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
         Map<TestType, Integer> weights = AxisWeightCalculator.compute(command.jobRole(), command.careerYears());
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
-        InterviewSession session = interviewSessionPersister.persist(command, jdText, weights, assignments);
+        InterviewSession session = interviewSessionPersister.persist(command, jdText, portfolioFileName, weights, assignments);
 
         triggerPreload(session.getId());
 

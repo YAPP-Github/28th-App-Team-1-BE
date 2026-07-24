@@ -14,6 +14,7 @@ public class InterviewSession {
     private final Long id;
     private final UUID userId;
     private final UUID portfolioId;
+    private final String portfolioFilename;
     private final JobType snapshotJobType;
     private final Integer snapshotYearsOfExperience;
     private final String jdUrl;
@@ -39,6 +40,7 @@ public class InterviewSession {
             Long id,
             UUID userId,
             UUID portfolioId,
+            String portfolioFilename,
             JobType snapshotJobType,
             Integer snapshotYearsOfExperience,
             String jdUrl,
@@ -60,6 +62,7 @@ public class InterviewSession {
         this.id = id;
         this.userId = userId;
         this.portfolioId = portfolioId;
+        this.portfolioFilename = portfolioFilename;
         this.snapshotJobType = snapshotJobType;
         this.snapshotYearsOfExperience = snapshotYearsOfExperience;
         this.jdUrl = jdUrl;
@@ -82,6 +85,7 @@ public class InterviewSession {
     public static InterviewSession create(
             UUID userId,
             UUID portfolioId,
+            String portfolioFilename,
             JobType snapshotJobType,
             Integer snapshotYearsOfExperience,
             String jdUrl,
@@ -91,6 +95,7 @@ public class InterviewSession {
         return InterviewSession.builder()
                 .userId(userId)
                 .portfolioId(portfolioId)
+                .portfolioFilename(portfolioFilename)
                 .snapshotJobType(snapshotJobType)
                 .snapshotYearsOfExperience(snapshotYearsOfExperience)
                 .jdUrl(jdUrl)
@@ -162,6 +167,7 @@ public class InterviewSession {
             Long id,
             UUID userId,
             UUID portfolioId,
+            String portfolioFilename,
             JobType snapshotJobType,
             Integer snapshotYearsOfExperience,
             String jdUrl,
@@ -184,6 +190,7 @@ public class InterviewSession {
                 .id(id)
                 .userId(userId)
                 .portfolioId(portfolioId)
+                .portfolioFilename(portfolioFilename)
                 .snapshotJobType(snapshotJobType)
                 .snapshotYearsOfExperience(snapshotYearsOfExperience)
                 .jdUrl(jdUrl)

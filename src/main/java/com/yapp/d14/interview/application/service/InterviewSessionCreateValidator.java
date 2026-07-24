@@ -27,13 +27,14 @@ class InterviewSessionCreateValidator {
     private final JdValidationCheckUseCase jdValidationCheckUseCase;
     private final PortfolioSimilarityCheckUseCase portfolioSimilarityCheckUseCase;
 
-    void validate(InterviewSessionCreateCommand command) {
-        validatePortfolio(command);
+    String validate(InterviewSessionCreateCommand command) {
+        String portfolioFileName = validatePortfolio(command);
         validateJd(command);
         validateFreeText(command);
+        return portfolioFileName;
     }
 
-    private void validatePortfolio(InterviewSessionCreateCommand command) {
+    private String validatePortfolio(InterviewSessionCreateCommand command) {
         PortfolioStatusResult status = portfolioStatusUseCase.getStatus(command.userId(), command.portfolioId());
 
         switch (status.status()) {
@@ -41,6 +42,8 @@ class InterviewSessionCreateValidator {
             case PROCESSING -> throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_PROCESSING);
             case FAILED_FILE, FAILED_SYSTEM -> throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_UPLOAD_FAILED);
         }
+
+        return status.fileName();
     }
 
     private void validateJd(InterviewSessionCreateCommand command) {

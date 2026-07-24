@@ -48,6 +48,14 @@ public class PortfolioJpaEntity {
 
     private LocalDateTime uploadedAt;
 
+    @Column(name = "is_replacement", nullable = false, updatable = false)
+    private boolean replacement;
+
+    @Column(nullable = false)
+    private boolean deleted;
+
+    private LocalDateTime deletedAt;
+
     public static PortfolioJpaEntity from(Portfolio portfolio) {
         PortfolioJpaEntity entity = new PortfolioJpaEntity();
         entity.id = portfolio.getId();
@@ -60,6 +68,9 @@ public class PortfolioJpaEntity {
         entity.message = portfolio.getMessage();
         entity.createdAt = portfolio.getCreatedAt();
         entity.uploadedAt = portfolio.getUploadedAt();
+        entity.replacement = portfolio.isReplacement();
+        entity.deleted = portfolio.isDeleted();
+        entity.deletedAt = portfolio.getDeletedAt();
         return entity;
     }
 
@@ -74,7 +85,10 @@ public class PortfolioJpaEntity {
                 status,
                 message,
                 createdAt,
-                uploadedAt
+                uploadedAt,
+                replacement,
+                deleted,
+                deletedAt
         );
     }
 }

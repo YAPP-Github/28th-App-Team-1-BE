@@ -49,7 +49,7 @@ class InterviewSessionCreateValidatorTest {
 
     private void givenPortfolioStatus(PortfolioStatus status) {
         given(portfolioStatusUseCase.getStatus(userId, portfolioId))
-                .willReturn(new PortfolioStatusResult(portfolioId, status, "메시지"));
+                .willReturn(new PortfolioStatusResult(portfolioId, status, "메시지", "resume.pdf"));
     }
 
     @Test
