@@ -8,6 +8,7 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,17 +20,27 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     private final PortfolioRepository portfolioRepository;
 
     @Override
+    @Transactional
     public PortfolioStatusResult getStatus(UUID userId, UUID portfolioId) {
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
+        timeoutIfStale(portfolio);
 
         return new PortfolioStatusResult(portfolio.getId(), portfolio.getStatus(), portfolio.getMessage(), portfolio.getFileName());
     }
 
     @Override
+    @Transactional
     public List<PortfolioSummary> getList(UUID userId) {
         return portfolioRepository.findAllActiveByUserId(userId).stream()
+                .peek(this::timeoutIfStale)
                 .map(this::toSummary)
                 .toList();
+    }
+
+    private void timeoutIfStale(Portfolio portfolio) {
+        if (portfolio.failIfProcessingTimedOut()) {
+            portfolioRepository.save(portfolio);
+        }
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {

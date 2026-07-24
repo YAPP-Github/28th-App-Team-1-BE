@@ -2,6 +2,7 @@ package com.yapp.d14.portfolio.domain;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,5 +51,47 @@ class PortfolioTest {
 
         assertThat(portfolio.isDeleted()).isTrue();
         assertThat(portfolio.getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    void PROCESSING_상태로_생성된지_15초가_지나면_FAILED_SYSTEM으로_전환한다() {
+        Portfolio staleProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+
+        boolean timedOut = staleProcessing.failIfProcessingTimedOut();
+
+        assertThat(timedOut).isTrue();
+        assertThat(staleProcessing.getStatus()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
+    }
+
+    @Test
+    void PROCESSING_상태로_생성된지_15초가_지나지_않았으면_상태를_유지한다() {
+        Portfolio freshProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(5));
+
+        boolean timedOut = freshProcessing.failIfProcessingTimedOut();
+
+        assertThat(timedOut).isFalse();
+        assertThat(freshProcessing.getStatus()).isEqualTo(PortfolioStatus.PROCESSING);
+    }
+
+    @Test
+    void PROCESSING_상태가_아니면_시간이_지나도_상태를_유지한다() {
+        Portfolio ready = Portfolio.of(
+                UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.READY, "완료", LocalDateTime.now().minusSeconds(100), LocalDateTime.now(),
+                false, false, null
+        );
+
+        boolean timedOut = ready.failIfProcessingTimedOut();
+
+        assertThat(timedOut).isFalse();
+        assertThat(ready.getStatus()).isEqualTo(PortfolioStatus.READY);
+    }
+
+    private Portfolio processingPortfolioCreatedAt(LocalDateTime createdAt) {
+        return Portfolio.of(
+                UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.PROCESSING, "포트폴리오를 분석하고 있어요.", createdAt, null,
+                false, false, null
+        );
     }
 }

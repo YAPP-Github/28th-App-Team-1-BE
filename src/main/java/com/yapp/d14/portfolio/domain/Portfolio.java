@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,6 +12,7 @@ import java.util.UUID;
 public class Portfolio {
 
     private static final int MIN_EXTRACTED_TEXT_LENGTH = 300;
+    private static final Duration PROCESSING_TIMEOUT = Duration.ofSeconds(15);
 
     private final UUID id;
     private final UUID userId;
@@ -123,6 +125,17 @@ public class Portfolio {
     public void failSystem(String message) {
         this.status = PortfolioStatus.FAILED_SYSTEM;
         this.message = message;
+    }
+
+    public boolean failIfProcessingTimedOut() {
+        if (status != PortfolioStatus.PROCESSING) {
+            return false;
+        }
+        if (createdAt.plus(PROCESSING_TIMEOUT).isAfter(LocalDateTime.now())) {
+            return false;
+        }
+        failSystem("처리 시간이 초과되었어요. 다시 시도해 주세요.");
+        return true;
     }
 
     public void softDelete() {
