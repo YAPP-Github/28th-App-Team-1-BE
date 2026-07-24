@@ -469,7 +469,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
         return selectedProbe
-                .map(probe -> questionTextGenerator.generate(probe.getProbeText(), probe.getEchoQuote()))
+                .map(probe -> questionTextGenerator.generate(
+                        probe.getProbeText(), probe.getEchoQuote(),
+                        session.getSnapshotJobType(), session.getSnapshotYearsOfExperience()
+                ))
                 .orElseGet(() -> generateOpenerText(axis, session));
     }
 

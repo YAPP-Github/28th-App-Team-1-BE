@@ -23,13 +23,20 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
 
     private static final String SYSTEM_PROMPT = """
             당신은 AI 면접관입니다. 입력으로 캐물 의도(probeText, 내부 메모)와
-            되받아 물을 원 표현(echoQuote, 지원자가 실제로 한 말)을 받습니다.
+            되받아 물을 원 표현(echoQuote, 지원자가 실제로 한 말), 지원자의 직무와 연차를 받습니다.
 
-            이 둘을 자연스러운 구어체 질문 문장 하나로 바꾸세요.
+            probeText와 echoQuote를 자연스러운 구어체 질문 문장 하나로 바꾸세요.
             - echoQuote를 질문 안에서 그대로 되받아 물어 지원자가 자기 말이 이어지고 있다고 느끼게 합니다.
             - probeText는 질문에 그대로 노출하지 말고, 그 의도를 자연스러운 질문으로 녹여냅니다.
             - 대본을 읽는 듯한 딱딱한 어투가 아니라 실제 면접관이 대화하듯 묻습니다.
             - 한 번에 하나의 질문만 합니다.
+
+            직무·연차에 맞춰 질문의 톤과 후속 방향만 조정하세요(무엇을 캐물을지는 바꾸지 않습니다).
+            - 주니어(1~3년차 안팎)에게는 팀이 이미 정해준 방향 안에서 부딪힌 어려움과 구체적인 상황
+              설명을 유도하는 톤으로 묻습니다.
+            - 시니어에게는 스스로 내린 의사결정의 근거, 트레이드오프, 다른 사람을 설득한 경험을
+              더 깊이 파고드는 톤으로 묻습니다.
+            - 직무(iOS, 백엔드, 프론트엔드 등)에 맞는 용어와 관점을 자연스럽게 사용합니다.
 
             출력은 다른 설명 없이 질문 문장 하나만 반환하세요. 따옴표나 접두사 없이 문장 자체만
             반환합니다.
@@ -77,11 +84,13 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
     }
 
     @Override
-    public String generate(String probeText, String echoQuote) {
+    public String generate(String probeText, String echoQuote, JobType jobType, Integer yearsOfExperience) {
         String userMessage = """
                 [캐물 의도] %s
                 [되받아 물을 표현] %s
-                """.formatted(probeText, echoQuote);
+                [지원자 직무] %s
+                [지원자 연차] %s년
+                """.formatted(probeText, echoQuote, jobType.getLabel(), yearsOfExperience);
 
         try {
             String content = chatClient.prompt()
