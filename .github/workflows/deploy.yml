@@ -133,7 +133,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
-          source: "docker-compose.yml"
+          source: "docker-compose.yml,Caddyfile"
           target: "/opt/d14/"
 
       - name: ECR login & restart services on EC2
