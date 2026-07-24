@@ -10,7 +10,7 @@ import java.util.UUID;
 @Getter
 public class Portfolio {
 
-    private static final int MIN_EXTRACTED_TEXT_LENGTH = 30;
+    private static final int MIN_EXTRACTED_TEXT_LENGTH = 300;
 
     private final UUID id;
     private final UUID userId;

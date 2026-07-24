@@ -13,14 +13,14 @@ class PortfolioTest {
     );
 
     @Test
-    void 추출된_텍스트가_30자_이상이면_충분하다고_판단한다() {
-        String text = "이 문장은 30자를 충분히 넘기는 추출된 텍스트입니다.";
+    void 추출된_텍스트가_300자_이상이면_충분하다고_판단한다() {
+        String text = "이 문장은 300자를 충분히 넘기는 추출된 텍스트인지 확인하기 위한 문장입니다. ".repeat(15);
 
         assertThat(portfolio.hasEnoughExtractedText(text)).isTrue();
     }
 
     @Test
-    void 추출된_텍스트가_30자_미만이면_부족하다고_판단한다() {
+    void 추출된_텍스트가_300자_미만이면_부족하다고_판단한다() {
         String text = "너무 짧은 텍스트";
 
         assertThat(portfolio.hasEnoughExtractedText(text)).isFalse();
