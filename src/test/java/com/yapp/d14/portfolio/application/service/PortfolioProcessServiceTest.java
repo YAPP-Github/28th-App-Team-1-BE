@@ -96,6 +96,20 @@ class PortfolioProcessServiceTest {
     }
 
     @Test
+    void 텍스트_추출_중_PortfolioException이_아닌_예외가_발생해도_FAILED_FILE로_전환하고_S3_파일을_롤백_삭제한다() {
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(pdfTextExtractor.extractText(fileContent))
+                .willThrow(new RuntimeException("Tika 파서 내부 오류"));
+
+        portfolioProcessService.process(userId, portfolio.getId(), fileContent);
+
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.FAILED_FILE);
+        verify(portfolioRepository).save(portfolio);
+        verify(portfolioFileUploader).delete(portfolio.getS3Key());
+        verify(portfolioEmbeddingStore, never()).save(any(), any(), any(), any());
+    }
+
+    @Test
     void 추출된_텍스트가_30자_미만이면_FAILED_FILE로_전환하고_S3_파일을_롤백_삭제한다() {
         given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
         given(pdfTextExtractor.extractText(fileContent)).willReturn("너무 짧은 텍스트");

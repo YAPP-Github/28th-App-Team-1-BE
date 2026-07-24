@@ -6,7 +6,6 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
-import com.yapp.d14.portfolio.exception.PortfolioException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -66,7 +65,7 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
         String extractedText;
         try {
             extractedText = pdfTextExtractor.extractText(fileContent);
-        } catch (PortfolioException e) {
+        } catch (Exception e) {
             log.error("[PORTFOLIO PROCESS] 텍스트 추출 실패: portfolioId={}", portfolio.getId(), e);
             failFileAndCleanupS3(portfolio, "파일이 손상되었거나 암호로 보호되어 있어요. 다시 업로드해 주세요.");
             return null;
