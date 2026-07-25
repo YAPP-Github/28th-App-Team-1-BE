@@ -47,6 +47,8 @@ services:
     image: ${ECR_REPOSITORY_URL}:${IMAGE_TAG:-latest}
     container_name: d14-app
     restart: unless-stopped
+    # HTTPS(caddy) 전환기 동안 기존 8080 직접 접근도 병행 허용한다.
+    # 프론트 전환 완료 후 "127.0.0.1:8080:8080"으로 좁혀 외부 노출을 닫을 수 있다.
     ports:
       - "8080:8080"
     environment:
@@ -84,8 +86,28 @@ services:
     networks:
       - d14-net
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: d14-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # 발급받은 TLS 인증서 영구 보관 — 재배포 시 재발급(rate limit) 방지
+      - caddy_config:/config
+    depends_on:
+      - app
+    networks:
+      - d14-net
+
 volumes:
   postgres_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
 
 networks:

@@ -122,8 +122,10 @@ class InterviewReportQueryServiceTest {
                 axisEval(TestType.BOUNDARY, ResolutionLevel.NORMAL, null)
         ));
         given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // expired()는 실제 LocalDateTime.now() 기준으로 계산되므로, 고정 날짜 대신 현재 기준 미래값을 사용한다.
+        LocalDateTime videoExpiresAt = LocalDateTime.now().plusDays(3);
         given(interviewVideoRepository.findBySessionId(SESSION_ID))
-                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, NOW.plusDays(3), false)));
+                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, videoExpiresAt, false)));
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
                 .willReturn(new GuestFeedbackReportView(0, List.of()));
 
@@ -135,7 +137,7 @@ class InterviewReportQueryServiceTest {
 
         assertThat(result.video().url()).isNull();
         assertThat(result.video().expired()).isFalse();
-        assertThat(result.video().expiresAt()).isEqualTo(NOW.plusDays(3));
+        assertThat(result.video().expiresAt()).isEqualTo(videoExpiresAt);
 
         List<InterviewReportQueryResult.Card> cards = result.cards();
         assertThat(cards).extracting(InterviewReportQueryResult.Card::axisOrder, InterviewReportQueryResult.Card::depthLevel)
