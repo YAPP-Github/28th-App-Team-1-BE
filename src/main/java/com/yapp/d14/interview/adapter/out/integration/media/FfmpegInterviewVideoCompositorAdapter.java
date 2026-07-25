@@ -38,7 +38,7 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
     private final S3Properties s3Properties;
 
     @Override
-    public void compose(UUID userId, Long sessionId, List<QuestionAudioTrack> tracks) {
+    public void compose(UUID userId, Long sessionId, List<AudioTrack> tracks) {
         Path workDir = null;
         try {
             workDir = Files.createTempDirectory("composite-%s-".formatted(sessionId));
@@ -48,8 +48,8 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
 
             List<Path> audioFiles = new ArrayList<>();
             for (int i = 0; i < tracks.size(); i++) {
-                Path audio = workDir.resolve("q%d.mp3".formatted(i));
-                download(tracks.get(i).audioS3Key(), audio);
+                Path audio = workDir.resolve("audio%d".formatted(i));
+                download(tracks.get(i).s3Key(), audio);
                 audioFiles.add(audio);
             }
 
@@ -67,7 +67,7 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
         }
     }
 
-    private void runFfmpeg(Path video, List<Path> audios, List<QuestionAudioTrack> tracks, Path output, Path ffmpegLog)
+    private void runFfmpeg(Path video, List<Path> audios, List<AudioTrack> tracks, Path output, Path ffmpegLog)
             throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
         command.add(FFMPEG_BINARY);
@@ -79,30 +79,17 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
             command.add(audio.toString());
         }
 
-        // 각 질문 오디오(입력 1..N)를 시작초만큼 지연(adelay, ms) → 면접자 오디오([0:a])와 함께 amix.
-        // normalize=0: 입력 수에 따라 볼륨이 줄지 않도록(면접자 음성이 작아지는 것 방지).
-        StringBuilder filter = new StringBuilder();
-        for (int i = 0; i < audios.size(); i++) {
-            long delayMs = Math.max(0L, Math.round(tracks.get(i).startSec() * 1000.0));
-            filter.append("[%d:a]adelay=%d:all=1[qa%d];".formatted(i + 1, delayMs, i));
-        }
-        filter.append("[0:a]");
-        for (int i = 0; i < audios.size(); i++) {
-            filter.append("[qa%d]".formatted(i));
-        }
-        filter.append("amix=inputs=%d:normalize=0[aout]".formatted(audios.size() + 1));
-
         command.add("-filter_complex");
-        command.add(filter.toString());
+        command.add(buildAudioFilter(tracks));
         command.add("-map");
-        command.add("0:v");
+        command.add("0:v");            // 녹화본은 영상 트랙만 사용한다(오디오는 서버가 만든 트랙으로 대체).
         command.add("-map");
         command.add("[aout]");
         command.add("-c:v");
         command.add("copy");
         command.add("-c:a");
         command.add("aac");
-        command.add("-shortest");
+        // -shortest는 쓰지 않는다: 합성 오디오가 영상보다 먼저 끝나면(끝부분 무음 구간) 영상이 잘려버리기 때문.
         command.add(output.toString());
 
         // 파이프 대신 로그 파일로 리다이렉트해 stdout/stderr 버퍼 고갈로 인한 교착을 피한다.
@@ -120,6 +107,27 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
             throw new IllegalStateException(
                     "[COMPOSITE] ffmpeg 종료코드 %d, log:%n%s".formatted(process.exitValue(), tail(ffmpegLog)));
         }
+    }
+
+    // 각 오디오 입력(1..N)을 시작초만큼 지연(adelay, ms)한 뒤 하나로 믹싱한다.
+    // normalize=0: 입력 수에 따라 볼륨이 줄지 않도록(믹싱으로 개별 음성이 작아지는 것 방지).
+    private String buildAudioFilter(List<AudioTrack> tracks) {
+        StringBuilder filter = new StringBuilder();
+        for (int i = 0; i < tracks.size(); i++) {
+            long delayMs = Math.max(0L, Math.round(tracks.get(i).startSec() * 1000.0));
+            String label = tracks.size() == 1 ? "aout" : "a" + i;
+            // 입력 인덱스는 1부터(0은 영상). 트랙이 1개면 지연 결과를 곧바로 [aout]으로 쓴다(amix 불필요).
+            filter.append("[%d:a]adelay=%d:all=1[%s];".formatted(i + 1, delayMs, label));
+        }
+        if (tracks.size() == 1) {
+            filter.setLength(filter.length() - 1); // 마지막 세미콜론 제거
+            return filter.toString();
+        }
+        for (int i = 0; i < tracks.size(); i++) {
+            filter.append("[a%d]".formatted(i));
+        }
+        filter.append("amix=inputs=%d:normalize=0[aout]".formatted(tracks.size()));
+        return filter.toString();
     }
 
     private void download(String key, Path destination) {
