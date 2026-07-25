@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
@@ -46,15 +47,29 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
             Path rawVideo = workDir.resolve("raw.mp4");
             download(S3KeyGenerator.interviewRecordingKey(userId, sessionId), rawVideo);
 
+            // 답변 음성은 제출 시 비동기로 저장되므로, 일부 트랙이 아직 없거나(경합) 업로드 실패로 없을 수 있다.
+            // 없는 트랙만 개별 제외하고 나머지로 합성한다 — 트랙 하나 때문에 세션 전체 영상을 날리지 않기 위함.
+            List<AudioTrack> availableTracks = new ArrayList<>();
             List<Path> audioFiles = new ArrayList<>();
             for (int i = 0; i < tracks.size(); i++) {
+                AudioTrack track = tracks.get(i);
                 Path audio = workDir.resolve("audio%d".formatted(i));
-                download(tracks.get(i).s3Key(), audio);
-                audioFiles.add(audio);
+                try {
+                    download(track.s3Key(), audio);
+                    availableTracks.add(track);
+                    audioFiles.add(audio);
+                } catch (NoSuchKeyException e) {
+                    log.warn("[COMPOSITE] 오디오 객체 없음, 해당 트랙 제외: sessionId={}, key={}", sessionId, track.s3Key());
+                }
+            }
+            if (availableTracks.isEmpty()) {
+                // 질문 TTS까지 하나도 못 받은 경우 — 무음 영상을 만드느니 실패로 두어 composited=false(videoUrl null)를 유지한다.
+                throw new IllegalStateException(
+                        "[COMPOSITE] 합성할 오디오 트랙을 하나도 받지 못함: sessionId=%d".formatted(sessionId));
             }
 
             Path output = workDir.resolve("final.mp4");
-            runFfmpeg(rawVideo, audioFiles, tracks, output, workDir.resolve("ffmpeg.log"));
+            runFfmpeg(rawVideo, audioFiles, availableTracks, output, workDir.resolve("ffmpeg.log"));
 
             upload(S3KeyGenerator.interviewCompositeKey(userId, sessionId), output);
         } catch (IOException e) {
