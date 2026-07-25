@@ -77,7 +77,9 @@ class FirstTurnQuestionGenerationLlmE2eTest {
 
         // 2. select_next_probe 없이(DB 없음) strength가 가장 높은 후보 하나를 골라 generate_question_text 호출
         ProbeCandidateDraft topProbe = pickHighestStrength(liveTurnResult.newProbes());
-        String nextQuestionText = questionTextGenerator.generate(topProbe.probeText(), topProbe.echoQuote());
+        String nextQuestionText = questionTextGenerator.generate(
+                topProbe.probeText(), topProbe.echoQuote(), JobType.BACKEND, 3
+        );
 
         log.info("[선택된 캐물지점] axis={} probeText={} echoQuote={}",
                 topProbe.testType(), topProbe.probeText(), topProbe.echoQuote());

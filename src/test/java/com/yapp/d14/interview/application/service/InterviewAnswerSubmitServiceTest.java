@@ -177,7 +177,7 @@ class InterviewAnswerSubmitServiceTest {
         );
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH))
                 .willReturn(List.of(openCandidate));
-        given(questionTextGenerator.generate("probe", "echo")).willReturn("생성된 질문 문장");
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3)).willReturn("생성된 질문 문장");
 
         Answer savedAnswer = Answer.of(
                 12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
@@ -298,7 +298,7 @@ class InterviewAnswerSubmitServiceTest {
 
         service.submit(userId, command());
 
-        verify(questionTextGenerator, never()).generate(any(), any());
+        verify(questionTextGenerator, never()).generate(any(), any(), any(), any());
         verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
     }
 
@@ -329,7 +329,7 @@ class InterviewAnswerSubmitServiceTest {
 
         service.submit(userId, command());
 
-        verify(questionTextGenerator, never()).generate(any(), any());
+        verify(questionTextGenerator, never()).generate(any(), any(), any(), any());
         verify(questionTextGenerator).generateOpener(
                 TestType.DEPTH, JobType.BACKEND, 3, List.of("대용량 트래픽"), List.of("포폴 청크1")
         );
@@ -351,7 +351,7 @@ class InterviewAnswerSubmitServiceTest {
                 ));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
-        given(questionTextGenerator.generate("새로 추출된 probe", "새로 추출된 echo")).willReturn("생성된 질문 문장");
+        given(questionTextGenerator.generate("새로 추출된 probe", "새로 추출된 echo", JobType.BACKEND, 3)).willReturn("생성된 질문 문장");
 
         Answer savedAnswer = Answer.of(
                 12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
@@ -365,7 +365,7 @@ class InterviewAnswerSubmitServiceTest {
 
         service.submit(userId, command());
 
-        verify(questionTextGenerator).generate("새로 추출된 probe", "새로 추출된 echo");
+        verify(questionTextGenerator).generate("새로 추출된 probe", "새로 추출된 echo", JobType.BACKEND, 3);
 
         ArgumentCaptor<QuestionCandidate> selectedProbeCaptor = ArgumentCaptor.forClass(QuestionCandidate.class);
         verify(interviewAnswerSubmitPersister).persist(any(), any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
@@ -489,7 +489,7 @@ class InterviewAnswerSubmitServiceTest {
         );
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.BOUNDARY))
                 .willReturn(List.of(noJdHighStrength, jdMatchLowStrength, jdMatchHighStrength));
-        given(questionTextGenerator.generate(any(), any())).willReturn("생성된 질문 문장");
+        given(questionTextGenerator.generate(any(), any(), any(), any())).willReturn("생성된 질문 문장");
 
         Answer savedAnswer = Answer.of(
                 12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
@@ -508,7 +508,7 @@ class InterviewAnswerSubmitServiceTest {
 
         // 2. probe 선택 검증: jd_match 없는 HIGH보다, jd_match 있는 후보가 우선이고
         //    그중에서도 strength가 HIGH인 jdMatchHighStrength가 최종 선택된다
-        verify(questionTextGenerator).generate("jd 매칭 있음, strength도 HIGH", "echoC");
+        verify(questionTextGenerator).generate("jd 매칭 있음, strength도 HIGH", "echoC", JobType.BACKEND, 3);
 
         ArgumentCaptor<QuestionCandidate> selectedProbeCaptor = ArgumentCaptor.forClass(QuestionCandidate.class);
         verify(interviewAnswerSubmitPersister).persist(any(), any(), any(), selectedProbeCaptor.capture(), anyInt(), any(), any());
@@ -532,7 +532,7 @@ class InterviewAnswerSubmitServiceTest {
                 List.of()
         ));
         given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
-        given(questionTextGenerator.generate("probe", "echo")).willReturn("생성된 꼬리 질문");
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3)).willReturn("생성된 꼬리 질문");
         Question savedNextQuestion = Question.of(
                 14L, sessionId, "생성된 꼬리 질문", 2, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
         );
@@ -582,7 +582,7 @@ class InterviewAnswerSubmitServiceTest {
                 .persist(any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), nextQuestionCaptor.capture());
         assertThat(nextQuestionCaptor.getValue().getTestType()).isEqualTo(TestType.DEPTH);
         assertThat(nextQuestionCaptor.getValue().getIsWrapUp()).isTrue();
-        verify(questionTextGenerator, never()).generate(any(), any());
+        verify(questionTextGenerator, never()).generate(any(), any(), any(), any());
         verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
     }
 
@@ -627,7 +627,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().turnLevel()).isEqualTo(2);
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         verify(interviewAnswerAnalyzePersister).persistSkipped(any(), any(), isNull(), eq(2), any(), any(), any());
-        verify(questionTextGenerator, never()).generate(any(), any());
+        verify(questionTextGenerator, never()).generate(any(), any(), any(), any());
         verify(questionTextGenerator).generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3, List.of(), List.of());
         verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, priorQaCache, interviewSttResetPersister);
     }
