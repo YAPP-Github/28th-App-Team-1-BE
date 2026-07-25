@@ -7,6 +7,8 @@ import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.application.port.out.SocialAuthClient;
 import com.yapp.d14.auth.application.port.out.SocialUserInfo;
 import com.yapp.d14.auth.application.port.out.TokenRepository;
+import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
+import com.yapp.d14.user.application.port.in.result.UserProfileResult;
 import com.yapp.d14.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ class SocialLoginService implements SocialLoginUseCase {
     private final SocialUserProvisionService socialUserProvisionService;
     private final TokenRepository tokenRepository;
     private final JwtProvider jwtProvider;
+    private final UserProfileQueryUseCase userProfileQueryUseCase;
 
     @Override
     public AuthToken login(SocialLoginCommand command) {
@@ -30,6 +33,8 @@ class SocialLoginService implements SocialLoginUseCase {
         String refreshToken = jwtProvider.issueRefreshToken(user.getId(), user.getProvider());
         tokenRepository.save(user.getId(), refreshToken);
 
-        return new AuthToken(accessToken, refreshToken);
+        UserProfileResult profile = userProfileQueryUseCase.getProfile(user.getId());
+
+        return new AuthToken(accessToken, refreshToken, profile);
     }
 }

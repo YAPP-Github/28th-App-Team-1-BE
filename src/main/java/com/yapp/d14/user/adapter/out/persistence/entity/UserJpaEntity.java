@@ -1,5 +1,6 @@
 package com.yapp.d14.user.adapter.out.persistence.entity;
 
+import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
 import jakarta.persistence.Column;
@@ -18,7 +19,10 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "users",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "provider_id"})
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"provider", "provider_id"}),
+                @UniqueConstraint(columnNames = {"name"})
+        }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserJpaEntity {
@@ -31,12 +35,20 @@ public class UserJpaEntity {
 
     private String name;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean nameRegistered;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Provider provider;
 
     @Column(nullable = false)
     private String providerId;
+
+    @Enumerated(EnumType.STRING)
+    private JobRole jobRole;
+
+    private Integer careerYears;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,14 +61,17 @@ public class UserJpaEntity {
         entity.id = user.getId();
         entity.email = user.getEmail();
         entity.name = user.getName();
+        entity.nameRegistered = user.isNameRegistered();
         entity.provider = user.getProvider();
         entity.providerId = user.getProviderId();
+        entity.jobRole = user.getJobRole();
+        entity.careerYears = user.getCareerYears();
         entity.createdAt = user.getCreatedAt();
         entity.updatedAt = user.getUpdatedAt();
         return entity;
     }
 
     public User toDomain() {
-        return User.of(id, email, name, provider, providerId, createdAt, updatedAt);
+        return User.of(id, email, name, nameRegistered, provider, providerId, jobRole, careerYears, createdAt, updatedAt);
     }
 }

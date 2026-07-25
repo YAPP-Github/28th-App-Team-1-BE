@@ -49,6 +49,7 @@ class InterviewSessionPersisterTest {
 
     private final UUID userId = UUID.randomUUID();
     private final UUID portfolioId = UUID.randomUUID();
+    private final String portfolioFileName = "resume.pdf";
     private final InterviewSessionCreateCommand command =
             new InterviewSessionCreateCommand(userId, portfolioId, JobType.BACKEND, 8, null, null, null);
 
@@ -56,7 +57,7 @@ class InterviewSessionPersisterTest {
         given(interviewSessionRepository.save(any())).willAnswer(invocation -> {
             InterviewSession saved = invocation.getArgument(0);
             return InterviewSession.of(
-                    sessionId, saved.getUserId(), saved.getPortfolioId(), saved.getSnapshotJobType(),
+                    sessionId, saved.getUserId(), saved.getPortfolioId(), saved.getPortfolioFilename(), saved.getSnapshotJobType(),
                     saved.getSnapshotYearsOfExperience(), saved.getJdUrl(), saved.getJdText(), saved.getFocusProject(),
                     saved.getStatus(), saved.getStartedAt(), saved.getEndedAt(), saved.getEndType(),
                     saved.getWeightDepth(), saved.getWeightBoundary(), saved.getWeightConnection(),
@@ -81,7 +82,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        persister.persist(command, command.jdText(), weights, assignments);
+        persister.persist(command, command.jdText(), portfolioFileName, weights, assignments);
 
         ArgumentCaptor<InterviewAxisPlan> captor = ArgumentCaptor.forClass(InterviewAxisPlan.class);
         verify(interviewAxisPlanRepository, times(6)).save(captor.capture());
@@ -104,7 +105,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        InterviewSession session = persister.persist(command, command.jdText(), weights, assignments);
+        InterviewSession session = persister.persist(command, command.jdText(), portfolioFileName, weights, assignments);
 
         assertThat(session.getId()).isEqualTo(1L);
         verify(ticketHoldUseCase).hold(userId, 1L);
@@ -119,7 +120,7 @@ class InterviewSessionPersisterTest {
         Map<TestType, Integer> weights = weights();
         Map<TestType, AxisAssignment> assignments = assignments(weights);
 
-        assertThatThrownBy(() -> persister.persist(command, command.jdText(), weights, assignments))
+        assertThatThrownBy(() -> persister.persist(command, command.jdText(), portfolioFileName, weights, assignments))
                 .isInstanceOf(TicketException.class);
     }
 }

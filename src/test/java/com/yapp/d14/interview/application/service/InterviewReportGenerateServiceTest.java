@@ -101,7 +101,7 @@ class InterviewReportGenerateServiceTest {
 
     private InterviewSession session() {
         return InterviewSession.of(
-                1L, userId, portfolioId, JobType.BACKEND, 3, null, null, null,
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null,
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );

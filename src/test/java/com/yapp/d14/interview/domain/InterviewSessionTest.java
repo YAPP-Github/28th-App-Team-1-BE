@@ -10,7 +10,7 @@ class InterviewSessionTest {
 
     private static InterviewSession create() {
         return InterviewSession.create(
-                UUID.randomUUID(), UUID.randomUUID(), JobType.BACKEND, 3, null, null, null
+                UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null
         );
     }
 

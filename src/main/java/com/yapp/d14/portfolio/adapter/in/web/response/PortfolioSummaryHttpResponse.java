@@ -24,7 +24,13 @@ public record PortfolioSummaryHttpResponse(
         PortfolioStatus status,
 
         @Schema(description = "업로드 시각")
-        LocalDateTime uploadedAt
+        LocalDateTime uploadedAt,
+
+        @Schema(description = "이번 달 재업로드(삭제 후 교체) 가능 여부")
+        boolean replaceAvailable,
+
+        @Schema(description = "재업로드가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
+        LocalDateTime nextAvailableAt
 ) {
 
     public static PortfolioSummaryHttpResponse from(PortfolioSummary summary) {
@@ -34,7 +40,9 @@ public record PortfolioSummaryHttpResponse(
                 summary.fileSize(),
                 summary.pageCount(),
                 summary.status(),
-                summary.uploadedAt()
+                summary.uploadedAt(),
+                summary.replaceAvailable(),
+                summary.nextAvailableAt()
         );
     }
 }

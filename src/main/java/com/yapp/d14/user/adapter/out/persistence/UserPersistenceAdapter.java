@@ -28,7 +28,17 @@ class UserPersistenceAdapter implements UserRepository {
     }
 
     @Override
+    public boolean existsByName(String name) {
+        return userJpaRepository.existsByName(name);
+    }
+
+    @Override
+    public boolean existsByNameAndIdNot(String name, UUID id) {
+        return userJpaRepository.existsByNameAndIdNot(name, id);
+    }
+
+    @Override
     public User save(User user) {
-        return userJpaRepository.save(UserJpaEntity.from(user)).toDomain();
+        return userJpaRepository.saveAndFlush(UserJpaEntity.from(user)).toDomain();
     }
 }

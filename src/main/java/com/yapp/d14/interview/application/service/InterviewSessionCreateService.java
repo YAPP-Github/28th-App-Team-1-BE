@@ -12,6 +12,7 @@ import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import com.yapp.d14.jd.application.port.in.JdContentQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketAvailabilityCheckUseCase;
+import com.yapp.d14.user.application.port.in.UserProfileInitializeUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,19 +32,22 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
     private final InterviewSessionPreloadUseCase interviewSessionPreloadUseCase;
     private final InterviewPreloadFailureHandler interviewPreloadFailureHandler;
     private final JdContentQueryUseCase jdContentQueryUseCase;
+    private final UserProfileInitializeUseCase userProfileInitializeUseCase;
 
     @Override
     public InterviewSessionCreateResult create(InterviewSessionCreateCommand command) {
+        String portfolioFileName = interviewSessionCreateValidator.validate(command);
+
         ticketAvailabilityCheckUseCase.checkAvailable(command.userId());
 
-        interviewSessionCreateValidator.validate(command);
+        userProfileInitializeUseCase.initializeIfAbsent(command.userId(), command.jobRole().name(), command.careerYears());
 
         String jdText = resolveJdText(command);
 
         Map<TestType, Integer> weights = AxisWeightCalculator.compute(command.jobRole(), command.careerYears());
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
-        InterviewSession session = interviewSessionPersister.persist(command, jdText, weights, assignments);
+        InterviewSession session = interviewSessionPersister.persist(command, jdText, portfolioFileName, weights, assignments);
 
         triggerPreload(session.getId());
 
