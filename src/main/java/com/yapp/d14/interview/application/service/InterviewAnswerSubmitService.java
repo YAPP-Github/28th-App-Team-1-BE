@@ -67,6 +67,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             throw new InterviewException(InterviewErrorCode.ANSWER_ALREADY_SUBMITTED);
         }
 
+        // 답변 음성을 S3에 보관해 리포트 영상 합성 시 면접자 목소리로 얹는다. 면접 흐름을 막지 않도록 비동기로,
+        // turnLevel 기반 결정적 키에 저장한다(합성 단계에서 같은 키를 재계산해 사용). SKIP 등 오디오가 없으면 생략.
+        if (command.audioContent() != null) {
+            interviewVoiceStorage.uploadAnswerAsync(userId, session.getId(), question.getTurnLevel(), command.audioContent());
+        }
+
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);
         }

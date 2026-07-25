@@ -24,6 +24,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
     private static final int MAX_ATTEMPTS = 3;
     private static final long BASE_BACKOFF_MILLIS = 200L;
     private static final String CONTENT_TYPE = "audio/mpeg";
+    private static final String ANSWER_CONTENT_TYPE = "audio/webm";
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;
@@ -82,6 +83,34 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             }
         }
         log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
+    }
+
+    @Override
+    @Async("audioArchiveTaskExecutor")
+    public void uploadAnswerAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
+        String key = S3KeyGenerator.interviewAnswerKey(userId, sessionId, turnLevel);
+
+        // 컨테이너는 클라이언트가 올린 원본대로 저장한다. content-type은 메타데이터일 뿐이며,
+        // 합성 시 ffmpeg가 파일 내용으로 포맷을 판별하므로 재생/합성에는 영향을 주지 않는다.
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .contentType(ANSWER_CONTENT_TYPE)
+                .build();
+        RequestBody requestBody = RequestBody.fromBytes(audioContent);
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                s3Client.putObject(request, requestBody);
+                return;
+            } catch (SdkException e) {
+                log.warn("[INTERVIEW ANSWER UPLOAD] {}번째 시도 실패: key={}", attempt, key, e);
+                if (attempt < MAX_ATTEMPTS && !sleepBackoff(attempt)) {
+                    break;
+                }
+            }
+        }
+        log.error("[INTERVIEW ANSWER UPLOAD] 재시도 소진, 업로드 실패: key={}", key);
     }
 
     private boolean sleepBackoff(int attempt) {

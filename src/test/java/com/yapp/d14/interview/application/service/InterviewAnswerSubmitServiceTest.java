@@ -198,6 +198,8 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         assertThat(result.wrapUpMessage()).isNull();
         assertThat(result.reportId()).isNull();
+        // 답변 음성을 합성용으로 S3에 비동기 보관한다(turnLevel 기반 결정적 키).
+        verify(interviewVoiceStorage).uploadAnswerAsync(userId, sessionId, 0, audioContent);
     }
 
     @Test
