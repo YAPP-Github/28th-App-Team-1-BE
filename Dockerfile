@@ -17,6 +17,11 @@ RUN ./gradlew bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
+# 면접 영상·질문 음성 합성(FfmpegInterviewVideoCompositorAdapter)이 ffmpeg 바이너리를 서브프로세스로 호출한다.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
 
 WORKDIR /app
