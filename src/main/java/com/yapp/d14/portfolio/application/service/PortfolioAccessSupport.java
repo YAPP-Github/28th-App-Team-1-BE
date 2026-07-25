@@ -14,6 +14,7 @@ class PortfolioAccessSupport {
     Portfolio requireOwned(PortfolioRepository portfolioRepository, UUID portfolioId, UUID userId) {
         return portfolioRepository.findById(portfolioId)
                 .filter(p -> p.getUserId().equals(userId))
+                .filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new PortfolioException(PortfolioErrorCode.PORTFOLIO_NOT_FOUND));
     }
 }

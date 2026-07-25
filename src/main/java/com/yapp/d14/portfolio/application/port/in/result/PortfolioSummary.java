@@ -11,6 +11,8 @@ public record PortfolioSummary(
         long fileSize,
         Integer pageCount,
         PortfolioStatus status,
-        LocalDateTime uploadedAt
+        LocalDateTime uploadedAt,
+        boolean replaceAvailable,
+        LocalDateTime nextAvailableAt
 ) {
 }

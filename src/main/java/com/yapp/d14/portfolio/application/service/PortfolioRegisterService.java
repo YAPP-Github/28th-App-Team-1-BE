@@ -1,6 +1,5 @@
 package com.yapp.d14.portfolio.application.service;
 
-import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioProcessUseCase;
@@ -14,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 
 @Slf4j
@@ -22,32 +20,19 @@ import java.util.concurrent.RejectedExecutionException;
 @RequiredArgsConstructor
 class PortfolioRegisterService implements PortfolioRegisterUseCase {
 
-    private final PortfolioRepository portfolioRepository;
     private final PdfMetadataReader pdfMetadataReader;
+    private final PortfolioRegistrationPersister portfolioRegistrationPersister;
+    private final PortfolioRepository portfolioRepository;
     private final PortfolioProcessUseCase portfolioProcessUseCase;
 
     @Override
     public PortfolioRegisterResult register(PortfolioRegisterCommand command) {
-        if (portfolioRepository.existsByUserId(command.userId())) {
-            throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
-        }
-
         int pageCount = pdfMetadataReader.countPages(command.fileContent());
         if (pageCount > PortfolioRegisterCommand.MAX_PAGE_COUNT) {
             throw new PortfolioException(PortfolioErrorCode.PAGE_COUNT_EXCEEDED);
         }
 
-        UUID portfolioId = UUID.randomUUID();
-        String s3Key = S3KeyGenerator.portfolioKey(command.userId(), portfolioId);
-        Portfolio portfolio = Portfolio.create(
-                portfolioId,
-                command.userId(),
-                command.fileName(),
-                command.fileContent().length,
-                pageCount,
-                s3Key
-        );
-        Portfolio saved = portfolioRepository.save(portfolio);
+        Portfolio saved = portfolioRegistrationPersister.persist(command, pageCount);
 
         try {
             portfolioProcessUseCase.process(command.userId(), saved.getId(), command.fileContent());

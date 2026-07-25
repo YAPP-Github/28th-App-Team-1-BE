@@ -33,6 +33,9 @@ public class InterviewSessionJpaEntity {
     @Column(name = "portfolio_id", columnDefinition = "uuid")
     private UUID portfolioId;
 
+    @Column(name = "portfolio_filename")
+    private String portfolioFilename;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "snapshot_job_type")
     private JobType snapshotJobType;
@@ -92,6 +95,7 @@ public class InterviewSessionJpaEntity {
         entity.id = interviewSession.getId();
         entity.userId = interviewSession.getUserId();
         entity.portfolioId = interviewSession.getPortfolioId();
+        entity.portfolioFilename = interviewSession.getPortfolioFilename();
         entity.snapshotJobType = interviewSession.getSnapshotJobType();
         entity.snapshotYearsOfExperience = interviewSession.getSnapshotYearsOfExperience();
         entity.jdUrl = interviewSession.getJdUrl();
@@ -117,6 +121,7 @@ public class InterviewSessionJpaEntity {
                 id,
                 userId,
                 portfolioId,
+                portfolioFilename,
                 snapshotJobType,
                 snapshotYearsOfExperience,
                 jdUrl,

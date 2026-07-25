@@ -26,12 +26,14 @@ class InterviewSessionPersister {
     InterviewSession persist(
             InterviewSessionCreateCommand command,
             String jdText,
+            String portfolioFileName,
             Map<TestType, Integer> weights,
             Map<TestType, AxisAssignment> assignments
     ) {
         InterviewSession session = InterviewSession.create(
                 command.userId(),
                 command.portfolioId(),
+                portfolioFileName,
                 command.jobRole(),
                 command.careerYears(),
                 command.jdUrl(),

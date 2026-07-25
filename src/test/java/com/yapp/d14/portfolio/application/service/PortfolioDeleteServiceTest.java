@@ -46,7 +46,7 @@ class PortfolioDeleteServiceTest {
         userId = UUID.randomUUID();
         portfolio = Portfolio.create(
                 UUID.randomUUID(), userId, "resume.pdf", 1024, 5,
-                "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID())
+                "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
         );
     }
 
@@ -58,17 +58,19 @@ class PortfolioDeleteServiceTest {
         assertThatThrownBy(() -> portfolioDeleteService.delete(otherUserId, portfolio.getId()))
                 .isInstanceOf(PortfolioException.class);
 
-        verify(portfolioRepository, never()).deleteById(any());
+        verify(portfolioRepository, never()).save(any());
     }
 
     @Test
-    void 삭제하면_레코드와_벡터_S3_파일을_모두_정리한다() {
+    void 삭제하면_소프트_삭제로_기록하고_벡터_S3_파일은_실제로_정리한다() {
         given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         PortfolioDeleteResult result = portfolioDeleteService.delete(userId, portfolio.getId());
 
         assertThat(result.portfolioId()).isEqualTo(portfolio.getId());
-        verify(portfolioRepository).deleteById(portfolio.getId());
+        assertThat(portfolio.isDeleted()).isTrue();
+        verify(portfolioRepository).save(portfolio);
         verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
         verify(portfolioFileUploader).delete(portfolio.getS3Key());
     }
