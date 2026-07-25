@@ -149,7 +149,7 @@ class PreloadQuestionPoolGenerationLlmE2eTest {
 
     private Long createSession(UUID userId, UUID portfolioId, JobType jobRole, int careerYears) {
         InterviewSession session = InterviewSession.create(
-                userId, portfolioId, jobRole, careerYears, null, null, null
+                userId, portfolioId, null, jobRole, careerYears, null, null, null
         );
         return interviewSessionRepository.save(session).getId();
     }
