@@ -36,6 +36,9 @@ public class InterviewVideoJpaEntity {
     @Column(name = "uploaded", nullable = false, columnDefinition = "boolean default false")
     private boolean uploaded;
 
+    @Column(name = "composited", nullable = false, columnDefinition = "boolean default false")
+    private boolean composited;
+
     public static InterviewVideoJpaEntity from(InterviewVideo interviewVideo) {
         InterviewVideoJpaEntity entity = new InterviewVideoJpaEntity();
         entity.id = interviewVideo.getId();
@@ -44,10 +47,11 @@ public class InterviewVideoJpaEntity {
         entity.expiresAt = interviewVideo.getExpiresAt();
         entity.deleted = interviewVideo.isDeleted();
         entity.uploaded = interviewVideo.isUploaded();
+        entity.composited = interviewVideo.isComposited();
         return entity;
     }
 
     public InterviewVideo toDomain() {
-        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted, uploaded);
+        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted, uploaded, composited);
     }
 }

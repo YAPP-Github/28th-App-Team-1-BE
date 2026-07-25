@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -42,4 +43,11 @@ interface InterviewVideoJpaRepository extends JpaRepository<InterviewVideoJpaEnt
     void upsertUploaded(@Param("sessionId") Long sessionId,
                         @Param("baseAt") LocalDateTime baseAt,
                         @Param("expiresAt") LocalDateTime expiresAt);
+
+    // 합성 완료 표시. composited 한 컬럼만 갱신해 보관기간 연장·업로드 완료와 충돌(Lost Update)하지 않는다.
+    // 합성(ffmpeg)은 트랜잭션 밖 비동기로 돌기 때문에, 이 단건 UPDATE는 자체 트랜잭션으로 커밋한다.
+    @Modifying
+    @Transactional
+    @Query("UPDATE InterviewVideoJpaEntity v SET v.composited = true WHERE v.sessionId = :sessionId")
+    int markComposited(@Param("sessionId") Long sessionId);
 }
