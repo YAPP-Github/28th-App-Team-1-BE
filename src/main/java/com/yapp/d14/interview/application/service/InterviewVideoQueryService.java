@@ -2,6 +2,7 @@ package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.port.in.InterviewSessionOwnerQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoQueryUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewVideoPlaybackResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewVideoStatusResult;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
@@ -29,13 +30,15 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
     }
 
     @Override
-    public String getPlaybackUrl(Long sessionId) {
+    public InterviewVideoPlaybackResult getPlayback(Long sessionId) {
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
-        if (!video.isComposited() || video.isExpired()) {
-            return null;
+        // URL이 필요할 때만(합성 완료+만료 전) 소유자 조회·presign을 수행한다 — 그 외엔 헛작업을 하지 않는다.
+        String playbackUrl = null;
+        if (video.isComposited() && !video.isExpired()) {
+            UUID ownerUserId = interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId);
+            playbackUrl = interviewVideoStorage.presignComposite(ownerUserId, sessionId);
         }
-        UUID ownerUserId = interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId);
-        return interviewVideoStorage.presignComposite(ownerUserId, sessionId);
+        return new InterviewVideoPlaybackResult(video.getExpiresAt(), video.isExpired(), playbackUrl);
     }
 }

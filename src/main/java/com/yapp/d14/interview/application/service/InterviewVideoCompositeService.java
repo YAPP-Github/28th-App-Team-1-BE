@@ -47,7 +47,12 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
         try {
             interviewVideoCompositor.compose(userId, sessionId, tracks);
             int updated = interviewVideoRepository.markComposited(sessionId);
-            log.info("[COMPOSITE] 합성 완료: sessionId={}, trackCount={}, marked={}", sessionId, tracks.size(), updated);
+            if (updated == 0) {
+                // final.mp4는 S3에 올라갔지만 표시할 영상 row가 없어 videoUrl이 계속 null이 된다(도달 불가 산출물).
+                log.warn("[COMPOSITE] 합성본은 업로드됐으나 표시할 영상 row가 없음(marked=0): sessionId={}", sessionId);
+            } else {
+                log.info("[COMPOSITE] 합성 완료: sessionId={}, trackCount={}", sessionId, tracks.size());
+            }
         } catch (Exception e) {
             // 합성 실패는 리포트/피드백 흐름을 막지 않는다. videoUrl은 composited=false라 계속 null로 노출된다.
             log.error("[COMPOSITE] 합성 실패, videoUrl은 null로 유지: sessionId={}", sessionId, e);

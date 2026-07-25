@@ -12,7 +12,7 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnerQueryUseC
 import com.yapp.d14.interview.application.port.in.InterviewVideoQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoRetentionExtendUseCase;
 import com.yapp.d14.interview.application.port.in.QuestionBoundaryQueryUseCase;
-import com.yapp.d14.interview.application.port.in.result.InterviewVideoStatusResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewVideoPlaybackResult;
 import com.yapp.d14.interview.application.port.in.result.QuestionBoundaryResult;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import lombok.RequiredArgsConstructor;
@@ -44,9 +44,16 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
                 .orElseThrow(() -> new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_TOKEN_NOT_FOUND));
 
         Long sessionId = share.getSessionId();
-        GuestGate gate = determineGate(share, sessionId, deviceId);
+        // 비활성 링크는 영상을 조회할 것도 없이 바로 PRIVATE로 단락시킨다(영상 row 유무와 무관하게 응답).
+        if (!share.isActive()) {
+            return new GuestFeedbackEntryResult(GuestGate.PRIVATE, null, List.of(), null, List.of());
+        }
 
-        if (gate == GuestGate.PRIVATE || gate == GuestGate.EXPIRED) {
+        // 게이트 판정용 만료 여부와 재생 URL을 한 번의 조회로 함께 받는다(영상 row·소유자 중복 조회 방지).
+        InterviewVideoPlaybackResult playback = interviewVideoQueryUseCase.getPlayback(sessionId);
+        GuestGate gate = resolveActiveGate(sessionId, deviceId, playback.expired());
+
+        if (gate == GuestGate.EXPIRED) {
             return new GuestFeedbackEntryResult(gate, null, List.of(), null, List.of());
         }
 
@@ -58,24 +65,23 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
         String requesterName = findUserUseCase.findById(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).getName();
         List<QuestionBoundaryResult> boundaries = questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId);
 
+        // 영상은 실제로 시청·피드백하는 OPEN 게이트에서만 노출한다(정원 초과·이미 제출 상태에는 URL을 주지 않는다).
+        String videoUrl = gate == GuestGate.OPEN ? playback.playbackUrl() : null;
+
         return new GuestFeedbackEntryResult(
                 gate,
                 requesterName,
                 share.getAxes(),
-                interviewVideoQueryUseCase.getPlaybackUrl(sessionId), // 합성 완료본(final.mp4), 합성 전/실패 시 null
+                videoUrl,
                 boundaries.stream()
                         .map(b -> new GuestFeedbackEntryResult.QuestionBoundary(b.turnLevel(), b.startSec(), b.questionText()))
                         .toList()
         );
     }
 
-    private GuestGate determineGate(FeedbackShare share, Long sessionId, String deviceId) {
-        if (!share.isActive()) {
-            return GuestGate.PRIVATE;
-        }
-
-        InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getStatus(sessionId);
-        if (videoStatus.expired()) {
+    // 활성 링크 전제. 만료 → 중복 제출 → 정원 초과 순으로 판정하고, 어디에도 걸리지 않으면 OPEN이다.
+    private GuestGate resolveActiveGate(Long sessionId, String deviceId, boolean videoExpired) {
+        if (videoExpired) {
             return GuestGate.EXPIRED;
         }
 

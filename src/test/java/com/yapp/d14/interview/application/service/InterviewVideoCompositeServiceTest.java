@@ -69,6 +69,7 @@ class InterviewVideoCompositeServiceTest {
                 answer(1L, 8.0f, false),   // turnLevel 1 → answers/1.webm
                 answer(2L, 15.0f, false)   // turnLevel 2 → answers/2.webm
         ));
+        given(interviewVideoRepository.markComposited(SESSION_ID)).willReturn(1);
 
         service.composite(USER_ID, SESSION_ID);
 

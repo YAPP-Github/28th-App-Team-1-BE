@@ -45,19 +45,21 @@ class InterviewVideoQueryServiceTest {
     }
 
     @Test
-    void 합성이_끝났고_만료_전이면_합성본_presigned_URL을_반환한다() {
+    void 합성이_끝났고_만료_전이면_합성본_presigned_URL과_상태를_함께_반환한다() {
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, true)));
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(SESSION_ID)).willReturn(OWNER_ID);
         given(interviewVideoStorage.presignComposite(OWNER_ID, SESSION_ID)).willReturn("https://s3/final.mp4");
 
-        assertThat(service.getPlaybackUrl(SESSION_ID)).isEqualTo("https://s3/final.mp4");
+        var result = service.getPlayback(SESSION_ID);
+        assertThat(result.playbackUrl()).isEqualTo("https://s3/final.mp4");
+        assertThat(result.expired()).isFalse();
     }
 
     @Test
     void 합성_전이면_URL_없이_null을_반환한다() {
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(false, true)));
 
-        assertThat(service.getPlaybackUrl(SESSION_ID)).isNull();
+        assertThat(service.getPlayback(SESSION_ID).playbackUrl()).isNull();
         verify(interviewVideoStorage, never()).presignComposite(any(), any());
     }
 
@@ -65,7 +67,9 @@ class InterviewVideoQueryServiceTest {
     void 합성됐어도_만료됐으면_null을_반환한다() {
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, false)));
 
-        assertThat(service.getPlaybackUrl(SESSION_ID)).isNull();
+        var result = service.getPlayback(SESSION_ID);
+        assertThat(result.playbackUrl()).isNull();
+        assertThat(result.expired()).isTrue();
         verify(interviewVideoStorage, never()).presignComposite(any(), any());
     }
 
@@ -73,6 +77,6 @@ class InterviewVideoQueryServiceTest {
     void 영상_레코드가_없으면_예외를_던진다() {
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getPlaybackUrl(SESSION_ID)).isInstanceOf(InterviewException.class);
+        assertThatThrownBy(() -> service.getPlayback(SESSION_ID)).isInstanceOf(InterviewException.class);
     }
 }
