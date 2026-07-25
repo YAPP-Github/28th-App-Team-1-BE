@@ -150,12 +150,14 @@ class GuestFeedbackQueryServiceTest {
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, LocalDateTime.now(), LocalDateTime.now()));
         given(questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId))
                 .willReturn(List.of(new QuestionBoundaryResult(1, 12.5f, "질문 내용")));
+        given(interviewVideoQueryUseCase.getPlaybackUrl(sessionId)).willReturn("https://s3/final.mp4");
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
         assertThat(result.gate()).isEqualTo(GuestGate.OPEN);
         assertThat(result.requesterName()).isEqualTo("재원");
         assertThat(result.axes()).containsExactly(AttitudeAxis.GAZE);
+        assertThat(result.videoUrl()).isEqualTo("https://s3/final.mp4");
         assertThat(result.questionBoundaries()).hasSize(1);
         assertThat(result.questionBoundaries().get(0).questionText()).isEqualTo("질문 내용");
         verify(interviewVideoRetentionExtendUseCase).extendForGuestFirstViewed(sessionId);

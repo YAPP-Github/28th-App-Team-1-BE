@@ -62,7 +62,7 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
                 gate,
                 requesterName,
                 share.getAxes(),
-                null, // 영상 파이프라인 연결 전까지 null
+                interviewVideoQueryUseCase.getPlaybackUrl(sessionId), // 합성 완료본(final.mp4), 합성 전/실패 시 null
                 boundaries.stream()
                         .map(b -> new GuestFeedbackEntryResult.QuestionBoundary(b.turnLevel(), b.startSec(), b.questionText()))
                         .toList()

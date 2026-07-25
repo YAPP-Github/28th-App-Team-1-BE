@@ -110,9 +110,10 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
 
         InterviewReportQueryResult.Video video = interviewVideoRepository.findBySessionId(sessionId)
                 .map(v -> {
-                    // 업로드가 끝났고(uploaded) 아직 만료 전일 때만 재생 URL을 발급한다.
-                    String url = v.isUploaded() && !v.isExpired()
-                            ? interviewVideoStorage.presignPlayback(userId, sessionId)
+                    // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
+                    // 합성 전/실패 시에는 null (원본 raw.mp4 폴백은 하지 않는다).
+                    String url = v.isComposited() && !v.isExpired()
+                            ? interviewVideoStorage.presignComposite(userId, sessionId)
                             : null;
                     return new InterviewReportQueryResult.Video(url, v.isExpired(), v.getExpiresAt());
                 })
