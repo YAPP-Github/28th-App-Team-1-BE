@@ -17,11 +17,11 @@
   │     └─ sessions/
   │           └─ {sessionId}/
   │                 │
-  │                 ├─ answers/            ← 사용자 답변 음성
-  │                 │     └─ {turnId}.webm (or .wav)
+  │                 ├─ answers/            ← 사용자 답변 음성 (제출 시 비동기 저장, 리포트 영상 합성용)
+  │                 │     └─ {turnLevel}.webm
   │                 │
   │                 ├─ questions/          ← AI 면접관 TTS 음성
-  │                 │     └─ {turnId}.mp3
+  │                 │     └─ {turnLevel}.mp3
   │                 │
   │                 ├─ recording/          ← 면접 영상 (프론트 녹화본, 네이티브 iOS/Android 기본 포맷 mp4)
   │                 │     └─ raw.mp4
