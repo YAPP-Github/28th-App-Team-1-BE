@@ -40,6 +40,9 @@ class InterviewSessionStatusQueryServiceTest {
     @Mock
     private InterviewVoiceStorage interviewVoiceStorage;
 
+    @Mock
+    private InterviewPreloadFailureHandler interviewPreloadFailureHandler;
+
     @InjectMocks
     private InterviewSessionStatusQueryService service;
 
@@ -69,7 +72,7 @@ class InterviewSessionStatusQueryServiceTest {
     }
 
     @Test
-    void PREPARING이_45초_넘게_지속되면_FAILED로_전환하고_저장한다() {
+    void PREPARING이_45초_넘게_지속되면_FAILED로_전환하고_markFailed를_호출한다() {
         InterviewSession staleSession = sessionWithStatus(
                 InterviewSessionStatus.PREPARING, null, LocalDateTime.now().minusSeconds(46)
         );
@@ -78,7 +81,7 @@ class InterviewSessionStatusQueryServiceTest {
         InterviewSessionStatusResult result = service.getStatus(userId, 1L);
 
         assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.FAILED);
-        verify(interviewSessionRepository).save(staleSession);
+        verify(interviewPreloadFailureHandler).markFailed(1L);
     }
 
     @Test

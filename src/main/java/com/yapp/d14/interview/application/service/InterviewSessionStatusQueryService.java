@@ -24,6 +24,7 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
     private final InterviewSessionRepository interviewSessionRepository;
     private final QuestionRepository questionRepository;
     private final InterviewVoiceStorage interviewVoiceStorage;
+    private final InterviewPreloadFailureHandler interviewPreloadFailureHandler;
 
     @Override
     @Transactional
@@ -44,9 +45,12 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
         return new InterviewSessionStatusResult(InterviewSessionPollStatus.READY, session.getStartedAt(), summaryQuestion);
     }
 
+    // markFailed()가 세션을 다시 조회해 실패 처리(후보/질문 삭제·이용권 release)까지 전담하므로,
+    // 여기서는 이번 조회 응답에 곧바로 반영되도록 메모리상의 session 상태만 함께 맞춰준다.
     private void timeoutIfPreloadStale(InterviewSession session) {
-        if (session.failIfPreloadTimedOut()) {
-            interviewSessionRepository.save(session);
+        if (session.isPreloadTimedOut()) {
+            interviewPreloadFailureHandler.markFailed(session.getId());
+            session.markPreloadFailed();
         }
     }
 

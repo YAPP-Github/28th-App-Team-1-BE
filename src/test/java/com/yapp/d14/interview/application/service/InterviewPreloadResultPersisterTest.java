@@ -21,11 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -65,6 +68,7 @@ class InterviewPreloadResultPersisterTest {
     @Test
     void 저장_전에_세션ID_기준으로_기존_후보와_질문을_정리한다() {
         InterviewSession session = session();
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session));
         Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);
 
         persister.persist(session, List.of(candidate()), summaryQuestion);
@@ -79,6 +83,7 @@ class InterviewPreloadResultPersisterTest {
     @Test
     void 후보와_질문을_저장하고_세션을_READY로_전환한다() {
         InterviewSession session = session();
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session));
         Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);
         List<QuestionCandidate> candidates = List.of(candidate(), candidate());
 
@@ -90,5 +95,25 @@ class InterviewPreloadResultPersisterTest {
         ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
         verify(interviewSessionRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(InterviewSessionStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void 타임아웃등으로_이미_PREPARING이_아니게_된_세션이면_결과를_버리고_아무것도_저장하지_않는다() {
+        InterviewSession session = session();
+        InterviewSession alreadyFailedInDb = InterviewSession.of(
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.PRELOAD_FAILED, null, null, null,
+                25, 20, 10, 20, 10, 15, 0, 0
+        );
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(alreadyFailedInDb));
+        Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);
+
+        persister.persist(session, List.of(candidate()), summaryQuestion);
+
+        verify(questionCandidateRepository, never()).deleteBySessionId(any());
+        verify(questionRepository, never()).deleteBySessionId(any());
+        verify(questionCandidateRepository, never()).save(any());
+        verify(questionRepository, never()).save(any());
+        verify(interviewSessionRepository, never()).save(any());
     }
 }
