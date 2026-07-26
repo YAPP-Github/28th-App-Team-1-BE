@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -216,6 +217,46 @@ class InterviewSessionPreloadServiceTest {
         service.preload(1L);
 
         verify(interviewPreloadFailureHandler, never()).markFailed(any());
+        verify(interviewPreloadResultPersister, never()).persist(any(), any(), any());
+    }
+
+    @Test
+    void TTS_합성이_1회_실패했다가_재시도로_성공하면_preload가_정상적으로_완료된다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any()))
+                .willThrow(new RuntimeException("일시적 TTS 오류"))
+                .willReturn("tts-audio".getBytes());
+
+        service.preload(1L);
+
+        verify(textToSpeechSynthesizer, times(2)).synthesize(any());
+        verify(interviewPreloadFailureHandler, never()).markFailed(any());
+        verify(interviewPreloadResultPersister).persist(any(), any(), any());
+    }
+
+    @Test
+    void TTS_합성이_재시도까지_모두_실패하면_실패_핸들러가_호출된다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willThrow(new RuntimeException("TTS 서버 장애"));
+
+        service.preload(1L);
+
+        verify(textToSpeechSynthesizer, times(3)).synthesize(any());
+        verify(interviewPreloadFailureHandler).markFailed(1L);
+        verify(interviewPreloadResultPersister, never()).persist(any(), any(), any());
+    }
+
+    @Test
+    void 세션_조회_자체가_실패해도_실패_핸들러가_호출된다() {
+        given(interviewSessionRepository.findById(1L)).willThrow(new RuntimeException("DB 커넥션 오류"));
+
+        service.preload(1L);
+
+        verify(interviewPreloadFailureHandler).markFailed(1L);
         verify(interviewPreloadResultPersister, never()).persist(any(), any(), any());
     }
 }
