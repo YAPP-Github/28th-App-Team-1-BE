@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -225,6 +227,19 @@ class PgVectorPortfolioEmbeddingStoreAdapterTest {
         verify(vectorStore).add(documentsCaptor.capture());
         assertThat(documentsCaptor.getValue()).isEmpty();
         verify(embeddingModel, never()).embed(anyList());
+    }
+
+    @Test
+    void findTopChunks_유사도_임계값_0_4를_검색_조건에_적용한다() {
+        UUID portfolioId = UUID.randomUUID();
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+        adapter.findTopChunks(portfolioId, "질문", 10);
+
+        ArgumentCaptor<SearchRequest> requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore).similaritySearch(requestCaptor.capture());
+        // 이 값을 바꾼다면 PortfolioRagEvalTest의 골든셋 Recall/MRR 회귀 기준도 함께 재측정해야 한다.
+        assertThat(requestCaptor.getValue().getSimilarityThreshold()).isEqualTo(0.4);
     }
 
     @Test

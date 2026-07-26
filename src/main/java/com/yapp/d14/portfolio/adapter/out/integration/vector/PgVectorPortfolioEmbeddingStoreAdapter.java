@@ -37,8 +37,6 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
     private static final double SIMILARITY_THRESHOLD = 0.75;
 
     // findTopChunks 검색 시 이 점수 미만은 topK 자리가 남아도 반환하지 않는다.
-    // 실제 포트폴리오 1건·쿼리 1건으로 관측한 값(#75) — 정답 섹션 청크는 0.41 이상, 다른 섹션(오탐)은 0.38 이하로
-    // 뚜렷한 간극이 있었다. 더 많은 케이스로 검증이 필요한 초기 추정치.
     private static final double RETRIEVAL_SIMILARITY_THRESHOLD = 0.4;
 
     // 줄바꿈은 문장 경계로 쓰이므로 보존하고, 문장 내부의 탭/공백만 하나로 정규화한다.
