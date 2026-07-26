@@ -11,6 +11,7 @@ import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -25,8 +26,10 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
     private final InterviewVoiceStorage interviewVoiceStorage;
 
     @Override
+    @Transactional
     public InterviewSessionStatusResult getStatus(UUID userId, Long sessionId) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, sessionId, userId);
+        timeoutIfPreloadStale(session);
 
         InterviewSessionPollStatus pollStatus = InterviewSessionPollStatus.from(session.getStatus());
         if (pollStatus != InterviewSessionPollStatus.READY) {
@@ -39,6 +42,12 @@ class InterviewSessionStatusQueryService implements InterviewSessionStatusUseCas
                 .orElse(null);
 
         return new InterviewSessionStatusResult(InterviewSessionPollStatus.READY, session.getStartedAt(), summaryQuestion);
+    }
+
+    private void timeoutIfPreloadStale(InterviewSession session) {
+        if (session.failIfPreloadTimedOut()) {
+            interviewSessionRepository.save(session);
+        }
     }
 
     private SummaryQuestion toSummaryQuestion(Question question) {

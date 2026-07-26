@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,7 +49,7 @@ class InterviewPreloadResultPersisterTest {
 
     private InterviewSession session() {
         return InterviewSession.of(
-                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null,
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );

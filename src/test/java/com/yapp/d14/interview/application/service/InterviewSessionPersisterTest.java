@@ -58,7 +58,7 @@ class InterviewSessionPersisterTest {
             InterviewSession saved = invocation.getArgument(0);
             return InterviewSession.of(
                     sessionId, saved.getUserId(), saved.getPortfolioId(), saved.getPortfolioFilename(), saved.getSnapshotJobType(),
-                    saved.getSnapshotYearsOfExperience(), saved.getJdUrl(), saved.getJdText(), saved.getFocusProject(),
+                    saved.getSnapshotYearsOfExperience(), saved.getJdUrl(), saved.getJdText(), saved.getFocusProject(), saved.getCreatedAt(),
                     saved.getStatus(), saved.getStartedAt(), saved.getEndedAt(), saved.getEndType(),
                     saved.getWeightDepth(), saved.getWeightBoundary(), saved.getWeightConnection(),
                     saved.getWeightTradeoff(), saved.getWeightConflict(), saved.getWeightResilience(),

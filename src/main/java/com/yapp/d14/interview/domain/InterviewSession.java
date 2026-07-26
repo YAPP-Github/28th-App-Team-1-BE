@@ -4,12 +4,16 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
 @Getter
 public class InterviewSession {
+
+    // preload는 포트폴리오 청크 검색·JD 키워드 추출·캐물지점 추출·TTS 합성까지 순차 수행되는 작업이라 여유 있게 잡는다.
+    private static final Duration PRELOAD_TIMEOUT = Duration.ofSeconds(45);
 
     private final Long id;
     private final UUID userId;
@@ -20,6 +24,7 @@ public class InterviewSession {
     private final String jdUrl;
     private final String jdText;
     private final String focusProject;
+    private final LocalDateTime createdAt;
     private InterviewSessionStatus status;
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
@@ -46,6 +51,7 @@ public class InterviewSession {
             String jdUrl,
             String jdText,
             String focusProject,
+            LocalDateTime createdAt,
             InterviewSessionStatus status,
             LocalDateTime startedAt,
             LocalDateTime endedAt,
@@ -68,6 +74,7 @@ public class InterviewSession {
         this.jdUrl = jdUrl;
         this.jdText = jdText;
         this.focusProject = focusProject;
+        this.createdAt = createdAt;
         this.status = status;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
@@ -101,6 +108,7 @@ public class InterviewSession {
                 .jdUrl(jdUrl)
                 .jdText(jdText)
                 .focusProject(focusProject)
+                .createdAt(LocalDateTime.now())
                 .status(InterviewSessionStatus.PREPARING)
                 .sttFailedSegmentCount(0)
                 .sttTotalSegmentCount(0)
@@ -114,6 +122,18 @@ public class InterviewSession {
 
     public void markPreloadFailed() {
         this.status = InterviewSessionStatus.PRELOAD_FAILED;
+    }
+
+    // Portfolio.failIfProcessingTimedOut()과 동일한 패턴 — PREPARING에서 멈춘 세션을 폴링 시점에 감지해 실패 처리한다.
+    public boolean failIfPreloadTimedOut() {
+        if (status != InterviewSessionStatus.PREPARING) {
+            return false;
+        }
+        if (createdAt.plus(PRELOAD_TIMEOUT).isAfter(LocalDateTime.now())) {
+            return false;
+        }
+        markPreloadFailed();
+        return true;
     }
 
     public void markCompleted(InterviewEndType endType) {
@@ -173,6 +193,7 @@ public class InterviewSession {
             String jdUrl,
             String jdText,
             String focusProject,
+            LocalDateTime createdAt,
             InterviewSessionStatus status,
             LocalDateTime startedAt,
             LocalDateTime endedAt,
@@ -196,6 +217,7 @@ public class InterviewSession {
                 .jdUrl(jdUrl)
                 .jdText(jdText)
                 .focusProject(focusProject)
+                .createdAt(createdAt)
                 .status(status)
                 .startedAt(startedAt)
                 .endedAt(endedAt)

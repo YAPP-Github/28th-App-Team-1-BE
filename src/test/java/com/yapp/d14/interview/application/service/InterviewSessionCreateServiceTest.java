@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -67,7 +68,7 @@ class InterviewSessionCreateServiceTest {
 
     private InterviewSession sessionWithId(long sessionId) {
         return InterviewSession.of(
-                sessionId, userId, portfolioId, null, JobType.BACKEND, 8, null, null, null,
+                sessionId, userId, portfolioId, null, JobType.BACKEND, 8, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
                 0, 0, 0, 0, 0, 0, 0, 0
         );

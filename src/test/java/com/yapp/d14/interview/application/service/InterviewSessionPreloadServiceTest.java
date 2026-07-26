@@ -25,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -75,7 +76,7 @@ class InterviewSessionPreloadServiceTest {
 
     private InterviewSession session(String jdUrl, String jdText, String focusProject) {
         return InterviewSession.of(
-                1L, userId, portfolioId, null, JobType.BACKEND, 3, jdUrl, jdText, focusProject,
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, jdUrl, jdText, focusProject, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );

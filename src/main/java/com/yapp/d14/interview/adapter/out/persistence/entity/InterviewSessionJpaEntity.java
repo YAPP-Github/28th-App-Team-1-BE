@@ -52,6 +52,9 @@ public class InterviewSessionJpaEntity {
     @Column(name = "focus_project")
     private String focusProject;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InterviewSessionStatus status;
@@ -101,6 +104,7 @@ public class InterviewSessionJpaEntity {
         entity.jdUrl = interviewSession.getJdUrl();
         entity.jdText = interviewSession.getJdText();
         entity.focusProject = interviewSession.getFocusProject();
+        entity.createdAt = interviewSession.getCreatedAt();
         entity.status = interviewSession.getStatus();
         entity.startedAt = interviewSession.getStartedAt();
         entity.endedAt = interviewSession.getEndedAt();
@@ -127,6 +131,7 @@ public class InterviewSessionJpaEntity {
                 jdUrl,
                 jdText,
                 focusProject,
+                createdAt,
                 status,
                 startedAt,
                 endedAt,

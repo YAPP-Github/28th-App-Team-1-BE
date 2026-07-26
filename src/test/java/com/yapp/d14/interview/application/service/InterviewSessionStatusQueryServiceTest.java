@@ -46,8 +46,12 @@ class InterviewSessionStatusQueryServiceTest {
     private final UUID userId = UUID.randomUUID();
 
     private InterviewSession sessionWithStatus(InterviewSessionStatus status, LocalDateTime startedAt) {
+        return sessionWithStatus(status, startedAt, LocalDateTime.now());
+    }
+
+    private InterviewSession sessionWithStatus(InterviewSessionStatus status, LocalDateTime startedAt, LocalDateTime createdAt) {
         return InterviewSession.of(
-                1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, createdAt,
                 status, startedAt, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -62,6 +66,19 @@ class InterviewSessionStatusQueryServiceTest {
 
         assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.PROCESSING);
         assertThat(result.summaryQuestion()).isNull();
+    }
+
+    @Test
+    void PREPARING이_45초_넘게_지속되면_FAILED로_전환하고_저장한다() {
+        InterviewSession staleSession = sessionWithStatus(
+                InterviewSessionStatus.PREPARING, null, LocalDateTime.now().minusSeconds(46)
+        );
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(staleSession));
+
+        InterviewSessionStatusResult result = service.getStatus(userId, 1L);
+
+        assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.FAILED);
+        verify(interviewSessionRepository).save(staleSession);
     }
 
     @Test
