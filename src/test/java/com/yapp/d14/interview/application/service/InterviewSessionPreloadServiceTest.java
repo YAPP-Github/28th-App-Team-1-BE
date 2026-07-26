@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -85,7 +86,7 @@ class InterviewSessionPreloadServiceTest {
     void JD_freeText_모두_없으면_JD_키워드_추출_없이_요약_질문을_생성하고_persist를_호출한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
         service.preload(1L);
@@ -101,7 +102,7 @@ class InterviewSessionPreloadServiceTest {
         byte[] audioBytes = {1, 2, 3};
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(audioBytes);
         given(interviewVoiceStorage.upload(userId, 1L, 0, audioBytes)).willReturn("users/x/sessions/1/questions/0.mp3");
 
@@ -118,13 +119,13 @@ class InterviewSessionPreloadServiceTest {
                 .willReturn(Optional.of(session(null, "JD 원문", null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
         service.preload(1L);
 
         verify(jdKeywordExtractor).extractKeywords("JD 원문");
-        verify(probeCandidateExtractor).extract(any(), eq(List.of("키워드1")));
+        verify(probeCandidateExtractor).extract(any(), any(), eq(List.of("키워드1")));
     }
 
     @Test
@@ -135,7 +136,7 @@ class InterviewSessionPreloadServiceTest {
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
                 .willReturn(List.of(new PortfolioChunkResult("관련 청크")));
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
         service.preload(1L);
@@ -150,7 +151,7 @@ class InterviewSessionPreloadServiceTest {
     void JD_키워드가_없으면_조건부_오프너_소재를_저장하지_않는다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
         service.preload(1L);
@@ -166,7 +167,7 @@ class InterviewSessionPreloadServiceTest {
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
                 .willThrow(new RuntimeException("포폴 재검색 실패"));
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
         service.preload(1L);
@@ -180,7 +181,7 @@ class InterviewSessionPreloadServiceTest {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, "결제 시스템")));
         given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), eq("결제 시스템"), anyInt()))
                 .willReturn(List.of(new PortfolioChunkResult("청크1")));
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of(
+        given(probeCandidateExtractor.extract(eq("결제 시스템"), any(), any())).willReturn(List.of(
                 new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null),
                 new ProbeCandidateDraft(TestType.CONFLICT, null, "probe2", "echo2", "키워드", QuestionCandidateStrength.MID, null)
         ));
@@ -194,6 +195,18 @@ class InterviewSessionPreloadServiceTest {
         assertThat(captor.getValue())
                 .extracting(QuestionCandidate::getSource)
                 .containsExactly(QuestionCandidateSource.PORTFOLIO, QuestionCandidateSource.JD);
+    }
+
+    @Test
+    void focusProject가_없으면_추출기에_null을_전달한다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
+        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
+
+        service.preload(1L);
+
+        verify(probeCandidateExtractor).extract(isNull(), any(), any());
     }
 
     @Test

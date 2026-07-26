@@ -60,7 +60,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         }
 
         try {
-            List<String> chunks = searchPortfolioChunks(session);
+            String focusQueryText = resolveFocusQueryText(session);
+            List<String> chunks = searchPortfolioChunks(session, focusQueryText);
             List<String> jdKeywords = extractJdKeywords(session);
             List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords);
             saveJdOpenerContextSafely(session, jdKeywords);
@@ -88,11 +89,13 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         }
     }
 
-    private List<String> searchPortfolioChunks(InterviewSession session) {
-        String queryText = StringUtils.hasText(session.getFocusProject())
+    private String resolveFocusQueryText(InterviewSession session) {
+        return StringUtils.hasText(session.getFocusProject())
                 ? session.getFocusProject()
                 : session.getSnapshotJobType().getLabel() + " 프로젝트 경험";
+    }
 
+    private List<String> searchPortfolioChunks(InterviewSession session, String queryText) {
         Instant startedAt = Instant.now();
         List<String> chunks = portfolioChunkSearchUseCase.searchChunks(session.getPortfolioId(), queryText, TOP_K).stream()
                 .map(PortfolioChunkResult::text)
@@ -141,7 +144,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 입력값: sessionId={}, chunks={}, jdKeywords={}",
                 session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
-        List<ProbeCandidateDraft> drafts = callWithRetry(() -> probeCandidateExtractor.extract(chunks, jdKeywords));
+        List<ProbeCandidateDraft> drafts =
+                callWithRetry(() -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords));
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
 
