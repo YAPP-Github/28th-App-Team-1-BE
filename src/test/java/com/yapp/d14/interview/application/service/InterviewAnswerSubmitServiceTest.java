@@ -201,6 +201,52 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void STT가_1회_실패했다가_재시도로_성공하면_정상적으로_다음_질문을_생성한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willThrow(new RuntimeException("일시적 STT 오류"))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.empty());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "여는 질문", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
+
+        assertThat(result.answerId()).isEqualTo(12L);
+        verify(speechToTextTranscriber, times(2)).transcribe(audioContent);
+    }
+
+    @Test
+    void STT가_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환되고_이후_단계는_실행되지_않는다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willThrow(new RuntimeException("STT 서버 장애"));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+
+        verify(speechToTextTranscriber, times(2)).transcribe(audioContent);
+        verifyNoInteractions(liveTurnAnalyzer, interviewAnswerSubmitPersister);
+    }
+
+    @Test
     void 요청의_질문_음성_재생_구간이_답변한_질문에_기록된다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
