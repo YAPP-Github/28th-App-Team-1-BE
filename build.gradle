@@ -87,7 +87,7 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'integration', 'llm-e2e'
+        excludeTags 'integration', 'llm-e2e', 'rag-eval'
     }
 }
 
@@ -109,6 +109,17 @@ tasks.register('llmE2eTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
         includeTags 'llm-e2e'
+    }
+    shouldRunAfter test
+}
+
+tasks.register('ragEvalTest', Test) {
+    group = 'verification'
+    description = '포트폴리오 RAG 검색 품질(Recall@K, MRR) 평가 하네스를 실행합니다. (로컬 Postgres 필요, 실제 OpenAI 임베딩 API 호출로 비용 발생)'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'rag-eval'
     }
     shouldRunAfter test
 }

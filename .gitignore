@@ -27,3 +27,9 @@ terraform/modules/app/lambda/*.zip
 
 # OS
 .DS_Store
+
+# RAG eval: 실제 포트폴리오 골든셋(개인정보 포함)은 로컬 전용
+src/test/resources/rag-eval/local/
+# RAG eval: 개인 파일 경로가 하드코딩된 수동 점검용 테스트는 커밋하지 않음
+src/test/java/com/yapp/d14/portfolio/adapter/out/integration/vector/PortfolioRagRealFileInspectionTest.java
+src/test/java/com/yapp/d14/portfolio/adapter/out/integration/vector/PortfolioRagRealFileQuestionPoolInspectionTest.java
