@@ -23,7 +23,8 @@ public enum InterviewErrorCode implements ErrorCode {
     INVALID_ANSWER_RANGE(HttpStatus.BAD_REQUEST, "INVALID_ANSWER_RANGE", "답변 구간 값이 올바르지 않아요."),
     INVALID_END_TYPE(HttpStatus.BAD_REQUEST, "INVALID_END_TYPE", "지원하지 않는 endType이에요."),
     INVALID_AUDIO_PRESENCE(HttpStatus.BAD_REQUEST, "INVALID_AUDIO_PRESENCE", "endType과 답변 음성 유무가 맞지 않아요."),
-    INTERVIEW_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_VIDEO_NOT_FOUND", "면접 영상 정보를 찾을 수 없어요.");
+    INTERVIEW_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_VIDEO_NOT_FOUND", "면접 영상 정보를 찾을 수 없어요."),
+    AI_TEMPORARILY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_TEMPORARILY_UNAVAILABLE", "일시적인 오류예요. 같은 답변을 다시 제출해 주세요.");
 
     private final HttpStatus httpStatus;
     private final String code;
