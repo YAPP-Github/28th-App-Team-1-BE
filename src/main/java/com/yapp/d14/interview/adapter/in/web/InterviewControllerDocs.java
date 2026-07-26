@@ -232,7 +232,9 @@ public interface InterviewControllerDocs {
                     "- `audio` 파트는 선택적입니다. `endType=SKIP`이면 audio가 없어야 하고, `endType=null`이면 audio가 있어야 합니다. " +
                     "`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`은 audio 유무와 무관합니다.\n" +
                     "- 응답에는 오디오가 동봉되지 않습니다. `nextQuestion.questionId`로 " +
-                    "`GET /{sessionId}/questions/{questionId}/audio/stream`을 호출해 오디오를 받으세요."
+                    "`GET /{sessionId}/questions/{questionId}/audio/stream`을 호출해 오디오를 받으세요.\n" +
+                    "- STT·답변 분석·질문 생성·TTS 등 내부 AI 호출은 1회 자동 재시도되며, 그래도 실패하면 503(`AI_TEMPORARILY_UNAVAILABLE`)을 반환합니다. " +
+                    "이 시점엔 아직 아무것도 저장되지 않으므로, 같은 sessionId·questionId·audio로 이 API를 그대로 다시 호출하면 됩니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -355,6 +357,21 @@ public interface InterviewControllerDocs {
                                             }
                                             """)
                             }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "503",
+                    description = "AI 연동 서버 일시 장애 — STT·답변 분석·질문 생성·TTS 중 하나가 재시도(1회)까지 실패함. " +
+                            "이 시점엔 아무것도 저장되지 않으므로 같은 요청으로 이 API를 그대로 다시 호출하면 됩니다.",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "AI_TEMPORARILY_UNAVAILABLE",
+                                      "message": "일시적인 오류예요. 같은 답변을 다시 제출해 주세요."
+                                    }
+                                    """)
                     )
             )
     })
