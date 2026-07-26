@@ -77,10 +77,25 @@ class InterviewSessionStatusQueryServiceTest {
                 InterviewSessionStatus.PREPARING, null, LocalDateTime.now().minusSeconds(46)
         );
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(staleSession));
+        given(interviewPreloadFailureHandler.markFailed(1L)).willReturn(true);
 
         InterviewSessionStatusResult result = service.getStatus(userId, 1L);
 
         assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.FAILED);
+        verify(interviewPreloadFailureHandler).markFailed(1L);
+    }
+
+    @Test
+    void markFailed가_늦은_preload_성공과_경합해_적용되지_않으면_FAILED로_바꾸지_않는다() {
+        InterviewSession staleSession = sessionWithStatus(
+                InterviewSessionStatus.PREPARING, null, LocalDateTime.now().minusSeconds(46)
+        );
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(staleSession));
+        given(interviewPreloadFailureHandler.markFailed(1L)).willReturn(false);
+
+        InterviewSessionStatusResult result = service.getStatus(userId, 1L);
+
+        assertThat(result.status()).isEqualTo(InterviewSessionPollStatus.PROCESSING);
         verify(interviewPreloadFailureHandler).markFailed(1L);
     }
 
