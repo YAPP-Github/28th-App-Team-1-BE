@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryRes
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
@@ -67,6 +68,8 @@ class InterviewReportQueryServiceTest {
     @Mock
     private InterviewVideoRepository interviewVideoRepository;
     @Mock
+    private InterviewVideoStorage interviewVideoStorage;
+    @Mock
     private GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
     @InjectMocks
@@ -122,10 +125,11 @@ class InterviewReportQueryServiceTest {
                 axisEval(TestType.BOUNDARY, ResolutionLevel.NORMAL, null)
         ));
         given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // 업로드 전(uploaded=false)이므로 재생 URL은 발급되지 않는다.
         // expired()는 실제 LocalDateTime.now() 기준으로 계산되므로, 고정 날짜 대신 현재 기준 미래값을 사용한다.
         LocalDateTime videoExpiresAt = LocalDateTime.now().plusDays(3);
         given(interviewVideoRepository.findBySessionId(SESSION_ID))
-                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, videoExpiresAt, false)));
+                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, videoExpiresAt, false, false)));
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
                 .willReturn(new GuestFeedbackReportView(0, List.of()));
 
@@ -190,6 +194,28 @@ class InterviewReportQueryServiceTest {
         List<InterviewReportQueryResult.RedFlagNotice> cardNotices = result.cards().get(0).cardRedFlagNotices();
         assertThat(cardNotices).extracting(InterviewReportQueryResult.RedFlagNotice::type)
                 .containsExactly(RedFlagType.FABRICATION);
+    }
+
+    @Test
+    void 영상이_업로드됐고_만료전이면_재생url을_발급한다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // expired()는 실제 LocalDateTime.now() 기준으로 계산되므로, 고정 날짜 대신 현재 기준 미래값을 사용한다.
+        given(interviewVideoRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(InterviewVideo.of(1L, SESSION_ID, NOW, LocalDateTime.now().plusDays(3), false, true)));
+        given(interviewVideoStorage.presignPlayback(USER_ID, SESSION_ID)).willReturn("https://s3/play");
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.video().url()).isEqualTo("https://s3/play");
+        assertThat(result.video().expired()).isFalse();
     }
 
     @Test

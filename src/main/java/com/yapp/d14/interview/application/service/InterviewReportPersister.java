@@ -49,11 +49,8 @@ class InterviewReportPersister {
     }
 
     // 분석 부족 리포트도 R1에 도달하므로(지인 축은 AI 분석 성패와 무관하게 성립) Step1을 동일하게 적용한다.
-    // baseAt은 "1차" 생성 성공 시각으로 고정되므로, 재생성이어도 이미 있으면 다시 만들지 않는다.
+    // 이미 있으면(재생성·업로드 완료 선행) baseAt을 건드리지 않도록 DB upsert(ON CONFLICT DO NOTHING)로 넣는다.
     private void ensureVideoRetentionStarted(Long sessionId) {
-        if (interviewVideoRepository.findBySessionId(sessionId).isPresent()) {
-            return;
-        }
-        interviewVideoRepository.save(InterviewVideo.create(sessionId, LocalDateTime.now()));
+        interviewVideoRepository.insertRetentionIfAbsent(InterviewVideo.create(sessionId, LocalDateTime.now()));
     }
 }

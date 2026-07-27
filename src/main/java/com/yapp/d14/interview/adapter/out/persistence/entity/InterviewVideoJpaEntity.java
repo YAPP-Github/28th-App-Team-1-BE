@@ -33,6 +33,9 @@ public class InterviewVideoJpaEntity {
     @Column(name = "deleted", nullable = false)
     private boolean deleted;
 
+    @Column(name = "uploaded", nullable = false, columnDefinition = "boolean default false")
+    private boolean uploaded;
+
     public static InterviewVideoJpaEntity from(InterviewVideo interviewVideo) {
         InterviewVideoJpaEntity entity = new InterviewVideoJpaEntity();
         entity.id = interviewVideo.getId();
@@ -40,10 +43,11 @@ public class InterviewVideoJpaEntity {
         entity.baseAt = interviewVideo.getBaseAt();
         entity.expiresAt = interviewVideo.getExpiresAt();
         entity.deleted = interviewVideo.isDeleted();
+        entity.uploaded = interviewVideo.isUploaded();
         return entity;
     }
 
     public InterviewVideo toDomain() {
-        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted);
+        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted, uploaded);
     }
 }
