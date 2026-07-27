@@ -78,6 +78,9 @@ AI 기반 모의 면접 코칭 서비스의 백엔드(Spring Boot + Java 21). �
 # 포트폴리오 RAG 검색 품질(Recall@K, MRR) 평가 하네스 (로컬 Postgres 필요, OpenAI 임베딩 API 호출로 비용 발생)
 ./gradlew ragEvalTest
 
+# 로컬 ffmpeg로 실제 영상 합성이 되는지 확인 (ffmpeg/ffprobe 필요, 결과물 build/composite-smoke/final.mp4)
+./gradlew compositeSmokeTest
+
 # 애플리케이션 실행 (로컬 인프라 필요: postgres, redis)
 ./gradlew bootRun
 

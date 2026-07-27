@@ -87,7 +87,7 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'integration', 'llm-e2e', 'rag-eval'
+        excludeTags 'integration', 'llm-e2e', 'rag-eval', 'composite-smoke'
     }
 }
 
@@ -120,6 +120,20 @@ tasks.register('ragEvalTest', Test) {
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
         includeTags 'rag-eval'
+    }
+    shouldRunAfter test
+}
+
+tasks.register('compositeSmokeTest', Test) {
+    group = 'verification'
+    description = '로컬 ffmpeg로 실제 영상 합성이 되는지 확인합니다. 결과물은 build/composite-smoke/final.mp4. (ffmpeg/ffprobe 필요)'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'composite-smoke'
+    }
+    testLogging {
+        showStandardStreams = true
     }
     shouldRunAfter test
 }
