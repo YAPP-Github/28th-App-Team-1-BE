@@ -243,6 +243,19 @@ class PgVectorPortfolioEmbeddingStoreAdapterTest {
     }
 
     @Test
+    void findTopChunksWithoutThreshold_유사도_임계값_없이_topK로만_검색한다() {
+        UUID portfolioId = UUID.randomUUID();
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+        adapter.findTopChunksWithoutThreshold(portfolioId, "질문", 10);
+
+        ArgumentCaptor<SearchRequest> requestCaptor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore).similaritySearch(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getSimilarityThreshold()).isEqualTo(0.0);
+        assertThat(requestCaptor.getValue().getTopK()).isEqualTo(10);
+    }
+
+    @Test
     void portfolioId_기준으로_삭제_필터를_적용한다() {
         UUID portfolioId = UUID.randomUUID();
 

@@ -7,6 +7,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Component;
 
@@ -158,16 +159,32 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
 
     @Override
     public List<String> findTopChunks(UUID portfolioId, String queryText, int topK) {
-        FilterExpressionBuilder filterBuilder = new FilterExpressionBuilder();
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(queryText)
                 .topK(topK)
                 .similarityThreshold(RETRIEVAL_SIMILARITY_THRESHOLD)
-                .filterExpression(filterBuilder.eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build())
+                .filterExpression(portfolioIdFilter(portfolioId))
                 .build();
 
         return vectorStore.similaritySearch(searchRequest).stream()
                 .map(Document::getText)
                 .toList();
+    }
+
+    @Override
+    public List<String> findTopChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query(queryText)
+                .topK(topK)
+                .filterExpression(portfolioIdFilter(portfolioId))
+                .build();
+
+        return vectorStore.similaritySearch(searchRequest).stream()
+                .map(Document::getText)
+                .toList();
+    }
+
+    private Filter.Expression portfolioIdFilter(UUID portfolioId) {
+        return new FilterExpressionBuilder().eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build();
     }
 }

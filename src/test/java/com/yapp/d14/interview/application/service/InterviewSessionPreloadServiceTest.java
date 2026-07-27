@@ -85,7 +85,7 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void JD_freeText_모두_없으면_JD_키워드_추출_없이_요약_질문을_생성하고_persist를_호출한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
@@ -101,7 +101,7 @@ class InterviewSessionPreloadServiceTest {
     void TTS_합성_결과가_있으면_S3에_업로드하고_그_key를_질문에_저장한다() {
         byte[] audioBytes = {1, 2, 3};
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(audioBytes);
         given(interviewVoiceStorage.upload(userId, 1L, 0, audioBytes)).willReturn("users/x/sessions/1/questions/0.mp3");
@@ -117,7 +117,7 @@ class InterviewSessionPreloadServiceTest {
     void jdText가_있으면_JD_키워드를_추출한다() {
         given(interviewSessionRepository.findById(1L))
                 .willReturn(Optional.of(session(null, "JD 원문", null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
@@ -132,7 +132,7 @@ class InterviewSessionPreloadServiceTest {
     void JD_키워드가_있으면_포폴을_재검색해_조건부_오프너_소재를_캐시에_저장한다() {
         given(interviewSessionRepository.findById(1L))
                 .willReturn(Optional.of(session(null, "JD 원문", null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
                 .willReturn(List.of(new PortfolioChunkResult("관련 청크")));
@@ -150,7 +150,7 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void JD_키워드가_없으면_조건부_오프너_소재를_저장하지_않는다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
@@ -163,7 +163,7 @@ class InterviewSessionPreloadServiceTest {
     void 조건부_오프너_소재_저장이_실패해도_preload_전체는_성공한다() {
         given(interviewSessionRepository.findById(1L))
                 .willReturn(Optional.of(session(null, "JD 원문", null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(jdKeywordExtractor.extractKeywords("JD 원문")).willReturn(List.of("키워드1"));
         given(portfolioChunkSearchUseCase.searchChunks(portfolioId, "키워드1", 10))
                 .willThrow(new RuntimeException("포폴 재검색 실패"));
@@ -200,7 +200,7 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void focusProject가_없으면_추출기에_null을_전달한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
         given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willReturn(null);
 
@@ -212,7 +212,7 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void 처리_중_예외가_발생하면_실패_핸들러가_호출된다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt()))
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt()))
                 .willThrow(new RuntimeException("포트폴리오 조회 실패"));
 
         service.preload(1L);
