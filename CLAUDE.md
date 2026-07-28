@@ -75,6 +75,9 @@ AI 기반 모의 면접 코칭 서비스의 백엔드(Spring Boot + Java 21). �
 # 실제 Anthropic API를 호출하는 리포트 파이프라인 e2e 테스트 (비용 발생, ANTHROPIC_API_KEY 필요)
 ./gradlew llmE2eTest
 
+# 포트폴리오 RAG 검색 품질(Recall@K, MRR) 평가 하네스 (로컬 Postgres 필요, OpenAI 임베딩 API 호출로 비용 발생)
+./gradlew ragEvalTest
+
 # 애플리케이션 실행 (로컬 인프라 필요: postgres, redis)
 ./gradlew bootRun
 

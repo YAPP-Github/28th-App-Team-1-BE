@@ -7,6 +7,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,9 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
     // 인접 문장 임베딩 간 코사인 유사도가 이 값 미만이면 주제가 바뀐 것으로 보고 섹션을 나눈다.
     // 실제 포트폴리오 데이터로 검증된 값이 아닌 초기 추정치 — 추후 조정이 필요할 수 있다.
     private static final double SIMILARITY_THRESHOLD = 0.75;
+
+    // findTopChunks 검색 시 이 점수 미만은 topK 자리가 남아도 반환하지 않는다.
+    private static final double RETRIEVAL_SIMILARITY_THRESHOLD = 0.4;
 
     // 줄바꿈은 문장 경계로 쓰이므로 보존하고, 문장 내부의 탭/공백만 하나로 정규화한다.
     private static final Pattern INLINE_WHITESPACE = Pattern.compile("[\\t\\x0B\\f\\r ]+");
@@ -155,15 +159,32 @@ class PgVectorPortfolioEmbeddingStoreAdapter implements PortfolioEmbeddingStore 
 
     @Override
     public List<String> findTopChunks(UUID portfolioId, String queryText, int topK) {
-        FilterExpressionBuilder filterBuilder = new FilterExpressionBuilder();
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(queryText)
                 .topK(topK)
-                .filterExpression(filterBuilder.eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build())
+                .similarityThreshold(RETRIEVAL_SIMILARITY_THRESHOLD)
+                .filterExpression(portfolioIdFilter(portfolioId))
                 .build();
 
         return vectorStore.similaritySearch(searchRequest).stream()
                 .map(Document::getText)
                 .toList();
+    }
+
+    @Override
+    public List<String> findTopChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .query(queryText)
+                .topK(topK)
+                .filterExpression(portfolioIdFilter(portfolioId))
+                .build();
+
+        return vectorStore.similaritySearch(searchRequest).stream()
+                .map(Document::getText)
+                .toList();
+    }
+
+    private Filter.Expression portfolioIdFilter(UUID portfolioId) {
+        return new FilterExpressionBuilder().eq(METADATA_PORTFOLIO_ID, portfolioId.toString()).build();
     }
 }

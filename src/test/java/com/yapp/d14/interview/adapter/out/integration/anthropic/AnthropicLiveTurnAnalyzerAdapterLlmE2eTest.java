@@ -10,6 +10,8 @@ import com.yapp.d14.interview.domain.QuestionCandidateSource;
 import com.yapp.d14.interview.domain.QuestionCandidateStatus;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -25,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -42,7 +45,17 @@ class AnthropicLiveTurnAnalyzerAdapterLlmE2eTest {
     void 이전_캐물지점과_모순되는_답변이면_stale_updates로_감지한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
         AnthropicLiveTurnAnalyzerAdapter liveTurnAnalyzer = new AnthropicLiveTurnAnalyzerAdapter(
-                chatModel, (portfolioId, queryText, topK) -> List.of(), new NoOpPriorQaCache()
+                chatModel, new PortfolioChunkSearchUseCase() {
+                    @Override
+                    public List<PortfolioChunkResult> searchChunks(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+
+                    @Override
+                    public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+                }, new NoOpPriorQaCache()
         );
 
         QuestionCandidate openProbe = QuestionCandidate.of(

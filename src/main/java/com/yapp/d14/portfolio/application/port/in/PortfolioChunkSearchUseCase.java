@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface PortfolioChunkSearchUseCase {
 
     List<PortfolioChunkResult> searchChunks(UUID portfolioId, String queryText, int topK);
+
+    List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK);
 }

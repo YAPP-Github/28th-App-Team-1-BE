@@ -13,4 +13,6 @@ public interface PortfolioEmbeddingStore {
     Optional<Double> findTopSimilarityScore(UUID portfolioId, String queryText);
 
     List<String> findTopChunks(UUID portfolioId, String queryText, int topK);
+
+    List<String> findTopChunksWithoutThreshold(UUID portfolioId, String queryText, int topK);
 }

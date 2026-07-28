@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface ProbeCandidateExtractor {
 
-    List<ProbeCandidateDraft> extract(List<String> portfolioChunks, List<String> jdKeywords);
+    List<ProbeCandidateDraft> extract(String focusProject, List<String> portfolioChunks, List<String> jdKeywords);
 }

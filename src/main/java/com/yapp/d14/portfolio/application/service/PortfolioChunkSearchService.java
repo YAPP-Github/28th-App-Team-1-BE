@@ -21,4 +21,11 @@ class PortfolioChunkSearchService implements PortfolioChunkSearchUseCase {
                 .map(PortfolioChunkResult::new)
                 .toList();
     }
+
+    @Override
+    public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+        return portfolioEmbeddingStore.findTopChunksWithoutThreshold(portfolioId, queryText, topK).stream()
+                .map(PortfolioChunkResult::new)
+                .toList();
+    }
 }

@@ -6,6 +6,8 @@ import com.yapp.d14.interview.application.port.out.PriorTurn;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -22,6 +24,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,7 +49,17 @@ class FirstTurnQuestionGenerationLlmE2eTest {
     void 실제_LLM으로_백엔드_개발자_자기소개_답변에서_다음_질문을_생성한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
         AnthropicLiveTurnAnalyzerAdapter liveTurnAnalyzer = new AnthropicLiveTurnAnalyzerAdapter(
-                chatModel, (portfolioId, queryText, topK) -> List.of(), new NoOpPriorQaCache()
+                chatModel, new PortfolioChunkSearchUseCase() {
+                    @Override
+                    public List<PortfolioChunkResult> searchChunks(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+
+                    @Override
+                    public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+                }, new NoOpPriorQaCache()
         );
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
 

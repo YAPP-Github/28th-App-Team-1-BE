@@ -89,13 +89,24 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         }
     }
 
-    private List<String> searchPortfolioChunks(InterviewSession session) {
-        String queryText = StringUtils.hasText(session.getFocusProject())
+    private String resolveFocusQueryText(InterviewSession session) {
+        return StringUtils.hasText(session.getFocusProject())
                 ? session.getFocusProject()
                 : session.getSnapshotJobType().getLabel() + " 프로젝트 경험";
+    }
+
+    // focusProject(집중 프로젝트) 자유입력이 없으면 직군 라벨로 대체하는데, 이 대체 쿼리는 특정 프로젝트를
+    // 지목하지 못해 유사도 점수가 전반적으로 낮게 나온다. similarityThreshold(0.4)를 그대로 적용하면
+    // topK 자리가 남아도 결과가 비는 경우가 있어, 이때는 임계값 없이 topK만으로 청크를 채운다.
+    private List<String> searchPortfolioChunks(InterviewSession session) {
+        String queryText = resolveFocusQueryText(session);
+        boolean hasFocusProject = StringUtils.hasText(session.getFocusProject());
 
         Instant startedAt = Instant.now();
-        List<String> chunks = portfolioChunkSearchUseCase.searchChunks(session.getPortfolioId(), queryText, TOP_K).stream()
+        List<String> chunks = (hasFocusProject
+                ? portfolioChunkSearchUseCase.searchChunks(session.getPortfolioId(), queryText, TOP_K)
+                : portfolioChunkSearchUseCase.searchChunksWithoutThreshold(session.getPortfolioId(), queryText, TOP_K))
+                .stream()
                 .map(PortfolioChunkResult::text)
                 .toList();
         log.info("[INTERVIEW PRELOAD] 포트폴리오 청크 조회 완료: sessionId={}, chunkCount={}, elapsedSeconds={}",
@@ -145,7 +156,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                 session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
         List<ProbeCandidateDraft> drafts = LlmCallRetrySupport.retry(
-                () -> probeCandidateExtractor.extract(chunks, jdKeywords), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+                () -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
         );
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
