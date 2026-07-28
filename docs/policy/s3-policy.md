@@ -23,8 +23,8 @@
   │                 ├─ questions/          ← AI 면접관 TTS 음성
   │                 │     └─ {turnId}.mp3
   │                 │
-  │                 ├─ recording/          ← 면접 영상 (프론트 녹화본)
-  │                 │     └─ raw.webm
+  │                 ├─ recording/          ← 면접 영상 (프론트 녹화본, 네이티브 iOS/Android 기본 포맷 mp4)
+  │                 │     └─ raw.mp4
   │                 │
   │                 └─ composite/          ← 최종 합성 영상
   │                       └─ final.mp4

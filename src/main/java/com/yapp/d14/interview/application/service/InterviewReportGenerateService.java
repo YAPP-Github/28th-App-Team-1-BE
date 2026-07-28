@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -192,7 +191,9 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                 .toList();
 
         log.info("[INTERVIEW REPORT] axis 채점 시작: sessionId={}, axisCount={}", sessionId, axisTurnGroups.size());
-        List<AxisScoreDraft> drafts = callWithRetry(() -> axisReportScorer.score(new AxisReportScoreContext(axisTurnGroups)));
+        List<AxisScoreDraft> drafts = LlmCallRetrySupport.retry(
+                () -> axisReportScorer.score(new AxisReportScoreContext(axisTurnGroups)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+        );
         log.info("[INTERVIEW REPORT] axis 채점 완료: sessionId={}, scoredCount={}", sessionId, drafts.size());
         return drafts;
     }
@@ -238,9 +239,9 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
 
         log.info("[INTERVIEW REPORT] 레드플래그 확정 시작: sessionId={}, portfolioCandidateCount={}, contradictionCandidateCount={}",
                 sessionId, portfolioCandidates.size(), contradictionCandidates.size());
-        List<RedFlagVerdict> verdicts = callWithRetry(() -> redFlagReconciler.reconcile(
+        List<RedFlagVerdict> verdicts = LlmCallRetrySupport.retry(() -> redFlagReconciler.reconcile(
                 new RedFlagReconcileContext(portfolioCandidates, contradictionCandidates, contextTurns)
-        ));
+        ), MAX_LLM_RETRIES, "INTERVIEW REPORT");
         log.info("[INTERVIEW REPORT] 레드플래그 확정 완료: sessionId={}, verdictCount={}", sessionId, verdicts.size());
         return verdicts;
     }
@@ -304,7 +305,9 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                 .toList();
 
         log.info("[INTERVIEW REPORT] 한 줄 요약 생성 시작: sessionId={}, severeRedFlagPresent={}", sessionId, severeRedFlagPresent);
-        String headline = callWithRetry(() -> reportHeadlineGenerator.generate(new HeadlineContext(severeRedFlagPresent, axisTopics)));
+        String headline = LlmCallRetrySupport.retry(
+                () -> reportHeadlineGenerator.generate(new HeadlineContext(severeRedFlagPresent, axisTopics)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+        );
         log.info("[INTERVIEW REPORT] 한 줄 요약 생성 완료: sessionId={}", sessionId);
         return headline;
     }
@@ -341,7 +344,9 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
 
         int turnCount = axisCards.stream().mapToInt(card -> card.turns().size()).sum();
         log.info("[INTERVIEW REPORT] 리포트 카드 생성 시작: sessionId={}, axisCount={}, turnCount={}", sessionId, axisCards.size(), turnCount);
-        List<ReportCardDraft> drafts = callWithRetry(() -> reportCardContentGenerator.generate(new ReportCardContentContext(axisCards)));
+        List<ReportCardDraft> drafts = LlmCallRetrySupport.retry(
+                () -> reportCardContentGenerator.generate(new ReportCardContentContext(axisCards)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+        );
         log.info("[INTERVIEW REPORT] 리포트 카드 생성 완료: sessionId={}, cardCount={}", sessionId, drafts.size());
 
         return drafts.stream()
@@ -350,18 +355,5 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                         draft.highlightSpans()
                 ))
                 .toList();
-    }
-
-    private <T> T callWithRetry(Supplier<T> call) {
-        RuntimeException lastError = null;
-        for (int attempt = 1; attempt <= MAX_LLM_RETRIES + 1; attempt++) {
-            try {
-                return call.get();
-            } catch (RuntimeException e) {
-                lastError = e;
-                log.warn("[INTERVIEW REPORT] LLM 호출 실패 ({}/{})", attempt, MAX_LLM_RETRIES + 1, e);
-            }
-        }
-        throw lastError;
     }
 }

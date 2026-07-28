@@ -27,6 +27,11 @@ class InterviewSessionPersistenceAdapter implements InterviewSessionRepository {
     }
 
     @Override
+    public Optional<InterviewSession> findByIdForUpdate(Long id) {
+        return interviewSessionJpaRepository.findByIdForUpdate(id).map(InterviewSessionJpaEntity::toDomain);
+    }
+
+    @Override
     public List<InterviewSession> findAllByUserId(UUID userId) {
         return interviewSessionJpaRepository.findAllByUserId(userId).stream()
                 .map(InterviewSessionJpaEntity::toDomain)

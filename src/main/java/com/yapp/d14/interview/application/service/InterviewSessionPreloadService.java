@@ -24,7 +24,6 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -53,13 +52,13 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         log.info("interview preload async processing triggered: sessionId={}", sessionId);
         Instant startedAt = Instant.now();
 
-        InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
-        if (session == null) {
-            log.warn("[INTERVIEW PRELOAD] 세션을 찾을 수 없어요: sessionId={}", sessionId);
-            return;
-        }
-
         try {
+            InterviewSession session = interviewSessionRepository.findById(sessionId).orElse(null);
+            if (session == null) {
+                log.warn("[INTERVIEW PRELOAD] 세션을 찾을 수 없어요: sessionId={}", sessionId);
+                return;
+            }
+
             List<String> chunks = searchPortfolioChunks(session);
             List<String> jdKeywords = extractJdKeywords(session);
             List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords);
@@ -68,7 +67,9 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             String questionText = buildSummaryQuestionText(session.getFocusProject());
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 합성 시작: sessionId={}", sessionId);
             Instant ttsStartedAt = Instant.now();
-            byte[] audioContent = textToSpeechSynthesizer.synthesize(questionText);
+            byte[] audioContent = LlmCallRetrySupport.retry(
+                    () -> textToSpeechSynthesizer.synthesize(questionText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+            );
             String aiVoiceS3Key = audioContent != null
                     ? interviewVoiceStorage.upload(session.getUserId(), sessionId, SUMMARY_TURN_LEVEL, audioContent)
                     : null;
@@ -122,7 +123,9 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 시작: sessionId={}", session.getId());
         Instant startedAt = Instant.now();
-        List<String> jdKeywords = callWithRetry(() -> jdKeywordExtractor.extractKeywords(jdText));
+        List<String> jdKeywords = LlmCallRetrySupport.retry(
+                () -> jdKeywordExtractor.extractKeywords(jdText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+        );
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 완료: sessionId={}, keywordCount={}, elapsedSeconds={}",
                 session.getId(), jdKeywords.size(), elapsedSeconds(startedAt));
         return jdKeywords;
@@ -152,8 +155,9 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 입력값: sessionId={}, chunks={}, jdKeywords={}",
                 session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
-        List<ProbeCandidateDraft> drafts =
-                callWithRetry(() -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords));
+        List<ProbeCandidateDraft> drafts = LlmCallRetrySupport.retry(
+                () -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+        );
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
 
@@ -189,18 +193,5 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
     private double elapsedSeconds(Instant startedAt) {
         return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
-    }
-
-    private <T> T callWithRetry(Supplier<T> call) {
-        RuntimeException lastError = null;
-        for (int attempt = 1; attempt <= MAX_LLM_RETRIES + 1; attempt++) {
-            try {
-                return call.get();
-            } catch (RuntimeException e) {
-                lastError = e;
-                log.warn("[INTERVIEW PRELOAD] LLM 호출 실패 ({}/{})", attempt, MAX_LLM_RETRIES + 1, e);
-            }
-        }
-        throw lastError;
     }
 }

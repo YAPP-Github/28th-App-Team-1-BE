@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -46,7 +47,7 @@ class InterviewPreloadFailureHandlerTest {
 
     private InterviewSession preparingSession() {
         return InterviewSession.of(
-                1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -54,11 +55,12 @@ class InterviewPreloadFailureHandlerTest {
 
     @Test
     void 세션을_preload_failed로_전환하고_이용권을_release한다() {
-        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(preparingSession()));
+        given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(preparingSession()));
         given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        handler.markFailed(1L);
+        boolean applied = handler.markFailed(1L);
 
+        assertThat(applied).isTrue();
         ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
         verify(interviewSessionRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(InterviewSessionStatus.PRELOAD_FAILED);
@@ -69,10 +71,11 @@ class InterviewPreloadFailureHandlerTest {
 
     @Test
     void 세션을_찾을_수_없으면_아무것도_하지_않는다() {
-        given(interviewSessionRepository.findById(1L)).willReturn(Optional.empty());
+        given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
-        handler.markFailed(1L);
+        boolean applied = handler.markFailed(1L);
 
+        assertThat(applied).isFalse();
         verify(interviewSessionRepository, never()).save(any());
         verify(questionCandidateRepository, never()).deleteBySessionId(any());
         verify(questionRepository, never()).deleteBySessionId(any());
@@ -81,14 +84,33 @@ class InterviewPreloadFailureHandlerTest {
 
     @Test
     void release가_실패해도_세션은_preload_failed로_유지된다() {
-        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(preparingSession()));
+        given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(preparingSession()));
         given(interviewSessionRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
         willThrow(new RuntimeException("release 실패")).given(ticketReleaseUseCase).release(1L, "PRELOAD_FAILED");
 
-        handler.markFailed(1L);
+        boolean applied = handler.markFailed(1L);
 
+        assertThat(applied).isTrue();
         ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
         verify(interviewSessionRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(InterviewSessionStatus.PRELOAD_FAILED);
+    }
+
+    @Test
+    void 늦은_preload_성공으로_이미_READY로_전환된_세션이면_실패_처리를_건너뛴다() {
+        InterviewSession readySession = InterviewSession.of(
+                1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
+                25, 20, 10, 20, 10, 15, 0, 0
+        );
+        given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(readySession));
+
+        boolean applied = handler.markFailed(1L);
+
+        assertThat(applied).isFalse();
+        verify(interviewSessionRepository, never()).save(any());
+        verify(questionCandidateRepository, never()).deleteBySessionId(any());
+        verify(questionRepository, never()).deleteBySessionId(any());
+        verify(ticketReleaseUseCase, never()).release(any(), any());
     }
 }
