@@ -126,7 +126,8 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
 
     // 각 오디오 입력(1..N)을 시작초만큼 지연(adelay, ms)한 뒤 하나로 믹싱한다.
     // normalize=0: 입력 수에 따라 볼륨이 줄지 않도록(믹싱으로 개별 음성이 작아지는 것 방지).
-    private String buildAudioFilter(List<AudioTrack> tracks) {
+    // ffmpeg 없이 필터 문자열을 검증할 수 있도록 package-private로 노출한다(FfmpegInterviewVideoCompositorAdapterTest).
+    String buildAudioFilter(List<AudioTrack> tracks) {
         StringBuilder filter = new StringBuilder();
         for (int i = 0; i < tracks.size(); i++) {
             long delayMs = Math.max(0L, Math.round(tracks.get(i).startSec() * 1000.0));
