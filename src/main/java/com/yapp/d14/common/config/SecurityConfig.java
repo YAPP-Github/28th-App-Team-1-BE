@@ -31,6 +31,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/feedback/guest/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // 로컬 수동 테스트용 정적 하네스 페이지. 페이지 자체엔 비밀이 없고 API는 그대로 JWT가 필요하다.
+                        .requestMatchers("/interview-test.html", "/favicon.ico").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>면접 테스트 하네스 (#78)</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 16px; line-height: 1.5; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #888; font-size: 13px; margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: 380px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { border: 1px solid rgba(128,128,128,0.35); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; }
+  label { display: block; font-size: 12px; margin: 8px 0 2px; color: #999; }
+  input, select, textarea, button { font: inherit; width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.4); background: transparent; color: inherit; }
+  textarea { min-height: 64px; resize: vertical; }
+  button { cursor: pointer; background: #2563eb; color: #fff; border: none; font-weight: 600; margin-top: 8px; }
+  button.secondary { background: transparent; border: 1px solid rgba(128,128,128,0.5); color: inherit; }
+  button.danger { background: #dc2626; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  video { width: 100%; border-radius: 8px; background: #000; aspect-ratio: 4/3; }
+  #log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow: auto; background: rgba(128,128,128,0.08); border-radius: 8px; padding: 10px; }
+  .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(128,128,128,0.2); }
+  .pill.rec { background: #dc2626; color: #fff; }
+  .pill.ok { background: #16a34a; color: #fff; }
+  .big { font-size: 15px; font-weight: 600; }
+  .muted { color: #888; font-size: 12px; }
+  hr { border: none; border-top: 1px solid rgba(128,128,128,0.25); margin: 12px 0; }
+</style>
+</head>
+<body>
+<h1>면접 테스트 하네스 <span class="muted">#78 문장 발화 시각</span></h1>
+<p class="sub">백엔드를 <code>dev</code> 프로파일로 로컬 실행(Postgres·Redis·S3·ffmpeg·OpenAI·Anthropic 키 필요)한 뒤 이 페이지를 엽니다. API는 같은 출처로 호출됩니다.</p>
+
+<div class="grid">
+  <!-- 좌측: 설정 & 조작 -->
+  <div>
+    <div class="card">
+      <h2>1. 인증 · 포트폴리오</h2>
+      <label>Access Token (<code>./gradlew issueTestToken -PuserId=&lt;UUID&gt; -Pprovider=KAKAO</code>)</label>
+      <textarea id="token" placeholder="eyJ..."></textarea>
+
+      <label>기존 포트폴리오 ID (있으면 붙여넣기 — 업로드 생략)</label>
+      <input id="portfolioId" placeholder="uuid" />
+
+      <hr />
+      <label>또는 PDF 업로드</label>
+      <input type="file" id="pdfFile" accept="application/pdf" />
+      <div class="row">
+        <div><label>페이지 수(≤30)</label><input id="pageCount" type="number" value="1" min="1" max="30" /></div>
+      </div>
+      <button id="btnUpload" class="secondary">포트폴리오 업로드 · 처리 대기</button>
+    </div>
+
+    <div class="card">
+      <h2>2. 세션 설정</h2>
+      <div class="row">
+        <div><label>직군</label>
+          <select id="jobRole">
+            <option>BACKEND</option><option>FRONTEND</option><option>IOS</option><option>ANDROID</option>
+            <option>DATA_ENGINEER</option><option>INFRA_SRE</option>
+          </select>
+        </div>
+        <div><label>연차</label><input id="careerYears" type="number" value="1" min="0" /></div>
+      </div>
+      <label>JD 원문(직접 입력)</label>
+      <textarea id="jdText" placeholder="채용 공고 본문...">백엔드 개발자를 모집합니다. Java/Spring 기반 API 개발, 대용량 트래픽 처리, DB 최적화 경험을 중시합니다.</textarea>
+      <label>집중 프로젝트 설명(10~300자, 선택)</label>
+      <textarea id="freeText" placeholder="선택"></textarea>
+      <button id="btnStart">면접 시작 (카메라·마이크 권한)</button>
+    </div>
+
+    <div class="card">
+      <h2>3. 진행</h2>
+      <div class="big">턴: <span id="turnInfo">-</span> <span id="recPill" class="pill">대기</span></div>
+      <div class="muted" id="qInfo">아직 시작 전</div>
+      <audio id="qAudio" controls style="width:100%; margin-top:8px;"></audio>
+      <div class="row">
+        <button id="btnAnsStart" class="secondary" disabled>답변 녹음 시작</button>
+        <button id="btnAnsStop" class="secondary" disabled>정지</button>
+      </div>
+      <button id="btnSubmit" disabled>답변 제출 → 다음 질문</button>
+      <div class="row">
+        <button id="btnSkip" class="secondary" disabled>이 턴 스킵</button>
+        <button id="btnEnd" class="danger" disabled>면접 종료(수동)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 우측: 미리보기 & 로그 & 리포트 -->
+  <div>
+    <div class="card">
+      <h2>카메라</h2>
+      <video id="preview" autoplay muted playsinline></video>
+    </div>
+    <div class="card">
+      <h2>로그</h2>
+      <div id="log"></div>
+    </div>
+    <div class="card" id="reportCard" style="display:none;">
+      <h2>리포트 (#78 scriptSegments)</h2>
+      <div id="reportBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const state = {
+  portfolioId: null, sessionId: null,
+  currentQuestionId: null, currentTurn: null, currentDepth: null,
+  t0: null,                 // 영상 녹화 시작 기준(ms)
+  stream: null, videoRecorder: null, videoChunks: [], videoMime: null,
+  answerRecorder: null, answerChunks: [], answerBlob: null,
+  qStartAt: null, qEndAt: null, aStartAt: null, aEndAt: null,
+  ended: false,
+};
+
+function log(msg, obj) {
+  const t = new Date().toLocaleTimeString();
+  let line = `[${t}] ${msg}`;
+  if (obj !== undefined) line += " " + (typeof obj === "string" ? obj : JSON.stringify(obj));
+  $("log").textContent += line + "\n";
+  $("log").scrollTop = $("log").scrollHeight;
+  console.log(msg, obj ?? "");
+}
+function nowSec() { return state.t0 == null ? 0 : (performance.now() - state.t0) / 1000; }
+function token() { return $("token").value.trim(); }
+function authHeaders(extra) { return Object.assign({ "Authorization": "Bearer " + token() }, extra || {}); }
+
+async function api(path, { method = "GET", json, headers } = {}) {
+  const opts = { method, headers: authHeaders(headers) };
+  if (json !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(json); }
+  const res = await fetch(path, opts);
+  const text = await res.text();
+  let body; try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+  if (!res.ok || body.success === false) {
+    const m = body.message || body.code || res.status + " " + res.statusText;
+    throw new Error(m + (body.code ? " (" + body.code + ")" : ""));
+  }
+  return body.data;
+}
+async function apiMultipart(path, formData) {
+  const res = await fetch(path, { method: "POST", headers: authHeaders(), body: formData });
+  const text = await res.text();
+  let body; try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+  if (!res.ok || body.success === false) throw new Error(body.message || body.code || (res.status + " " + res.statusText));
+  return body.data;
+}
+async function apiBlob(path) {
+  const res = await fetch(path, { headers: authHeaders() });
+  if (!res.ok) throw new Error("오디오 스트림 실패 " + res.status);
+  return await res.blob();
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function playBase64Mp3(b64) { return playAudioUrl("data:audio/mp3;base64," + b64); }
+function playAudioUrl(url) {
+  return new Promise((resolve) => {
+    const a = $("qAudio"); a.src = url;
+    a.onended = () => resolve();
+    a.play().catch((e) => { log("자동재생 차단 — 재생 버튼을 누르세요", e.message); });
+    // 자동재생이 막혀도 진행은 가능하도록 사용자가 재생/종료를 조작할 수 있음
+  });
+}
+
+// ---------- 포트폴리오 ----------
+$("btnUpload").onclick = async () => {
+  try {
+    const f = $("pdfFile").files[0];
+    if (!f) { alert("PDF 파일을 선택하세요"); return; }
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const fd = new FormData();
+    fd.append("file", f, f.name);
+    fd.append("fileName", f.name);
+    fd.append("fileSize", String(f.size));
+    fd.append("pageCount", $("pageCount").value);
+    fd.append("contentType", f.type || "application/pdf");
+    log("포트폴리오 업로드 중...");
+    const data = await apiMultipart("/api/v1/portfolios", fd);
+    state.portfolioId = data.portfolioId; $("portfolioId").value = data.portfolioId;
+    log("업로드 접수 — 처리 대기", data.portfolioId);
+    // 상태 폴링(임베딩 완료까지)
+    for (let i = 0; i < 60; i++) {
+      await sleep(2000);
+      const s = await api("/api/v1/portfolios/" + state.portfolioId + "/status");
+      log("포트폴리오 상태", s.status);
+      if (s.status === "READY") { log("포트폴리오 준비 완료 ✅"); return; }
+      if (String(s.status).startsWith("FAILED")) { throw new Error("포트폴리오 처리 실패: " + s.status); }
+    }
+    throw new Error("포트폴리오 처리 타임아웃");
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+// ---------- 면접 시작 ----------
+$("btnStart").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const pid = $("portfolioId").value.trim() || state.portfolioId;
+    if (!pid) { alert("포트폴리오 ID가 필요합니다(업로드 또는 붙여넣기)"); return; }
+    state.portfolioId = pid;
+
+    // 카메라·마이크
+    log("카메라·마이크 권한 요청...");
+    state.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    $("preview").srcObject = state.stream;
+
+    // 연속 영상 녹화 시작 (raw). 이 순간이 타임라인 t0.
+    state.videoMime = pickMime(["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"]);
+    state.videoChunks = [];
+    state.videoRecorder = new MediaRecorder(state.stream, state.videoMime ? { mimeType: state.videoMime } : undefined);
+    state.videoRecorder.ondataavailable = (e) => { if (e.data.size) state.videoChunks.push(e.data); };
+    state.videoRecorder.start(1000);
+    state.t0 = performance.now();
+    log("영상 녹화 시작 (mime=" + (state.videoMime || "default") + ") — 타임라인 t0 기준");
+
+    // 세션 생성
+    log("세션 생성...");
+    const created = await api("/api/v1/interview/sessions", { method: "POST", json: {
+      portfolioId: pid, jobRole: $("jobRole").value, careerYears: Number($("careerYears").value),
+      jdText: $("jdText").value.trim() || null, freeText: $("freeText").value.trim() || null,
+    }});
+    state.sessionId = created.sessionId;
+    log("세션 생성됨 — preload 대기", created.sessionId);
+
+    // 상태 폴링 → 첫(요약) 질문
+    let summary = null;
+    for (let i = 0; i < 90; i++) {
+      await sleep(2000);
+      const s = await api("/api/v1/interview/sessions/" + state.sessionId + "/status");
+      log("세션 상태", s.status);
+      if (s.status === "READY") { summary = s.summaryQuestion; break; }
+      if (s.status === "FAILED") throw new Error("세션 준비 실패");
+    }
+    if (!summary) throw new Error("세션 준비 타임아웃");
+
+    await goToQuestion(summary.questionId, summary.turn, () => playBase64Mp3(summary.ttsAudio));
+    log("면접 준비 완료 — 첫 질문 재생. 답변을 녹음하세요. (요약 턴은 스킵/종료 불가 — 답변 제출 필요)");
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+function pickMime(cands) { for (const c of cands) { if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c; } return null; }
+
+// 질문으로 이동: 오디오 재생 구간을 타임라인에 기록
+async function goToQuestion(questionId, turn, playFn) {
+  state.currentQuestionId = questionId;
+  state.currentTurn = turn ? turn.turnLevel : null;
+  state.currentDepth = turn ? turn.depthLevel : null;
+  state.aStartAt = state.aEndAt = null; state.answerBlob = null;
+  $("turnInfo").textContent = `turn ${state.currentTurn} · depth ${state.currentDepth} (qId ${questionId})`;
+  $("qInfo").textContent = "질문 음성 재생 중...";
+  $("btnSubmit").disabled = true; $("btnAnsStart").disabled = false; $("btnAnsStop").disabled = true;
+  // 요약 턴(turnLevel 0)은 오디오 없는 스킵/종료가 서버에서 STT를 타 깨지므로 막는다.
+  const canEnd = state.currentTurn != null && state.currentTurn > 0;
+  $("btnSkip").disabled = !canEnd; $("btnEnd").disabled = !canEnd;
+  state.qStartAt = nowSec();
+  await playFn();
+  state.qEndAt = nowSec();
+  log(`질문 재생 구간 [${state.qStartAt.toFixed(2)}, ${state.qEndAt.toFixed(2)}]s`);
+  $("qInfo").textContent = "질문 재생 완료 — 답변 녹음하세요";
+}
+
+// ---------- 답변 녹음 ----------
+$("btnAnsStart").onclick = () => {
+  const mime = pickMime(["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]);
+  state.answerChunks = [];
+  state.answerRecorder = new MediaRecorder(state.stream, mime ? { mimeType: mime } : undefined);
+  state.answerRecorder.ondataavailable = (e) => { if (e.data.size) state.answerChunks.push(e.data); };
+  state.answerRecorder.onstop = () => {
+    state.answerBlob = new Blob(state.answerChunks, { type: state.answerChunks[0]?.type || "audio/webm" });
+    state.aEndAt = nowSec();
+    log(`답변 녹음 완료 [${state.aStartAt.toFixed(2)}, ${state.aEndAt.toFixed(2)}]s (${(state.answerBlob.size/1024).toFixed(0)}KB)`);
+    $("btnSubmit").disabled = false;
+  };
+  state.aStartAt = nowSec();
+  state.answerRecorder.start();
+  $("recPill").className = "pill rec"; $("recPill").textContent = "녹음중";
+  $("btnAnsStart").disabled = true; $("btnAnsStop").disabled = false;
+  log("답변 녹음 시작...");
+};
+$("btnAnsStop").onclick = () => {
+  if (state.answerRecorder && state.answerRecorder.state !== "inactive") state.answerRecorder.stop();
+  $("recPill").className = "pill"; $("recPill").textContent = "대기";
+  $("btnAnsStop").disabled = true;
+};
+
+// ---------- 답변 제출 ----------
+async function submitAnswer(endType) {
+  const fd = new FormData();
+  if (state.answerBlob && endType !== "SKIP") fd.append("audio", state.answerBlob, "answer.webm");
+  fd.append("questionId", String(state.currentQuestionId));
+  if (state.qStartAt != null) fd.append("questionAudioStartAt", state.qStartAt.toFixed(3));
+  if (state.qEndAt != null) fd.append("questionAudioEndAt", state.qEndAt.toFixed(3));
+  if (state.aStartAt != null) fd.append("answerStartAt", state.aStartAt.toFixed(3));
+  if (state.aEndAt != null) fd.append("answerEndAt", state.aEndAt.toFixed(3));
+  if (state.aStartAt != null && state.aEndAt != null) fd.append("answerDuration", (state.aEndAt - state.aStartAt).toFixed(3));
+  if (endType) fd.append("endType", endType);
+  fd.append("isWrapUp", "false");
+  log("답변 제출 중" + (endType ? " (" + endType + ")" : "") + "...");
+  return await apiMultipart("/api/v1/interview/sessions/" + state.sessionId + "/answers", fd);
+}
+
+$("btnSubmit").onclick = () => handleSubmit(null);
+$("btnSkip").onclick = () => handleSubmit("SKIP");
+
+async function handleSubmit(endType) {
+  try {
+    $("btnSubmit").disabled = true; $("btnSkip").disabled = true;
+    const r = await submitAnswer(endType);
+    log("제출 완료", { answerId: r.answerId, sessionEnded: r.sessionEnded, next: r.nextQuestion });
+    if (r.sessionEnded || !r.nextQuestion) { await finishInterview(r); return; }
+    // 다음 질문 오디오는 스트림으로 가져온다
+    const nq = r.nextQuestion;
+    $("btnSkip").disabled = false;
+    await goToQuestion(nq.questionId, nq.turn, async () => {
+      const blob = await apiBlob(`/api/v1/interview/sessions/${state.sessionId}/questions/${nq.questionId}/audio/stream`);
+      await playAudioUrl(URL.createObjectURL(blob));
+    });
+  } catch (e) { log("❌ " + e.message); alert(e.message); $("btnSubmit").disabled = false; $("btnSkip").disabled = false; }
+}
+
+$("btnEnd").onclick = async () => {
+  try { $("btnEnd").disabled = true; const r = await submitAnswer("MANUAL_END"); log("수동 종료 제출", { sessionEnded: r.sessionEnded }); await finishInterview(r); }
+  catch (e) { log("❌ " + e.message); alert(e.message); $("btnEnd").disabled = false; }
+};
+
+// Phase 2에서 영상 업로드 + 리포트 폴링/싱크로 채운다.
+async function finishInterview(r) {
+  state.ended = true;
+  $("btnAnsStart").disabled = true; $("btnAnsStop").disabled = true; $("btnSubmit").disabled = true; $("btnSkip").disabled = true; $("btnEnd").disabled = true;
+  if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) { log("마무리 멘트 재생"); await playBase64Mp3(r.wrapUpMessage.ttsAudio); }
+  if (state.videoRecorder && state.videoRecorder.state !== "inactive") state.videoRecorder.stop();
+  log("면접 종료. (Phase 2: 영상 업로드 + 리포트 합성 싱크 예정) reportId=" + r.reportId);
+}
+</script>
+</body>
+</html>
