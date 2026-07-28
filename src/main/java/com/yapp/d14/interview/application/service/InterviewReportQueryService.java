@@ -104,6 +104,13 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis = cardNoticesByAxis(redFlags);
         // 문장 단위 발화 시각(질문/답변)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(질문 → 답변).
         Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
+        // 카드(채점 대상 턴) 유무와 무관하게, 세션의 모든 발화를 startSec 순으로 이어붙인 전체 대본 타임라인(영상 싱크용).
+        List<InterviewReportQueryResult.ScriptLine> script = segmentsByQuestionId.values().stream()
+                .flatMap(List::stream)
+                .sorted(Comparator.comparing(UtteranceSegment::startSec))
+                .map(segment -> new InterviewReportQueryResult.ScriptLine(
+                        segment.role(), segment.text(), segment.startSec(), segment.endSec()))
+                .toList();
 
         List<InterviewReportQueryResult.Card> cardResults = cards.stream()
                 .sorted(Comparator
@@ -130,12 +137,13 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 topLevelNotices(redFlags),
                 video,
                 cardResults,
+                script,
                 toGuestSection(guestFeedbackReportQueryUseCase.getForReport(sessionId))
         );
     }
 
     private InterviewReportQueryResult statusOnly(ReportStatus status) {
-        return new InterviewReportQueryResult(status, null, null, null, null, null);
+        return new InterviewReportQueryResult(status, null, null, null, null, null, null);
     }
 
     // 카드를 축(testType)별 최소 questionId 순으로 줄세워, 면접에서 그 축이 다뤄진 순서(1부터)를 매긴다.

@@ -14,6 +14,7 @@ public record InterviewReportQueryResult(
         List<RedFlagNotice> redFlagNotices,
         Video video,
         List<Card> cards,
+        List<ScriptLine> script,
         GuestFeedbackSection guestFeedback
 ) {
 
@@ -54,6 +55,17 @@ public record InterviewReportQueryResult(
             String text,
             int startIndex,
             int endIndex,
+            float startSec,
+            float endSec
+    ) {
+    }
+
+    // 면접 전체 대본을 문장 단위로 이어붙인 타임라인 한 줄. 카드(채점 대상 턴) 유무와 무관하게
+    // 첫 면접관 멘트 → 프로젝트 설명 답변 → … → 마지막 멘트까지 세션의 모든 발화를 startSec 오름차순으로 담는다.
+    // 합성 영상(=녹화) 재생 위치(currentTime)로 이 한 배열만 훑어 현재 발화 중인 문장을 강조한다(#78).
+    public record ScriptLine(
+            ScriptRole role,
+            String text,
             float startSec,
             float endSec
     ) {

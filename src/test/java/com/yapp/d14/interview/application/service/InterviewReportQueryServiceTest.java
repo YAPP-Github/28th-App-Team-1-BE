@@ -208,6 +208,42 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void 전체_대본_script는_카드없는_질문의_발화까지_startSec순으로_모두_담는다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        // 카드는 질문 20(중간 턴) 하나뿐이지만, 첫 질문(10)·마지막 답변(30)은 카드가 없다.
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 20L, 1, TestType.DEPTH, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(20L, "중간 질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(20L, "중간 답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
+                10L, List.of(new UtteranceSegment(ScriptRole.QUESTION, "첫 면접관 멘트", 0, 7, 5.0f, 8.0f)),   // 카드 없음
+                20L, List.of(
+                        new UtteranceSegment(ScriptRole.QUESTION, "중간 질문", 0, 5, 30.0f, 32.0f),
+                        new UtteranceSegment(ScriptRole.ANSWER, "중간 답변", 0, 5, 33.0f, 36.0f)),
+                30L, List.of(new UtteranceSegment(ScriptRole.ANSWER, "마지막 멘트", 0, 6, 60.0f, 63.0f))     // 카드 없음
+        ));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        // 카드는 하나뿐이라도 전체 대본은 카드 없는 첫 멘트·마지막 멘트까지 startSec 순으로 담는다.
+        assertThat(result.script())
+                .extracting(InterviewReportQueryResult.ScriptLine::text)
+                .containsExactly("첫 면접관 멘트", "중간 질문", "중간 답변", "마지막 멘트");
+        assertThat(result.script())
+                .extracting(InterviewReportQueryResult.ScriptLine::startSec)
+                .containsExactly(5.0f, 30.0f, 33.0f, 60.0f);
+    }
+
+    @Test
     void 노출_레드플래그는_top_level과_해당_축_카드에_붙고_CONTRADICTION은_카드에_안붙는다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));

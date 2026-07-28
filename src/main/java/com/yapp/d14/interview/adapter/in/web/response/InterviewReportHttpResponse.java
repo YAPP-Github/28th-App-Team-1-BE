@@ -23,6 +23,10 @@ public record InterviewReportHttpResponse(
         @Schema(description = "질문/답변 턴 하나당 카드 하나. GENERATING일 때는 null")
         List<Card> cards,
 
+        @Schema(description = "면접 전체 대본 타임라인. 카드(채점 대상 턴) 유무와 무관하게 첫 면접관 멘트 → 프로젝트 설명 답변 → … → 마지막 멘트까지 " +
+                "세션의 모든 발화를 startSec 오름차순으로 담는다. 합성 영상 재생 위치로 이 한 배열만 훑어 현재 발화 중인 문장을 강조할 수 있다. GENERATING일 때는 null")
+        List<ScriptLine> script,
+
         @Schema(description = "지인 피드백 섹션. 제출한 지인이 없으면 null")
         GuestFeedbackSection guestFeedback
 ) {
@@ -34,6 +38,7 @@ public record InterviewReportHttpResponse(
                 result.redFlagNotices() == null ? null : result.redFlagNotices().stream().map(RedFlagNotice::from).toList(),
                 Video.from(result.video()),
                 result.cards() == null ? null : result.cards().stream().map(Card::from).toList(),
+                result.script() == null ? null : result.script().stream().map(ScriptLine::from).toList(),
                 GuestFeedbackSection.from(result.guestFeedback())
         );
     }
@@ -139,6 +144,25 @@ public record InterviewReportHttpResponse(
             return new ScriptSegment(
                     segment.role().name(), segment.text(), segment.startIndex(), segment.endIndex(),
                     segment.startSec(), segment.endSec());
+        }
+    }
+
+    public record ScriptLine(
+            @Schema(description = "발화 주체 — QUESTION(면접관 질문) / ANSWER(면접자 답변)")
+            String role,
+
+            @Schema(description = "문장 텍스트")
+            String text,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 시작(초)")
+            float startSec,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 종료(초)")
+            float endSec
+    ) {
+
+        private static ScriptLine from(InterviewReportQueryResult.ScriptLine line) {
+            return new ScriptLine(line.role().name(), line.text(), line.startSec(), line.endSec());
         }
     }
 
