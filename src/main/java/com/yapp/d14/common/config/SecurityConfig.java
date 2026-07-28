@@ -31,6 +31,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/feedback/guest/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // 면접 진행 수동 테스트 하네스(정적 페이지). 액세스 토큰은 페이지 안에서 직접 입력하고,
+                        // 실제 API 호출은 JwtAuthenticationFilter를 그대로 거친다.
+                        .requestMatchers("/interview-harness/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

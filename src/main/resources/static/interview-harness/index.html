@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>면접 진행 수동 테스트 하네스</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: #14161a; color: #e6e6e6; font-size: 14px;
+  }
+  h1 { font-size: 18px; margin: 0; padding: 14px 20px; background: #1b1e24; border-bottom: 1px solid #2a2e37; }
+  h2 { font-size: 15px; margin: 0 0 10px; color: #7dd3fc; }
+  .layout { display: flex; align-items: flex-start; }
+  .main { flex: 1 1 auto; min-width: 0; padding: 16px 20px; }
+  .sidebar {
+    width: 420px; flex: 0 0 420px; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; background: #101215; border-left: 1px solid #2a2e37;
+  }
+  section {
+    background: #1b1e24; border: 1px solid #2a2e37; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 14px;
+  }
+  section[hidden] { display: none; }
+  section.disabled { opacity: 0.5; pointer-events: none; }
+  label { display: block; margin: 6px 0 4px; color: #b5bcc9; font-size: 12.5px; }
+  input[type=text], input[type=number], input[type=file], textarea, select {
+    background: #0f1114; border: 1px solid #3a3f4a; color: #e6e6e6; border-radius: 4px;
+    padding: 6px 8px; font-family: inherit; font-size: 13px;
+  }
+  textarea { width: 100%; resize: vertical; }
+  button {
+    background: #2563eb; color: #fff; border: none; border-radius: 4px; padding: 7px 12px;
+    font-size: 13px; cursor: pointer; margin-right: 6px;
+  }
+  button:disabled { background: #3a3f4a; cursor: not-allowed; color: #888; }
+  button.danger { background: #dc2626; }
+  button.secondary { background: #374151; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+  .hint { color: #8b93a3; font-size: 12px; margin-top: 6px; }
+  code { background: #0f1114; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .status-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600;
+  }
+  .st-PROCESSING, .st-GENERATING { background: #78350f; color: #fcd34d; }
+  .st-READY, .st-true { background: #14532d; color: #86efac; }
+  .st-FAILED, .st-FAILED_FILE, .st-FAILED_SYSTEM, .st-false { background: #7f1d1d; color: #fca5a5; }
+  .st-INSUFFICIENT_ANALYSIS { background: #1e3a8a; color: #93c5fd; }
+  #interview-clock { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; }
+  #record-timer { font-variant-numeric: tabular-nums; }
+  .banner { padding: 8px 10px; border-radius: 4px; font-weight: 600; margin: 8px 0; }
+  .banner-wrapup { background: #78350f; color: #fcd34d; }
+  .banner-hardcap { background: #7f1d1d; color: #fca5a5; }
+  #log { flex: 1 1 auto; overflow-y: auto; padding: 10px 12px; font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+  .log-entry { margin-bottom: 3px; white-space: pre-wrap; word-break: break-all; }
+  .log-entry .t { color: #6b7280; margin-right: 6px; }
+  .log-req { color: #7dd3fc; }
+  .log-res { color: #86efac; }
+  .log-err { color: #fca5a5; }
+  .log-warn { color: #fcd34d; }
+  .log-info { color: #d1d5db; }
+  .log-latency { color: #f0abfc; font-weight: 600; }
+  #latency-box { border-top: 1px solid #2a2e37; padding: 10px 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #262a32; }
+  #latency-summary { margin-top: 6px; font-weight: 600; color: #f0abfc; }
+  .card { border: 1px solid #2a2e37; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #14161a; }
+  .card .axis { color: #7dd3fc; font-weight: 600; }
+  .flag { display: inline-block; background: #7f1d1d; color: #fca5a5; padding: 2px 6px; border-radius: 4px; font-size: 11.5px; margin: 2px 4px 2px 0; }
+  .copy-cmd { display: flex; gap: 6px; align-items: center; }
+</style>
+</head>
+<body>
+<h1>AI 모의면접 수동 테스트 하네스 (audio 전용, 영상 없음)</h1>
+<div class="layout">
+  <div class="main">
+
+    <section id="section-auth">
+      <h2>1. 인증</h2>
+      <label for="token-input">Access Token</label>
+      <div class="row">
+        <input type="text" id="token-input" style="width: 560px" placeholder="eyJhbGciOi...">
+        <button id="save-token-btn">저장</button>
+      </div>
+      <div class="hint">
+        토큰 발급: <code>./gradlew issueTestToken -PuserId=&lt;uuid&gt; -Pprovider=KAKAO -PexpiryMs=3600000</code>
+        (userId는 실제 DB에 존재하는 유저여야 해요. 브라우저 localStorage에 저장됩니다.)
+      </div>
+    </section>
+
+    <section id="section-portfolio">
+      <h2>2. 포트폴리오 (세션 생성에 READY 상태가 필요해요)</h2>
+      <div class="row">
+        <button id="portfolio-list-btn">내 포트폴리오 조회</button>
+        <span id="portfolio-existing-info" class="hint"></span>
+        <button id="portfolio-delete-btn" class="danger" hidden>삭제</button>
+      </div>
+      <div class="row">
+        <input type="file" id="portfolio-file-input" accept="application/pdf">
+        <label style="display:inline;margin:0">페이지 수
+          <input type="number" id="portfolio-page-count" min="1" max="30" style="width:60px">
+        </label>
+        <button id="portfolio-upload-btn">업로드</button>
+      </div>
+      <div id="portfolio-status" class="hint">상태: -</div>
+    </section>
+
+    <section id="section-jd">
+      <h2>3. JD 준비 (선택)</h2>
+      <div class="row">
+        <label style="display:inline;margin:0"><input type="radio" name="jd-mode" value="none" checked> 없음(자유서술만)</label>
+        <label style="display:inline;margin:0"><input type="radio" name="jd-mode" value="url"> JD URL</label>
+        <label style="display:inline;margin:0"><input type="radio" name="jd-mode" value="text"> JD 텍스트 직접입력</label>
+      </div>
+      <div id="jd-url-box" class="row" hidden>
+        <input type="text" id="jd-url-input" style="width: 400px" placeholder="https://...">
+        <button id="jd-validate-btn">검증</button>
+        <span id="jd-validate-result"></span>
+      </div>
+      <div id="jd-text-box" hidden>
+        <textarea id="jd-text-input" rows="4" placeholder="200~3000자"></textarea>
+        <div class="hint"><span id="jd-text-count">0</span>자</div>
+      </div>
+    </section>
+
+    <section id="section-session">
+      <h2>4. 면접 세션 생성</h2>
+      <label for="session-portfolio-id">포트폴리오 ID</label>
+      <input type="text" id="session-portfolio-id" style="width: 320px">
+      <label for="session-job-role">직군</label>
+      <select id="session-job-role">
+        <option value="BACKEND">BACKEND</option>
+        <option value="FRONTEND">FRONTEND</option>
+        <option value="IOS">IOS</option>
+        <option value="ANDROID">ANDROID</option>
+        <option value="DATA_ENGINEER">DATA_ENGINEER</option>
+        <option value="INFRA_SRE">INFRA_SRE</option>
+      </select>
+      <label for="session-career-years">연차</label>
+      <input type="number" id="session-career-years" min="0" max="50" value="1" style="width: 80px">
+      <label for="session-free-text">집중 프로젝트 자유 서술 (선택, 10~300자)</label>
+      <textarea id="session-free-text" rows="2"></textarea>
+      <div class="row">
+        <button id="session-create-btn">면접 시작</button>
+      </div>
+      <div id="session-status" class="hint">상태: -</div>
+    </section>
+
+    <section id="section-interview" hidden>
+      <h2>5. 면접 진행</h2>
+      <div class="row">
+        <span>경과 시간 <span id="interview-clock">00:00</span></span>
+        <span id="wrapup-badge" class="status-badge st-PROCESSING" hidden>WRAP-UP 예약됨 (8:45 경과)</span>
+      </div>
+      <div id="hardcap-banner" class="banner banner-hardcap" hidden>12:00 경과 (HARD_CAP) — 지금 제출해주세요.</div>
+      <div class="hint">질문 turn=<span id="q-turn">-</span> depth=<span id="q-depth">-</span> id=<span id="q-id">-</span></div>
+      <audio id="question-audio" controls style="width:100%; margin: 8px 0"></audio>
+
+      <div class="row">
+        <button id="record-start-btn">녹음 시작</button>
+        <button id="record-stop-btn" disabled>녹음 종료</button>
+        <span id="record-timer">00:00</span>
+        <span id="record-state" class="hint"></span>
+      </div>
+      <label for="end-type-select">종료 유형</label>
+      <select id="end-type-select">
+        <option value="">정상 (계속 진행, audio 필수)</option>
+        <option value="SKIP">SKIP (답변 건너뜀, audio 없음)</option>
+        <option value="MANUAL_END">MANUAL_END (수동 종료, 8:00~)</option>
+        <option value="EARLY_EXIT">EARLY_EXIT (조기 이탈, ~8:00)</option>
+      </select>
+      <div class="row">
+        <button id="answer-submit-btn" disabled>답변 제출</button>
+        <span id="submit-state" class="hint"></span>
+      </div>
+    </section>
+
+    <section id="section-report" hidden>
+      <h2>6. 리포트</h2>
+      <div id="report-status" class="hint">상태: -</div>
+      <div id="report-content"></div>
+      <div class="hint copy-cmd" id="log-collect-hint" hidden>
+        이 세션 로그만 뽑기:
+        <code id="log-collect-cmd"></code>
+        <button id="log-collect-copy-btn" class="secondary">복사</button>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sidebar">
+    <h2 style="padding: 12px 12px 0">로그</h2>
+    <div id="log"></div>
+    <div id="latency-box">
+      <h2>제출 → 다음 질문 재생 시작 latency</h2>
+      <table>
+        <thead><tr><th>#</th><th>대상</th><th>latency</th></tr></thead>
+        <tbody id="latency-tbody"></tbody>
+      </table>
+      <div id="latency-summary">누적: 0.00s</div>
+    </div>
+  </div>
+</div>
+
+<script src="lame.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- state ----------
+  const state = {
+    token: localStorage.getItem("harness_token") || "",
+    portfolioId: localStorage.getItem("harness_portfolioId") || "",
+    jdUrl: null,
+    jdValidated: false,
+    sessionId: null,
+    clockStartMs: null,
+    turnCount: 0,
+    cumulativeLatencyMs: 0,
+    currentQuestion: null, // {questionId, turnLevel, depthLevel, isWrapUp}
+    currentQuestionAudioStartSec: null,
+    currentQuestionAudioEndSec: null,
+    answerStartSec: null,
+    answerEndSec: null,
+    pendingSubmitMs: null,
+    mediaStream: null,
+    mediaRecorder: null,
+    recordedChunks: [],
+    recordTimerHandle: null,
+    clockTimerHandle: null,
+    hardCapWarned: false,
+  };
+
+  const WRAP_UP_THRESHOLD_SEC = 525; // 8:45
+  const MANUAL_END_AVAILABLE_SEC = 480; // 8:00
+  const HARD_CAP_SEC = 720; // 12:00
+
+  // ---------- log panel ----------
+  const logEl = document.getElementById("log");
+  const harnessStartMs = Date.now();
+  function fmtElapsed(ms) {
+    return (ms / 1000).toFixed(2) + "s";
+  }
+  function log(message, kind) {
+    const div = document.createElement("div");
+    div.className = "log-entry log-" + (kind || "info");
+    const t = document.createElement("span");
+    t.className = "t";
+    t.textContent = "[" + fmtElapsed(Date.now() - harnessStartMs) + "]";
+    div.appendChild(t);
+    div.appendChild(document.createTextNode(message));
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ---------- latency table ----------
+  const latencyTbody = document.getElementById("latency-tbody");
+  const latencySummary = document.getElementById("latency-summary");
+  function recordLatency(label, ms) {
+    state.turnCount += 1;
+    state.cumulativeLatencyMs += ms;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${state.turnCount}</td><td>${label}</td><td>${(ms / 1000).toFixed(2)}s</td>`;
+    latencyTbody.appendChild(tr);
+    latencySummary.textContent = `누적: ${(state.cumulativeLatencyMs / 1000).toFixed(2)}s (평균 ${(state.cumulativeLatencyMs / 1000 / state.turnCount).toFixed(2)}s / ${state.turnCount}건)`;
+    log(`제출 → "${label}" 재생 시작: ${(ms / 1000).toFixed(2)}s`, "log-latency");
+  }
+
+  // ---------- api helper ----------
+  async function api(path, options) {
+    options = options || {};
+    const headers = Object.assign({}, options.headers);
+    if (state.token) headers["Authorization"] = "Bearer " + state.token;
+    const method = options.method || "GET";
+    log(`→ ${method} ${path}`, "req");
+    const t0 = performance.now();
+    let res;
+    try {
+      res = await fetch(path, Object.assign({}, options, { headers }));
+    } catch (e) {
+      log(`✗ ${method} ${path} 네트워크 오류: ${e.message}`, "err");
+      throw e;
+    }
+    const dt = performance.now() - t0;
+    let body = null;
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      body = await res.json().catch(() => null);
+    }
+    if (!res.ok || (body && body.success === false)) {
+      const code = body && body.code ? body.code : res.status;
+      const msg = body && body.message ? body.message : res.statusText;
+      log(`← ${res.status} ${path} (${dt.toFixed(0)}ms) 실패: ${code} ${msg}`, "err");
+      throw new Error(`${code}: ${msg}`);
+    }
+    log(`← ${res.status} ${path} (${dt.toFixed(0)}ms)`, "res");
+    return body && "data" in body ? body.data : body;
+  }
+
+  async function apiBlob(path) {
+    const headers = {};
+    if (state.token) headers["Authorization"] = "Bearer " + state.token;
+    log(`→ GET ${path}`, "req");
+    const t0 = performance.now();
+    const res = await fetch(path, { headers });
+    const dt = performance.now() - t0;
+    if (!res.ok) {
+      log(`← ${res.status} ${path} (${dt.toFixed(0)}ms) 실패`, "err");
+      throw new Error(`오디오 스트림 실패: ${res.status}`);
+    }
+    const blob = await res.blob();
+    log(`← ${res.status} ${path} (${dt.toFixed(0)}ms, ${(blob.size / 1024).toFixed(1)}KB)`, "res");
+    return blob;
+  }
+
+  function setBadge(el, status) {
+    el.textContent = status;
+    el.className = "status-badge st-" + status;
+  }
+
+  // ================= 1. 인증 =================
+  const tokenInput = document.getElementById("token-input");
+  tokenInput.value = state.token;
+  document.getElementById("save-token-btn").addEventListener("click", () => {
+    state.token = tokenInput.value.trim();
+    localStorage.setItem("harness_token", state.token);
+    log("토큰 저장됨", "info");
+  });
+
+  // ================= 2. 포트폴리오 =================
+  const portfolioFileInput = document.getElementById("portfolio-file-input");
+  const portfolioPageCountInput = document.getElementById("portfolio-page-count");
+  const portfolioStatusEl = document.getElementById("portfolio-status");
+  const sessionPortfolioIdInput = document.getElementById("session-portfolio-id");
+  sessionPortfolioIdInput.value = state.portfolioId;
+
+  portfolioFileInput.addEventListener("change", async () => {
+    const file = portfolioFileInput.files[0];
+    if (!file) return;
+    try {
+      const guessed = await guessPdfPageCount(file);
+      if (guessed) portfolioPageCountInput.value = guessed;
+    } catch (e) {
+      log("페이지 수 자동 추정 실패, 직접 입력해주세요: " + e.message, "warn");
+    }
+  });
+
+  async function guessPdfPageCount(file) {
+    const buf = await file.arrayBuffer();
+    const text = new TextDecoder("latin1").decode(new Uint8Array(buf));
+    const matches = text.match(/\/Type\s*\/Page(?!s)/g);
+    return matches ? matches.length : null;
+  }
+
+  document.getElementById("portfolio-upload-btn").addEventListener("click", async () => {
+    const file = portfolioFileInput.files[0];
+    if (!file) { alert("PDF 파일을 선택해주세요."); return; }
+    const pageCount = parseInt(portfolioPageCountInput.value, 10);
+    if (!pageCount || pageCount < 1) { alert("페이지 수를 입력해주세요."); return; }
+
+    const form = new FormData();
+    form.append("file", file, file.name);
+    form.append("fileName", file.name);
+    form.append("fileSize", String(file.size));
+    form.append("pageCount", String(pageCount));
+    form.append("contentType", "application/pdf");
+
+    try {
+      const data = await api("/api/v1/portfolios", { method: "POST", body: form });
+      state.portfolioId = data.portfolioId;
+      localStorage.setItem("harness_portfolioId", state.portfolioId);
+      sessionPortfolioIdInput.value = state.portfolioId;
+      portfolioStatusEl.textContent = `업로드됨, portfolioId=${data.portfolioId}`;
+      pollPortfolioStatus(data.portfolioId);
+    } catch (e) {
+      portfolioStatusEl.textContent = "업로드 실패: " + e.message;
+    }
+  });
+
+  async function pollPortfolioStatus(portfolioId) {
+    const started = Date.now();
+    const tick = async () => {
+      try {
+        const data = await api(`/api/v1/portfolios/${portfolioId}/status`);
+        portfolioStatusEl.innerHTML = `상태: <span class="status-badge st-${data.status}">${data.status}</span> (경과 ${((Date.now() - started) / 1000).toFixed(1)}s)`;
+        if (data.status === "PROCESSING") {
+          setTimeout(tick, 4000);
+        }
+      } catch (e) {
+        portfolioStatusEl.textContent = "상태 조회 실패: " + e.message;
+      }
+    };
+    tick();
+  }
+
+  document.getElementById("portfolio-list-btn").addEventListener("click", async () => {
+    try {
+      const data = await api("/api/v1/portfolios");
+      const infoEl = document.getElementById("portfolio-existing-info");
+      const deleteBtn = document.getElementById("portfolio-delete-btn");
+      if (!data.portfolios || data.portfolios.length === 0) {
+        infoEl.textContent = "등록된 포트폴리오 없음";
+        deleteBtn.hidden = true;
+        return;
+      }
+      const p = data.portfolios[0];
+      infoEl.textContent = `${p.fileName} / ${p.status} / portfolioId=${p.portfolioId}`;
+      if (p.status === "READY") {
+        state.portfolioId = p.portfolioId;
+        localStorage.setItem("harness_portfolioId", p.portfolioId);
+        sessionPortfolioIdInput.value = p.portfolioId;
+      }
+      deleteBtn.hidden = false;
+      deleteBtn.onclick = async () => {
+        if (!confirm(`포트폴리오(${p.portfolioId})를 삭제할까요?`)) return;
+        await api(`/api/v1/portfolios/${p.portfolioId}`, { method: "DELETE" });
+        infoEl.textContent = "삭제됨";
+        deleteBtn.hidden = true;
+      };
+    } catch (e) {
+      log("포트폴리오 조회 실패: " + e.message, "err");
+    }
+  });
+
+  // ================= 3. JD =================
+  const jdUrlBox = document.getElementById("jd-url-box");
+  const jdTextBox = document.getElementById("jd-text-box");
+  document.querySelectorAll('input[name="jd-mode"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const mode = document.querySelector('input[name="jd-mode"]:checked').value;
+      jdUrlBox.hidden = mode !== "url";
+      jdTextBox.hidden = mode !== "text";
+    });
+  });
+  const jdTextInput = document.getElementById("jd-text-input");
+  jdTextInput.addEventListener("input", () => {
+    document.getElementById("jd-text-count").textContent = jdTextInput.value.length;
+  });
+
+  document.getElementById("jd-validate-btn").addEventListener("click", async () => {
+    const url = document.getElementById("jd-url-input").value.trim();
+    const resultEl = document.getElementById("jd-validate-result");
+    if (!url) return;
+    try {
+      const data = await api("/api/v1/jd/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jdUrl: url }),
+      });
+      state.jdValidated = !!data.valid;
+      state.jdUrl = data.valid ? url : null;
+      resultEl.innerHTML = data.valid
+        ? `<span class="status-badge st-true">VALID</span>`
+        : `<span class="status-badge st-false">INVALID</span> ${data.reason || ""} ${data.message || ""}`;
+    } catch (e) {
+      resultEl.textContent = "검증 요청 실패: " + e.message;
+    }
+  });
+
+  // ================= 4. 세션 생성 =================
+  document.getElementById("session-create-btn").addEventListener("click", async () => {
+    const portfolioId = sessionPortfolioIdInput.value.trim();
+    if (!portfolioId) { alert("포트폴리오 ID가 필요해요."); return; }
+    const jobRole = document.getElementById("session-job-role").value;
+    const careerYears = parseInt(document.getElementById("session-career-years").value, 10);
+    const freeText = document.getElementById("session-free-text").value.trim();
+    const jdMode = document.querySelector('input[name="jd-mode"]:checked').value;
+
+    const body = { portfolioId, jobRole, careerYears };
+    if (freeText) body.freeText = freeText;
+    if (jdMode === "url") {
+      if (!state.jdValidated || !state.jdUrl) { alert("JD URL을 먼저 검증해주세요."); return; }
+      body.jdUrl = state.jdUrl;
+    } else if (jdMode === "text") {
+      const jdText = jdTextInput.value.trim();
+      if (jdText.length < 200 || jdText.length > 3000) { alert("JD 텍스트는 200~3000자여야 해요."); return; }
+      body.jdText = jdText;
+    }
+
+    const statusEl = document.getElementById("session-status");
+    try {
+      const data = await api("/api/v1/interview/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      state.sessionId = data.sessionId;
+      statusEl.innerHTML = `sessionId=${data.sessionId}, <span class="status-badge st-${data.status}">${data.status}</span>`;
+      pollSessionStatus();
+    } catch (e) {
+      statusEl.textContent = "세션 생성 실패: " + e.message;
+    }
+  });
+
+  async function pollSessionStatus() {
+    const started = Date.now();
+    const statusEl = document.getElementById("session-status");
+    const tick = async () => {
+      try {
+        const data = await api(`/api/v1/interview/sessions/${state.sessionId}/status`);
+        statusEl.innerHTML = `sessionId=${state.sessionId}, <span class="status-badge st-${data.status}">${data.status}</span> (경과 ${((Date.now() - started) / 1000).toFixed(1)}s)`;
+        if (data.status === "PROCESSING") {
+          setTimeout(tick, 4000);
+        } else if (data.status === "READY") {
+          startInterview(data.summaryQuestion);
+        }
+      } catch (e) {
+        statusEl.textContent = "preload 상태 조회 실패: " + e.message;
+      }
+    };
+    tick();
+  }
+
+  // ================= 5. 면접 진행 =================
+  const interviewSection = document.getElementById("section-interview");
+  const questionAudioEl = document.getElementById("question-audio");
+  const clockEl = document.getElementById("interview-clock");
+  const wrapupBadge = document.getElementById("wrapup-badge");
+  const hardcapBanner = document.getElementById("hardcap-banner");
+
+  function nowSec() {
+    if (state.clockStartMs === null) return 0;
+    return (Date.now() - state.clockStartMs) / 1000;
+  }
+  function fmtClock(sec) {
+    const m = Math.floor(sec / 60).toString().padStart(2, "0");
+    const s = Math.floor(sec % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  }
+  function startClockDisplay() {
+    if (state.clockTimerHandle) return;
+    state.clockTimerHandle = setInterval(() => {
+      const sec = nowSec();
+      clockEl.textContent = fmtClock(sec);
+      wrapupBadge.hidden = sec < WRAP_UP_THRESHOLD_SEC;
+      if (sec >= HARD_CAP_SEC && !state.hardCapWarned) {
+        state.hardCapWarned = true;
+        hardcapBanner.hidden = false;
+        document.getElementById("end-type-select").value = "HARD_CAP_PENDING";
+        log("12:00 경과 (HARD_CAP) — 지금 제출해주세요.", "warn");
+      }
+    }, 250);
+  }
+
+  function startInterview(summaryQuestion) {
+    document.getElementById("section-session").classList.add("disabled");
+    interviewSection.hidden = false;
+    state.currentQuestion = {
+      questionId: summaryQuestion.questionId,
+      turnLevel: summaryQuestion.turn.turnLevel,
+      depthLevel: summaryQuestion.turn.depthLevel,
+      isWrapUp: false,
+    };
+    updateQuestionInfo();
+    playAudioAndTrackLatency({ base64: summaryQuestion.ttsAudio, label: "요약 질문(turn 0)" });
+  }
+
+  function updateQuestionInfo() {
+    document.getElementById("q-turn").textContent = state.currentQuestion.turnLevel;
+    document.getElementById("q-depth").textContent = state.currentQuestion.depthLevel;
+    document.getElementById("q-id").textContent = state.currentQuestion.questionId;
+  }
+
+  async function playAudioAndTrackLatency({ base64, questionId, label }) {
+    let src;
+    if (base64) {
+      src = "data:audio/mp3;base64," + base64;
+    } else {
+      const blob = await apiBlob(`/api/v1/interview/sessions/${state.sessionId}/questions/${questionId}/audio/stream`);
+      src = URL.createObjectURL(blob);
+    }
+    questionAudioEl.src = src;
+
+    const onPlaying = () => {
+      const playMs = Date.now();
+      if (state.clockStartMs === null) {
+        state.clockStartMs = playMs;
+        startClockDisplay();
+      }
+      state.currentQuestionAudioStartSec = nowSec();
+      if (state.pendingSubmitMs !== null) {
+        recordLatency(label, playMs - state.pendingSubmitMs);
+        state.pendingSubmitMs = null;
+      }
+      questionAudioEl.removeEventListener("playing", onPlaying);
+    };
+    questionAudioEl.addEventListener("playing", onPlaying);
+    questionAudioEl.addEventListener("ended", function onEnded() {
+      state.currentQuestionAudioEndSec = nowSec();
+      questionAudioEl.removeEventListener("ended", onEnded);
+    });
+
+    try {
+      await questionAudioEl.play();
+    } catch (e) {
+      log(`자동재생이 브라우저 정책에 막혔어요. 재생 버튼을 눌러주세요 (${e.message})`, "warn");
+    }
+  }
+
+  // ---- 녹음 ----
+  document.getElementById("record-start-btn").addEventListener("click", async () => {
+    try {
+      state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+    } catch (e) {
+      alert("마이크 접근이 거부되었어요: " + e.message);
+      return;
+    }
+    state.recordedChunks = [];
+    state.mediaRecorder = new MediaRecorder(state.mediaStream);
+    state.mediaRecorder.ondataavailable = (ev) => {
+      if (ev.data && ev.data.size > 0) state.recordedChunks.push(ev.data);
+    };
+    state.mediaRecorder.start();
+    state.answerStartSec = nowSec();
+    document.getElementById("record-start-btn").disabled = true;
+    document.getElementById("record-stop-btn").disabled = false;
+    document.getElementById("record-state").textContent = "녹음 중...";
+
+    const recStart = Date.now();
+    state.recordTimerHandle = setInterval(() => {
+      document.getElementById("record-timer").textContent = fmtClock((Date.now() - recStart) / 1000);
+    }, 250);
+    log("녹음 시작", "info");
+  });
+
+  document.getElementById("record-stop-btn").addEventListener("click", () => {
+    if (!state.mediaRecorder) return;
+    state.mediaRecorder.addEventListener("stop", () => {
+      state.answerEndSec = nowSec();
+      state.mediaStream.getTracks().forEach((t) => t.stop());
+      clearInterval(state.recordTimerHandle);
+      document.getElementById("record-state").textContent = `녹음 완료 (${(state.answerEndSec - state.answerStartSec).toFixed(1)}s)`;
+      document.getElementById("record-stop-btn").disabled = true;
+      document.getElementById("record-start-btn").disabled = false;
+      document.getElementById("answer-submit-btn").disabled = false;
+      log("녹음 종료", "info");
+    }, { once: true });
+    state.mediaRecorder.stop();
+  });
+
+  // ---- mp3 인코딩 ----
+  function floatTo16BitPCM(float32Array) {
+    const out = new Int16Array(float32Array.length);
+    for (let i = 0; i < float32Array.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32Array[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return out;
+  }
+
+  async function encodeToMp3(recordedBlob) {
+    const arrayBuffer = await recordedBlob.arrayBuffer();
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const sampleRate = audioBuffer.sampleRate;
+    const samples = floatTo16BitPCM(audioBuffer.getChannelData(0));
+    const encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
+    const blockSize = 1152;
+    const chunks = [];
+    for (let i = 0; i < samples.length; i += blockSize) {
+      const chunk = samples.subarray(i, i + blockSize);
+      const enc = encoder.encodeBuffer(chunk);
+      if (enc.length > 0) chunks.push(enc);
+    }
+    const end = encoder.flush();
+    if (end.length > 0) chunks.push(end);
+    audioCtx.close();
+    return new Blob(chunks, { type: "audio/mp3" });
+  }
+
+  // ---- 답변 제출 ----
+  document.getElementById("answer-submit-btn").addEventListener("click", async () => {
+    const submitBtn = document.getElementById("answer-submit-btn");
+    const submitStateEl = document.getElementById("submit-state");
+    let endType = document.getElementById("end-type-select").value;
+    if (endType === "HARD_CAP_PENDING") endType = "HARD_CAP";
+    const hasRecording = state.recordedChunks.length > 0;
+
+    if (endType === "SKIP" && hasRecording) {
+      log("SKIP은 audio 없이 제출돼요. 녹음분은 무시합니다.", "warn");
+    }
+    if (endType === "" && !hasRecording) {
+      alert("정상 제출은 답변 녹음이 필요해요.");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitStateEl.textContent = "인코딩 중...";
+
+    const form = new FormData();
+    form.append("questionId", String(state.currentQuestion.questionId));
+    form.append("questionAudioStartAt", String(state.currentQuestionAudioStartSec ?? 0));
+    form.append("questionAudioEndAt", String(state.currentQuestionAudioEndSec ?? nowSec()));
+    form.append("answerStartAt", String(state.answerStartSec ?? nowSec()));
+    form.append("answerEndAt", String(state.answerEndSec ?? nowSec()));
+    form.append("answerDuration", String((state.answerEndSec ?? 0) - (state.answerStartSec ?? 0)));
+    if (endType) form.append("endType", endType);
+    const isWrapUp = state.currentQuestion.isWrapUp || nowSec() >= WRAP_UP_THRESHOLD_SEC;
+    form.append("isWrapUp", String(isWrapUp));
+
+    try {
+      if (hasRecording && endType !== "SKIP") {
+        const webmBlob = new Blob(state.recordedChunks, { type: "audio/webm" });
+        const mp3Blob = await encodeToMp3(webmBlob);
+        form.append("audio", mp3Blob, "answer.mp3");
+        submitStateEl.textContent = `인코딩 완료 (${(mp3Blob.size / 1024).toFixed(1)}KB), 제출 중...`;
+      } else {
+        submitStateEl.textContent = "제출 중...";
+      }
+
+      state.pendingSubmitMs = Date.now();
+      const data = await api(`/api/v1/interview/sessions/${state.sessionId}/answers`, {
+        method: "POST",
+        body: form,
+      });
+
+      // 다음 턴을 위해 녹음 상태 초기화
+      state.recordedChunks = [];
+      document.getElementById("answer-submit-btn").disabled = true;
+      document.getElementById("record-state").textContent = "";
+      document.getElementById("record-timer").textContent = "00:00";
+      document.getElementById("end-type-select").value = "";
+
+      if (data.sessionEnded) {
+        submitStateEl.textContent = "세션 종료됨";
+        if (data.wrapUpMessage) {
+          await playAudioAndTrackLatency({ base64: data.wrapUpMessage.ttsAudio, label: "마무리 멘트" });
+        } else {
+          state.pendingSubmitMs = null;
+        }
+        clearInterval(state.clockTimerHandle);
+        interviewSection.classList.add("disabled");
+        showReportSection();
+      } else {
+        submitStateEl.textContent = "다음 질문 대기 중...";
+        state.currentQuestion = {
+          questionId: data.nextQuestion.questionId,
+          turnLevel: data.nextQuestion.turn.turnLevel,
+          depthLevel: data.nextQuestion.turn.depthLevel,
+          // 서버 응답 필드명은 isLast지만 실제 값은 isWrapUpForced(다음 질문이 마무리 질문인지) — InterviewAnswerSubmitResult.NextQuestion 참고
+          isWrapUp: !!data.nextQuestion.isLast,
+        };
+        updateQuestionInfo();
+        await playAudioAndTrackLatency({ questionId: data.nextQuestion.questionId, label: `turn ${data.nextQuestion.turn.turnLevel}` });
+        submitBtn.disabled = false;
+        submitStateEl.textContent = "";
+      }
+    } catch (e) {
+      state.pendingSubmitMs = null;
+      submitStateEl.textContent = "제출 실패: " + e.message;
+      submitBtn.disabled = false;
+    }
+  });
+
+  // ================= 6. 리포트 =================
+  function showReportSection() {
+    document.getElementById("section-report").hidden = false;
+    const cmd = `./scripts/collect-interview-log.ps1 -SessionId ${state.sessionId}`;
+    document.getElementById("log-collect-cmd").textContent = cmd;
+    document.getElementById("log-collect-hint").hidden = false;
+    document.getElementById("log-collect-copy-btn").onclick = () => navigator.clipboard.writeText(cmd);
+    pollReport();
+  }
+
+  async function pollReport() {
+    const statusEl = document.getElementById("report-status");
+    const contentEl = document.getElementById("report-content");
+    const tick = async () => {
+      try {
+        const data = await api(`/api/v1/interview/sessions/${state.sessionId}/report`);
+        statusEl.innerHTML = `상태: <span class="status-badge st-${data.status}">${data.status}</span>`;
+        if (data.status === "GENERATING") {
+          setTimeout(tick, 4000);
+          return;
+        }
+        renderReport(contentEl, data);
+      } catch (e) {
+        statusEl.textContent = "리포트 조회 실패: " + e.message;
+      }
+    };
+    tick();
+  }
+
+  function renderReport(el, data) {
+    let html = "";
+    if (data.headline) html += `<h3>${escapeHtml(data.headline)}</h3>`;
+    if (data.redFlagNotices && data.redFlagNotices.length > 0) {
+      html += "<div>" + data.redFlagNotices.map((f) => `<span class="flag">${escapeHtml(f.type)}: ${escapeHtml(f.message)}</span>`).join("") + "</div>";
+    }
+    if (data.cards) {
+      html += data.cards.map((c) => `
+        <div class="card">
+          <div><span class="axis">${escapeHtml(c.axisOrder ?? "")}</span> depth=${c.depthLevel ?? ""}</div>
+          <div><b>Q.</b> ${escapeHtml(c.questionText || "")}</div>
+          <div><b>A.</b> ${escapeHtml(c.transcript || "")}</div>
+          ${c.questionIntent ? `<div class="hint">의도: ${escapeHtml(c.questionIntent)}</div>` : ""}
+          ${c.resolutionNotice ? `<div class="hint">${escapeHtml(c.resolutionNotice)}</div>` : ""}
+          ${(c.cardRedFlagNotices || []).map((f) => `<span class="flag">${escapeHtml(f.type)}: ${escapeHtml(f.message)}</span>`).join("")}
+        </div>
+      `).join("");
+    }
+    el.innerHTML = html || "<p class='hint'>표시할 내용이 없어요.</p>";
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  log("하네스 로드됨. 1) 토큰 저장 → 2) 포트폴리오 업로드/조회 → 3) JD(선택) → 4) 면접 시작 순서로 진행하세요.", "info");
+})();
+</script>
+</body>
+</html>
