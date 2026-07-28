@@ -78,7 +78,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
         String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text(); // STT 변환
+        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}\n  Q: {}\n  A: {}",
+                session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(), summaryQuestion.getContent(), sttText);
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
+        logLiveTurnResult(session.getId(), null, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
         ); // 새 후보 변환 — 축 선택 전에 만들어 이번 턴에 추출한 후보도 선택 대상에 포함시킨다
@@ -140,6 +143,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleSkippedTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
+        log.info("[TURN SKIP] sessionId={}, questionId={}", session.getId(), question.getId());
         Answer answer;
         try {
             answer = Answer.create(
@@ -165,8 +169,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
         TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, axis={}\n  Q: {}\n  A: {}",
+                session.getId(), question.getId(), question.getTurnLevel(), question.getTestType(), question.getContent(), transcription.text());
         session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount()); // 실패율 갱신
         if (session.isSttFailureRateExceeded()) {
+            log.warn("[STT RESET] sessionId={}, questionId={}, 누적 STT 인식 실패율 초과로 세션을 리셋해요.",
+                    session.getId(), question.getId());
             return handleSttReset(session, question, command, transcription); // 세션 리셋
         }
 
@@ -179,11 +187,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
                 currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
         )); // 답변 분석
+        logLiveTurnResult(session.getId(), currentAxis, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates =
                 toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel()); // 새 후보 변환
         boolean hasContradiction = liveTurnResult.staleUpdates().stream()
                 .anyMatch(update -> update.reason() == QuestionCandidateStaleReason.CONTRADICTED); // 위험 신호
-        boolean isUnusuallySpecific = isUnusuallySpecific(liveTurnResult.newProbes()); // 구체 판정
+        boolean isUnusuallySpecific = isUnusuallySpecific(session.getId(), liveTurnResult.newProbes()); // 구체 판정
 
         Answer answer;
         try {
@@ -276,6 +285,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleTermination(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command, InterviewEndType endType
     ) {
+        log.info("[INTERVIEW END] sessionId={}, questionId={}, endType={}", session.getId(), question.getId(), endType);
         Answer answer = buildTerminationAnswer(session, question, command);
         markQuestionPlayed(question, command);
 
@@ -297,6 +307,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             return null;
         }
         String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text();
+        log.debug("[TURN QA] sessionId={}, questionId={} (termination)\n  Q: {}\n  A: {}",
+                session.getId(), question.getId(), question.getContent(), sttText);
         try {
             return Answer.create(
                     session.getId(), question.getId(), sttText,
@@ -356,6 +368,25 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
+    // run_live_turn 1회 호출 결과(천장 판별, 모순/자진정정 갱신, 신규 캐물지점)를 남긴다.
+    private void logLiveTurnResult(Long sessionId, TestType currentAxis, LiveTurnResult result) {
+        log.info(
+                "[LIVE TURN] sessionId={}, currentAxis={}, ceilingReached={}, ceilingKind={}, ceilingReason={}, newProbeCount={}, staleUpdateCount={}",
+                sessionId, currentAxis, result.ceiling().reached(), result.ceiling().kind(), result.ceiling().reason(),
+                result.newProbes().size(), result.staleUpdates().size()
+        );
+        for (ProbeCandidateDraft probe : result.newProbes()) {
+            log.debug(
+                    "[LIVE TURN] 신규 후보: sessionId={}, axis={}, strength={}, principleUsed={}, probeText={}, echoQuote={}",
+                    sessionId, probe.testType(), probe.strength(), probe.principleUsed(), probe.probeText(), probe.echoQuote()
+            );
+        }
+        for (StaleProbeUpdate update : result.staleUpdates()) {
+            log.info("[LIVE TURN] 후보 갱신: sessionId={}, probeId={}, reason={}, flagRef={}",
+                    sessionId, update.probeId(), update.reason(), update.flagRef());
+        }
+    }
+
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
         return retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(),
@@ -373,6 +404,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
         TestType nextAxis = FirstCoreAxisSelector.select(axisPlans, session.getWeights())
                 .orElseThrow(() -> new IllegalStateException("CORE tier 항목이 없어요. sessionId=" + session.getId()));
+        log.info("[AXIS TRANSITION] sessionId={}, 첫 축 선택: {}", session.getId(), nextAxis);
         return axisPlans.stream()
                 .filter(plan -> plan.getTestType() == nextAxis)
                 .findFirst()
@@ -408,6 +440,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         TestType nextAxis = isWrapUpForced
                 ? currentAxis // 축 유지
                 : NextAxisSelector.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정
+        logAxisDecision(session.getId(), currentAxis, findAxisPlan(axisPlans, currentAxis), nextAxis,
+                ceilingReached, hasRedFlag, isUnusuallySpecific, isWrapUpForced);
 
         InterviewAxisPlan nextAxisPlan = findAxisPlan(axisPlans, nextAxis);
         InterviewAxisPlan completedAxisPlan = null;
@@ -427,6 +461,24 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         return new NextQuestionPlan(
                 nextAxisPlan, completedAxisPlan, selectedProbe.orElse(null), nextQuestion, nextTurnLevel, isWrapUpForced
         );
+    }
+
+    // NextAxisSelector가 축을 유지/전환한 근거(예산 소진 vs 천장 도달 vs red flag/구체 판정으로 인한 유지)를 남긴다.
+    private void logAxisDecision(
+            Long sessionId, TestType currentAxis, InterviewAxisPlan currentPlan, TestType nextAxis,
+            boolean ceilingReached, boolean hasRedFlag, boolean isUnusuallySpecific, boolean isWrapUpForced
+    ) {
+        log.info(
+                "[AXIS TRANSITION] sessionId={}, currentAxis={}, usedCount={}/{}, ceilingReached={}, hasRedFlag={}, isUnusuallySpecific={}, isWrapUpForced={}",
+                sessionId, currentAxis, currentPlan.getUsedCount(), currentPlan.getBudget(),
+                ceilingReached, hasRedFlag, isUnusuallySpecific, isWrapUpForced
+        );
+        if (nextAxis == currentAxis) {
+            log.info("[AXIS TRANSITION] sessionId={}, 축 유지: {}", sessionId, currentAxis);
+            return;
+        }
+        String reason = ceilingReached ? "CEILING" : "BUDGET_EXHAUSTED";
+        log.info("[AXIS TRANSITION] sessionId={}, {} -> {} (reason={})", sessionId, currentAxis, nextAxis, reason);
     }
 
     // 응답 변환
@@ -453,11 +505,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     }
 
     // 구체 판정
-    private boolean isUnusuallySpecific(List<ProbeCandidateDraft> newProbes) {
+    private boolean isUnusuallySpecific(Long sessionId, List<ProbeCandidateDraft> newProbes) {
         long highStrengthCount = newProbes.stream()
                 .filter(probe -> probe.strength() == QuestionCandidateStrength.HIGH)
                 .count();
-        return highStrengthCount >= UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD;
+        boolean result = highStrengthCount >= UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD;
+        if (result) {
+            log.info("[LIVE TURN] 이례적으로 구체적인 답변 판정: sessionId={}, highStrengthProbeCount={}", sessionId, highStrengthCount);
+        }
+        return result;
     }
 
     // 선택 축(axis)의 기존 OPEN 후보와, 이번 턴에 새로 추출된 후보 중 같은 축인 것을 병합해 한 번에 선택한다.
@@ -475,16 +531,34 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         newProbeCandidates.stream()
                 .filter(candidate -> candidate.getTestType() == axis)
                 .forEach(candidatePool::add);
-        return NextProbeSelector.select(candidatePool);
+
+        log.debug("[PROBE SELECT] sessionId={}, axis={}, poolSize={}", sessionId, axis, candidatePool.size());
+        for (QuestionCandidate candidate : candidatePool) {
+            log.debug("[PROBE SELECT] 후보 풀: sessionId={}, axis={}, strength={}, status={}, probeText={}",
+                    sessionId, axis, candidate.getStrength(), candidate.getStatus(), candidate.getProbeText());
+        }
+
+        Optional<QuestionCandidate> selected = NextProbeSelector.select(candidatePool);
+        selected.ifPresentOrElse(
+                probe -> {
+                    log.info("[PROBE SELECT] sessionId={}, axis={}, 채택된 후보 있음: strength={}", sessionId, axis, probe.getStrength());
+                    log.debug("[PROBE SELECT] 채택: sessionId={}, axis={}, probeText={}, echoQuote={}",
+                            sessionId, axis, probe.getProbeText(), probe.getEchoQuote());
+                },
+                () -> log.info("[PROBE SELECT] sessionId={}, axis={}, 채택할 후보 없음 → opener 질문 생성", sessionId, axis)
+        );
+        return selected;
     }
 
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
-        return selectedProbe
+        String questionText = selectedProbe
                 .map(probe -> retryAiCall(() -> questionTextGenerator.generate(
                         probe.getProbeText(), probe.getEchoQuote(),
                         session.getSnapshotJobType(), session.getSnapshotYearsOfExperience()
                 )))
                 .orElseGet(() -> generateOpenerText(axis, session));
+        log.debug("[QUESTION GENERATED] sessionId={}, axis={}, questionText={}", session.getId(), axis, questionText);
+        return questionText;
     }
 
     private String generateOpenerText(TestType axis, InterviewSession session) {
