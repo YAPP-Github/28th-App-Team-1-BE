@@ -13,6 +13,7 @@ import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
+import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.Question;
@@ -24,6 +25,7 @@ import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.ResolutionLowReason;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.interview.domain.UtteranceSegment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +71,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     private final AnswerRepository answerRepository;
     private final InterviewVideoRepository interviewVideoRepository;
     private final InterviewVideoStorage interviewVideoStorage;
+    private final UtteranceSegmentRepository utteranceSegmentRepository;
     private final GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
     @Override
@@ -99,13 +102,15 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<TestType, Integer> axisOrderByType = computeAxisOrder(cards);
         Map<TestType, ResolutionLowReason> lowReasonByAxis = lowResolutionByAxis(sessionId);
         Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis = cardNoticesByAxis(redFlags);
+        // 문장 단위 발화 시각(질문/답변)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(질문 → 답변).
+        Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
 
         List<InterviewReportQueryResult.Card> cardResults = cards.stream()
                 .sorted(Comparator
                         .comparingInt((ReportCard c) -> axisOrderByType.getOrDefault(c.getTestType(), Integer.MAX_VALUE))
                         .thenComparingInt(ReportCard::getDepthLevel)
                         .thenComparing(ReportCard::getQuestionId))
-                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId))
+                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId, segmentsByQuestionId))
                 .toList();
 
         InterviewReportQueryResult.Video video = interviewVideoRepository.findBySessionId(sessionId)
@@ -193,7 +198,8 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             Map<TestType, ResolutionLowReason> lowReasonByAxis,
             Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis,
             Map<Long, String> questionContentById,
-            Map<Long, String> transcriptByQuestionId
+            Map<Long, String> transcriptByQuestionId,
+            Map<Long, List<UtteranceSegment>> segmentsByQuestionId
     ) {
         ResolutionLowReason lowReason = lowReasonByAxis.get(card.getTestType());
         String resolutionNotice = lowReason == null ? null : RESOLUTION_NOTICE.get(lowReason);
@@ -202,6 +208,13 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 .map(span -> new InterviewReportQueryResult.HighlightSpan(
                         span.range().startIndex(), span.range().endIndex(), span.tone(), span.analysis(), span.followUpQuestions()))
                 .toList();
+
+        List<InterviewReportQueryResult.ScriptSegment> scriptSegments =
+                segmentsByQuestionId.getOrDefault(card.getQuestionId(), List.of()).stream()
+                        .map(segment -> new InterviewReportQueryResult.ScriptSegment(
+                                segment.role(), segment.text(), segment.startIndex(), segment.endIndex(),
+                                segment.startSec(), segment.endSec()))
+                        .toList();
 
         return new InterviewReportQueryResult.Card(
                 axisOrderByType.getOrDefault(card.getTestType(), 0),
@@ -213,8 +226,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
                 cardNoticesByAxis.get(card.getTestType()),
                 card.getQuestionIntentTranslation(),
-                // 문장 단위 발화 시각(#78 Step6에서 저장된 값으로 채운다). 아직 파이프라인 미연결이라 빈 배열.
-                List.of()
+                scriptSegments
         );
     }
 

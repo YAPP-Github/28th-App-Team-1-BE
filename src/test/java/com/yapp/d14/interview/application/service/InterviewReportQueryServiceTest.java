@@ -12,6 +12,7 @@ import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
+import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.HeadlineBranch;
@@ -26,8 +27,10 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.ResolutionLowReason;
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.interview.domain.TextRange;
+import com.yapp.d14.interview.domain.UtteranceSegment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,6 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -69,6 +73,8 @@ class InterviewReportQueryServiceTest {
     private InterviewVideoRepository interviewVideoRepository;
     @Mock
     private InterviewVideoStorage interviewVideoStorage;
+    @Mock
+    private UtteranceSegmentRepository utteranceSegmentRepository;
     @Mock
     private GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
@@ -163,6 +169,42 @@ class InterviewReportQueryServiceTest {
         assertThat(depthCard.resolutionNotice()).isNotNull();
         assertThat(depthCard.highlightSpans()).isEmpty();
         assertThat(cards.get(2).transcript()).isNull(); // 스킵된 답변(null STT)도 NPE 없이 처리
+    }
+
+    @Test
+    void 문장_발화_시각을_questionId로_해당_카드에_붙인다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문입니다.")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변입니다.")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        // 저장된 세그먼트는 questionId 10의 카드에 startSec 순(질문 → 답변)으로 붙어야 한다.
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
+                10L, List.of(
+                        new UtteranceSegment(ScriptRole.QUESTION, "질문입니다.", 0, 6, 12.0f, 14.0f),
+                        new UtteranceSegment(ScriptRole.ANSWER, "답변입니다.", 0, 6, 15.0f, 17.0f)
+                )
+        ));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        List<InterviewReportQueryResult.ScriptSegment> segments = result.cards().get(0).scriptSegments();
+        assertThat(segments).hasSize(2);
+        assertThat(segments.get(0).role()).isEqualTo(ScriptRole.QUESTION);
+        assertThat(segments.get(0).text()).isEqualTo("질문입니다.");
+        assertThat(segments.get(0).startSec()).isEqualTo(12.0f);
+        assertThat(segments.get(0).endSec()).isEqualTo(14.0f);
+        assertThat(segments.get(1).role()).isEqualTo(ScriptRole.ANSWER);
+        assertThat(segments.get(1).startSec()).isEqualTo(15.0f);
     }
 
     @Test
