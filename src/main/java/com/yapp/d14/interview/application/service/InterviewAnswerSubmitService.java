@@ -84,7 +84,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text(); // STT 변환
+        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        String sttText = transcription.text();
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
@@ -118,6 +119,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
                 answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
         );
+        persistAnswerSegmentsSafely(session.getId(), summaryQuestion, command, transcription); // 프로젝트 설명 답변 문장 발화 시각 저장
 
         return new InterviewAnswerSubmitResult(
                 persisted.answer().getId(),
@@ -310,33 +312,41 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleTermination(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command, InterviewEndType endType
     ) {
-        Answer answer = buildTerminationAnswer(session, question, command);
+        TerminationAnswer termination = buildTerminationAnswer(session, question, command);
         markQuestionPlayed(question, command);
 
         InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
 
         String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
-                interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
+                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType, outcomeReason);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
+        if (termination.transcription() != null) {
+            persistAnswerSegmentsSafely(session.getId(), question, command, termination.transcription()); // 마지막 면접자 멘트 문장 발화 시각 저장
+        }
 
         triggerReportGeneration(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessage, null);
     }
 
-    private Answer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
+    // 종료 턴 답변과 그 STT 결과(문장 세그먼트 저장용). 오디오가 없으면 둘 다 null.
+    private record TerminationAnswer(Answer answer, TranscriptionResult transcription) {
+    }
+
+    private TerminationAnswer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
         if (command.audioContent() == null) {
-            return null;
+            return new TerminationAnswer(null, null);
         }
-        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text();
+        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent()));
         try {
-            return Answer.create(
-                    session.getId(), question.getId(), sttText,
+            Answer answer = Answer.create(
+                    session.getId(), question.getId(), transcription.text(),
                     command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
                     false, null, null, null, null, false, false, null
             );
+            return new TerminationAnswer(answer, transcription);
         } catch (IllegalArgumentException e) {
             throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
         }
