@@ -236,8 +236,8 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void TTS_합성이_1회_실패했다가_재시도로_성공하면_preload가_정상적으로_완료된다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any()))
                 .willThrow(new RuntimeException("일시적 TTS 오류"))
                 .willReturn("tts-audio".getBytes());
@@ -252,8 +252,8 @@ class InterviewSessionPreloadServiceTest {
     @Test
     void TTS_합성이_재시도까지_모두_실패하면_실패_핸들러가_호출된다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session(null, null, null)));
-        given(portfolioChunkSearchUseCase.searchChunks(eq(portfolioId), any(), anyInt())).willReturn(List.of());
-        given(probeCandidateExtractor.extract(any(), any())).willReturn(List.of());
+        given(portfolioChunkSearchUseCase.searchChunksWithoutThreshold(eq(portfolioId), any(), anyInt())).willReturn(List.of());
+        given(probeCandidateExtractor.extract(any(), any(), any())).willReturn(List.of());
         given(textToSpeechSynthesizer.synthesize(any())).willThrow(new RuntimeException("TTS 서버 장애"));
 
         service.preload(1L);
