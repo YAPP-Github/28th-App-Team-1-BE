@@ -21,7 +21,9 @@ import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
+import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.AxisTier;
 import com.yapp.d14.interview.domain.CeilingKind;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
@@ -34,6 +36,8 @@ import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.QuestionCandidateSource;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.interview.domain.TranscriptSegment;
+import com.yapp.d14.interview.domain.UtteranceSegment;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import org.junit.jupiter.api.Test;
@@ -120,6 +124,9 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private InterviewVoiceStorage interviewVoiceStorage;
+
+    @Mock
+    private UtteranceSegmentRepository utteranceSegmentRepository;
 
     @InjectMocks
     private InterviewAnswerSubmitService service;
@@ -739,6 +746,80 @@ class InterviewAnswerSubmitServiceTest {
         verifyNoInteractions(interviewSttResetPersister, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
         // axis가 전환되지 않으면 이미 조회해둔 OPEN 후보를 재사용해야 한다 — 같은 axis를 두 번 조회하지 않는다.
         verify(questionCandidateRepository, times(1)).findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 분석_턴이면_답변_문장_발화_시각을_answerStartSec_오프셋으로_저장한다() {
+        // answerStartSec=200f — STT 세그먼트 상대 시각에 이 오프셋을 더해 영상 타임라인 값으로 저장해야 한다.
+        InterviewAnswerSubmitCommand command = new InterviewAnswerSubmitCommand(
+                sessionId, summaryQuestionId, audioContent, 100f, 110f, 200f, 210f, 10f, null, false);
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn(new TranscriptionResult(
+                "안녕하세요. 반갑습니다.", 2, 0,
+                List.of(
+                        new TranscriptSegment("안녕하세요.", 0.0f, 1.0f),
+                        new TranscriptSegment(" 반갑습니다.", 1.0f, 2.0f))));
+        given(priorQaCache.get(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any())).willReturn(new LiveTurnResult(
+                List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, "P3")),
+                new CeilingAssessment(false, null, "진행 중"),
+                List.of()
+        ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3)).willReturn("생성된 꼬리 질문");
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "생성된 꼬리 질문", 2, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persist(
+                any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), any()
+        )).willReturn(new InterviewAnswerAnalyzePersister.PersistResult(15L, savedNextQuestion));
+
+        service.submit(userId, command);
+
+        ArgumentCaptor<List<UtteranceSegment>> captor = ArgumentCaptor.forClass(List.class);
+        verify(utteranceSegmentRepository).saveAll(eq(sessionId), eq(summaryQuestionId), captor.capture());
+        List<UtteranceSegment> saved = captor.getValue();
+        assertThat(saved).hasSize(2);
+        assertThat(saved.get(0).role()).isEqualTo(ScriptRole.ANSWER);
+        assertThat(saved.get(0).text()).isEqualTo("안녕하세요.");
+        assertThat(saved.get(0).startSec()).isEqualTo(200.0f); // 0.0 + 200 오프셋
+        assertThat(saved.get(0).endSec()).isEqualTo(201.0f);
+        assertThat(saved.get(1).text()).isEqualTo("반갑습니다.");
+        assertThat(saved.get(1).startSec()).isEqualTo(201.0f);
+        assertThat(saved.get(1).endSec()).isEqualTo(202.0f);
+    }
+
+    @Test
+    void 답변_문장_발화_시각_저장이_실패해도_답변_제출은_정상_완료된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent)).willReturn(new TranscriptionResult(
+                "답변입니다.", 1, 0, List.of(new TranscriptSegment("답변입니다.", 0.0f, 1.0f))));
+        given(priorQaCache.get(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any())).willReturn(new LiveTurnResult(
+                List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, "P3")),
+                new CeilingAssessment(false, null, "진행 중"),
+                List.of()
+        ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3)).willReturn("생성된 꼬리 질문");
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "생성된 꼬리 질문", 2, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persist(
+                any(), any(), any(), any(), any(), eq(1), any(), eq(2), any(), isNull(), any()
+        )).willReturn(new InterviewAnswerAnalyzePersister.PersistResult(15L, savedNextQuestion));
+        willThrow(new RuntimeException("DB 오류")).given(utteranceSegmentRepository).saveAll(any(), any(), any());
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(null, audioContent));
+
+        // 세그먼트 저장 실패는 삼켜지고 답변 제출은 정상 완료된다.
+        assertThat(result.answerId()).isEqualTo(15L);
+        assertThat(result.nextQuestion().questionId()).isEqualTo(14L);
     }
 
     @Test

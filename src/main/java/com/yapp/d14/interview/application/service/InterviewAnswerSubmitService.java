@@ -52,6 +52,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
+    private final UtteranceSegmentRepository utteranceSegmentRepository;
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
@@ -213,6 +214,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         ); // 트랜잭션 반영
         appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text()); // 이력 저장
+        persistAnswerSegmentsSafely(session.getId(), question, command, transcription); // 문장 발화 시각 저장
 
         return buildNextQuestionResult(persisted, plan); // 응답 반환
     }
@@ -247,6 +249,22 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             interviewVoiceStorage.uploadAnswerAsync(userId, sessionId, turnLevel, audioContent);
         } catch (Exception e) {
             log.warn("[ANSWER ARCHIVE] 답변 음성 업로드 요청 실패, 면접 흐름에는 영향 없음: sessionId={}, turnLevel={}", sessionId, turnLevel, e);
+        }
+    }
+
+    // 답변 대본을 문장 단위로 쪼갠 발화 시각을 저장한다(리포트 재생 동기화용, #78). answerStartSec만큼 더해 영상 타임라인으로 보정.
+    // 부가 기능이라 답변 커밋 뒤 별도로, 어떤 실패도 삼키고 로깅만 한다 — 면접 흐름을 막지 않는다(답변 음성 아카이브와 동일 원칙).
+    private void persistAnswerSegmentsSafely(
+            Long sessionId, Question question, InterviewAnswerSubmitCommand command, TranscriptionResult transcription
+    ) {
+        try {
+            float offsetSec = command.answerStartSec() == null ? 0f : command.answerStartSec();
+            List<UtteranceSegment> segments = ScriptSegmentMapper.map(
+                    ScriptRole.ANSWER, transcription.text(), transcription.segments(), offsetSec);
+            utteranceSegmentRepository.saveAll(sessionId, question.getId(), segments);
+        } catch (Exception e) {
+            log.warn("[ANSWER SEGMENT] 답변 문장 발화 시각 저장 실패, 면접 흐름에는 영향 없음: sessionId={}, questionId={}",
+                    sessionId, question.getId(), e);
         }
     }
 
