@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.port.out;
 
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.UtteranceSegment;
 
 import java.util.List;
@@ -14,6 +15,6 @@ public interface UtteranceSegmentRepository {
     // 세션의 모든 세그먼트를 questionId별로 묶어 반환한다(각 리스트는 startSec 오름차순).
     Map<Long, List<UtteranceSegment>> findBySessionIdGroupedByQuestionId(Long sessionId);
 
-    // 재생성(리포트 재생성 등) 시 중복을 막기 위한 세션 단위 삭제.
-    void deleteBySessionId(Long sessionId);
+    // 재생성(리포트 재생성 등) 시 중복을 막기 위한 삭제. role 단위로 지워, 면접 중 저장된 다른 role(ANSWER)은 건드리지 않는다.
+    void deleteBySessionIdAndRole(Long sessionId, ScriptRole role);
 }

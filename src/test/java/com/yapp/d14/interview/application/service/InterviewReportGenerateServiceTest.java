@@ -93,6 +93,9 @@ class InterviewReportGenerateServiceTest {
     @Mock
     private InterviewReportFailureHandler interviewReportFailureHandler;
 
+    @Mock
+    private QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
+
     @InjectMocks
     private InterviewReportGenerateService service;
 

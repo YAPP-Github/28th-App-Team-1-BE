@@ -2,6 +2,7 @@ package com.yapp.d14.interview.adapter.out.persistence;
 
 import com.yapp.d14.interview.adapter.out.persistence.entity.UtteranceSegmentJpaEntity;
 import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.UtteranceSegment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -41,7 +42,7 @@ class UtteranceSegmentPersistenceAdapter implements UtteranceSegmentRepository {
 
     @Override
     @Transactional
-    public void deleteBySessionId(Long sessionId) {
-        utteranceSegmentJpaRepository.deleteBySessionId(sessionId);
+    public void deleteBySessionIdAndRole(Long sessionId, ScriptRole role) {
+        utteranceSegmentJpaRepository.deleteBySessionIdAndRole(sessionId, role);
     }
 }

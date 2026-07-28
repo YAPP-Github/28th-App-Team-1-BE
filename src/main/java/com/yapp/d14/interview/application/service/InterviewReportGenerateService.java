@@ -68,6 +68,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
     private final ReportHeadlineGenerator reportHeadlineGenerator;
     private final InterviewReportPersister interviewReportPersister;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
+    private final QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
 
     private record Turn(
             int turnNumber,
@@ -124,10 +125,20 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
             List<ReportCard> reportCards = generateReportCards(sessionId, cappedAxisEvaluations, turns);
 
             interviewReportPersister.persist(sessionId, report, cappedAxisEvaluations, redFlags, reportCards);
+            generateQuestionSegmentsSafely(sessionId);
             log.info("[INTERVIEW REPORT] 처리 완료: sessionId={}, status={}", sessionId, report.getStatus());
         } catch (Exception e) {
             log.error("[INTERVIEW REPORT] 처리 실패: sessionId={}", sessionId, e);
             interviewReportFailureHandler.markFailed(sessionId);
+        }
+    }
+
+    // 질문 문장 발화 시각 생성(#78)은 리포트 부가 기능이라, 어떤 실패도 이미 저장된 리포트를 FAILED로 되돌리면 안 된다 — 삼키고 로깅만 한다.
+    private void generateQuestionSegmentsSafely(Long sessionId) {
+        try {
+            questionUtteranceSegmentPersister.persist(sessionId);
+        } catch (Exception e) {
+            log.warn("[QUESTION SEGMENT] 질문 문장 발화 시각 생성 실패, 리포트에는 영향 없음: sessionId={}", sessionId, e);
         }
     }
 
