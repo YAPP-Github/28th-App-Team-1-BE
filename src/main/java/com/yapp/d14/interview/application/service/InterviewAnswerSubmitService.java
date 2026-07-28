@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -27,6 +28,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private static final int SUMMARY_TURN_LEVEL = 0;
     private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
+    private static final int MAX_LLM_RETRIES = 1;
     private static final JdOpenerContext EMPTY_JD_OPENER_CONTEXT = new JdOpenerContext(List.of(), List.of());
     private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
     private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
@@ -75,7 +77,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text(); // STT 변환
+        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text(); // STT 변환
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
@@ -162,7 +164,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleAnalysisTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
-        TranscriptionResult transcription = speechToTextTranscriber.transcribe(command.audioContent()); // STT 변환
+        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
         session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount()); // 실패율 갱신
         if (session.isSttFailureRateExceeded()) {
             return handleSttReset(session, question, command, transcription); // 세션 리셋
@@ -173,10 +175,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<QuestionCandidate> openProbesForAxis =
                 questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis); // 열린 후보
 
-        LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
+        LiveTurnResult liveTurnResult = retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
                 currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
-        ); // 답변 분석
+        )); // 답변 분석
         List<QuestionCandidate> newProbeCandidates =
                 toQuestionCandidates(session.getId(), liveTurnResult, question.getTurnLevel()); // 새 후보 변환
         boolean hasContradiction = liveTurnResult.staleUpdates().stream()
@@ -294,7 +296,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         if (command.audioContent() == null) {
             return null;
         }
-        String sttText = speechToTextTranscriber.transcribe(command.audioContent()).text();
+        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text();
         try {
             return Answer.create(
                     session.getId(), question.getId(), sttText,
@@ -340,13 +342,22 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         if (cached != null) {
             return cached;
         }
-        byte[] audioContent = textToSpeechSynthesizer.synthesize(text);
+        byte[] audioContent = retryAiCall(() -> textToSpeechSynthesizer.synthesize(text));
         interviewVoiceStorage.upload(key, audioContent);
         return Base64.getEncoder().encodeToString(audioContent);
     }
 
+    // 재시도까지 소진되면 AI_TEMPORARILY_UNAVAILABLE로 변환한다 — 이 시점엔 아직 아무것도 커밋되지 않아 클라이언트가 같은 턴을 그대로 재제출해도 안전하다.
+    private <T> T retryAiCall(Supplier<T> call) {
+        try {
+            return LlmCallRetrySupport.retry(call, MAX_LLM_RETRIES, "INTERVIEW ANSWER SUBMIT");
+        } catch (RuntimeException e) {
+            throw new InterviewException(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+        }
+    }
+
     private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
-        return liveTurnAnalyzer.analyze(
+        return retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(),
                 session.getPortfolioId(),
                 summaryQuestion.getContent(),
@@ -355,7 +366,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getSnapshotJobType(),
                 List.of(),
                 List.of()
-        );
+        ));
     }
 
     private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session) {
@@ -469,19 +480,19 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
         return selectedProbe
-                .map(probe -> questionTextGenerator.generate(
+                .map(probe -> retryAiCall(() -> questionTextGenerator.generate(
                         probe.getProbeText(), probe.getEchoQuote(),
                         session.getSnapshotJobType(), session.getSnapshotYearsOfExperience()
-                ))
+                )))
                 .orElseGet(() -> generateOpenerText(axis, session));
     }
 
     private String generateOpenerText(TestType axis, InterviewSession session) {
         JdOpenerContext context = jdOpenerContextCache.get(session.getId()).orElse(EMPTY_JD_OPENER_CONTEXT);
-        return questionTextGenerator.generateOpener(
+        return retryAiCall(() -> questionTextGenerator.generateOpener(
                 axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
                 context.jdKeywords(), context.relatedPortfolioChunks()
-        );
+        ));
     }
 
     private List<QuestionCandidate> toQuestionCandidates(Long sessionId, LiveTurnResult liveTurnResult, int turnLevel) {

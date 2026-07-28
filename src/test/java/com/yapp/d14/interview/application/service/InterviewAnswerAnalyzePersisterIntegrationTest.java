@@ -27,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,7 +81,7 @@ class InterviewAnswerAnalyzePersisterIntegrationTest {
 
     private Long createSession() {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
-                null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         ));

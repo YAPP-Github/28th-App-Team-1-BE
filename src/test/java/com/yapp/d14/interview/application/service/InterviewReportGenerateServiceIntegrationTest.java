@@ -50,6 +50,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -136,7 +137,7 @@ class InterviewReportGenerateServiceIntegrationTest {
 
     private Long createSession() {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
-                null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         ));

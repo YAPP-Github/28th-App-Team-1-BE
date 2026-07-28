@@ -12,5 +12,7 @@ public interface InterviewSessionRepository {
 
     Optional<InterviewSession> findById(Long id);
 
+    Optional<InterviewSession> findByIdForUpdate(Long id);
+
     List<InterviewSession> findAllByUserId(UUID userId);
 }

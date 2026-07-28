@@ -131,7 +131,7 @@ class InterviewAnswerSubmitServiceTest {
 
     private InterviewSession session() {
         return InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -198,6 +198,192 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         assertThat(result.wrapUpMessage()).isNull();
         assertThat(result.reportId()).isNull();
+    }
+
+    @Test
+    void STT가_1회_실패했다가_재시도로_성공하면_정상적으로_다음_질문을_생성한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willThrow(new RuntimeException("일시적 STT 오류"))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.empty());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "여는 질문", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
+
+        assertThat(result.answerId()).isEqualTo(12L);
+        verify(speechToTextTranscriber, times(2)).transcribe(audioContent);
+    }
+
+    @Test
+    void STT가_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환되고_이후_단계는_실행되지_않는다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willThrow(new RuntimeException("STT 서버 장애"));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+
+        verify(speechToTextTranscriber, times(2)).transcribe(audioContent);
+        verifyNoInteractions(liveTurnAnalyzer, interviewAnswerSubmitPersister);
+    }
+
+    @Test
+    void LiveTurnAnalyzer가_1회_실패했다가_재시도로_성공하면_정상적으로_처리된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willThrow(new RuntimeException("일시적 분석 오류"))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.empty());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "여는 질문", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), isNull(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
+
+        assertThat(result.answerId()).isEqualTo(12L);
+        verify(liveTurnAnalyzer, times(2)).analyze(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void LiveTurnAnalyzer가_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환되고_이후_단계는_실행되지_않는다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willThrow(new RuntimeException("분석 서버 장애"));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+
+        verify(liveTurnAnalyzer, times(2)).analyze(any(), any(), any(), any(), any(), any(), any(), any());
+        verifyNoInteractions(interviewAnswerSubmitPersister);
+    }
+
+    @Test
+    void 질문_생성이_1회_실패했다가_재시도로_성공하면_정상적으로_처리된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(
+                        List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null)),
+                        new CeilingAssessment(false, null, "판별 대상 아님"),
+                        List.of()
+                ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        QuestionCandidate openCandidate = QuestionCandidate.create(
+                sessionId, QuestionCandidateSource.PORTFOLIO, null, TestType.DEPTH, null,
+                "probe", "echo", null, QuestionCandidateStrength.HIGH, null
+        );
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH))
+                .willReturn(List.of(openCandidate));
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3))
+                .willThrow(new RuntimeException("일시적 질문 생성 오류"))
+                .willReturn("생성된 질문 문장");
+        Answer savedAnswer = Answer.of(
+                12L, sessionId, summaryQuestionId, "STT 변환된 답변", 0f, 5f, 5f,
+                false, null, null, null, null, false, false, null, LocalDateTime.now()
+        );
+        Question savedQuestion = Question.of(
+                13L, sessionId, "생성된 질문 문장", 1, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerSubmitPersister.persist(any(), any(), any(), any(), anyInt(), any(), any()))
+                .willReturn(new InterviewAnswerSubmitPersister.PersistResult(savedAnswer, savedQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, command());
+
+        assertThat(result.answerId()).isEqualTo(12L);
+        verify(questionTextGenerator, times(2)).generate("probe", "echo", JobType.BACKEND, 3);
+    }
+
+    @Test
+    void 질문_생성이_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환되고_이후_단계는_실행되지_않는다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(
+                        List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null)),
+                        new CeilingAssessment(false, null, "판별 대상 아님"),
+                        List.of()
+                ));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        QuestionCandidate openCandidate = QuestionCandidate.create(
+                sessionId, QuestionCandidateSource.PORTFOLIO, null, TestType.DEPTH, null,
+                "probe", "echo", null, QuestionCandidateStrength.HIGH, null
+        );
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH))
+                .willReturn(List.of(openCandidate));
+        given(questionTextGenerator.generate("probe", "echo", JobType.BACKEND, 3))
+                .willThrow(new RuntimeException("질문 생성 서버 장애"));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+
+        verify(questionTextGenerator, times(2)).generate("probe", "echo", JobType.BACKEND, 3);
+        verifyNoInteractions(interviewAnswerSubmitPersister);
+    }
+
+    @Test
+    void 여는_질문_생성이_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(liveTurnAnalyzer.analyze(any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(new LiveTurnResult(List.of(), new CeilingAssessment(false, null, "판별 대상 아님"), List.of()));
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(jdOpenerContextCache.get(sessionId)).willReturn(Optional.empty());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willThrow(new RuntimeException("여는 질문 생성 서버 장애"));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
+
+        verify(questionTextGenerator, times(2)).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
+        verifyNoInteractions(interviewAnswerSubmitPersister);
     }
 
     @Test
@@ -387,7 +573,7 @@ class InterviewAnswerSubmitServiceTest {
     @Test
     void 이미_종료된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
         InterviewSession completedSession = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -404,7 +590,7 @@ class InterviewAnswerSubmitServiceTest {
     @Test
     void 무효화된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
         InterviewSession invalidSession = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
                 25, 20, 10, 20, 10, 15, 0, 0
         );
@@ -462,7 +648,7 @@ class InterviewAnswerSubmitServiceTest {
         // 가중치: depth 20, boundary 30, connection 10, tradeoff 20, conflict 10, resilience 10
         // → CORE(depth/boundary/tradeoff) 중 boundary(30)가 가장 높아 boundary가 선택돼야 한다
         InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 20, 30, 10, 20, 10, 10, 0, 0
         );
@@ -648,7 +834,7 @@ class InterviewAnswerSubmitServiceTest {
 
     private InterviewSession sessionWithTradeoffWeighted() {
         return InterviewSession.of(
-                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
                 20, 15, 10, 30, 10, 15, 0, 0
         );
@@ -708,7 +894,26 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void 마무리_멘트_합성이_실패하면_종료_처리가_저장되지_않아_재요청이_가능하다() {
+    void 마무리_멘트_합성이_1회_실패했다가_재시도로_성공하면_정상적으로_종료된다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        given(speechToTextTranscriber.transcribe(audioContent))
+                .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any()))
+                .willThrow(new RuntimeException("일시적 TTS 오류"))
+                .willReturn("tts-audio".getBytes());
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
+
+        assertThat(result.wrapUpMessage().ttsAudio()).isEqualTo(Base64.getEncoder().encodeToString("tts-audio".getBytes()));
+        verify(textToSpeechSynthesizer, times(2)).synthesize(any());
+    }
+
+    @Test
+    void 마무리_멘트_합성이_재시도까지_모두_실패하면_AI_TEMPORARILY_UNAVAILABLE로_변환되고_종료_처리가_저장되지_않아_재요청이_가능하다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent))
@@ -717,8 +922,11 @@ class InterviewAnswerSubmitServiceTest {
         willThrow(new RuntimeException("TTS 합성 실패")).given(textToSpeechSynthesizer).synthesize(any());
 
         assertThatThrownBy(() -> service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent)))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.AI_TEMPORARILY_UNAVAILABLE);
 
+        verify(textToSpeechSynthesizer, times(2)).synthesize(any());
         verifyNoInteractions(interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
     }
 
