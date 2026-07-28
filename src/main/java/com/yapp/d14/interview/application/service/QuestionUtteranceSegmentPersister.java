@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 
 // 리포트 생성 시점에 각 질문 TTS 음성을 STT로 재변환해 문장 단위 발화 시각을 저장한다(role=QUESTION, #78).
 // TTS는 문장별 타임스탬프를 주지 않으므로, 합성 영상에 실제로 얹히는 질문 음성을 다시 인식해 시각을 얻고
@@ -29,21 +31,23 @@ class QuestionUtteranceSegmentPersister {
     private final InterviewVoiceStorage interviewVoiceStorage;
     private final UtteranceSegmentRepository utteranceSegmentRepository;
 
-    void persist(Long sessionId) {
+    void persist(UUID userId, Long sessionId) {
         // 재생성(리포트 재생성) 대비로 기존 QUESTION 세그먼트만 지운 뒤 다시 채운다 — 면접 중 저장된 ANSWER는 보존.
         utteranceSegmentRepository.deleteBySessionIdAndRole(sessionId, ScriptRole.QUESTION);
         for (Question question : questionRepository.findAllBySessionId(sessionId)) {
-            persistOne(sessionId, question);
+            persistOne(userId, sessionId, question);
         }
     }
 
-    private void persistOne(Long sessionId, Question question) {
-        // 재생되지 않은(음성/시작 시각 없는) 질문은 영상에 안 얹히므로 건너뛴다.
-        if (question.getAiVoiceS3Key() == null || question.getQuestionStartSec() == null) {
+    private void persistOne(UUID userId, Long sessionId, Question question) {
+        // 재생되지 않은(시작 시각·턴 없는) 질문은 영상에 안 얹히므로 건너뛴다.
+        // 음성 키는 aiVoiceS3Key(요약 질문만 저장됨)에 의존하지 않고 turnLevel로 결정적 재계산한다 — 답변 음성과 동일 방식.
+        if (question.getQuestionStartSec() == null || question.getTurnLevel() == null) {
             return;
         }
         try {
-            String base64 = interviewVoiceStorage.readBase64(question.getAiVoiceS3Key());
+            String key = S3KeyGenerator.interviewVoiceKey(userId, sessionId, question.getTurnLevel());
+            String base64 = interviewVoiceStorage.readBase64(key);
             if (base64 == null) {
                 return;
             }

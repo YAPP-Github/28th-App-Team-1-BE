@@ -35,7 +35,7 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
     public void composite(UUID userId, Long sessionId) {
         List<Question> questions = questionRepository.findAllBySessionId(sessionId);
         List<AudioTrack> tracks = new ArrayList<>();
-        tracks.addAll(questionTracks(questions));
+        tracks.addAll(questionTracks(userId, sessionId, questions));
         tracks.addAll(answerTracks(userId, sessionId, questions));
         tracks.sort(Comparator.comparing(AudioTrack::startSec));
 
@@ -59,11 +59,14 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
         }
     }
 
-    // 질문 TTS: 음성 키·재생 시각(녹화 타임라인)이 있는 질문만.
-    private List<AudioTrack> questionTracks(List<Question> questions) {
+    // 질문 TTS: 재생 시각(녹화 타임라인)이 있는 질문만. 키는 답변과 동일하게 turnLevel로 결정적 재계산한다.
+    // (aiVoiceS3Key는 요약 질문만 저장돼 있어 후속 질문 음성이 통째로 빠지므로 의존하지 않는다.)
+    private List<AudioTrack> questionTracks(UUID userId, Long sessionId, List<Question> questions) {
         return questions.stream()
-                .filter(question -> question.getAiVoiceS3Key() != null && question.getQuestionStartSec() != null)
-                .map(question -> new AudioTrack(question.getAiVoiceS3Key(), question.getQuestionStartSec()))
+                .filter(question -> question.getQuestionStartSec() != null && question.getTurnLevel() != null)
+                .map(question -> new AudioTrack(
+                        S3KeyGenerator.interviewVoiceKey(userId, sessionId, question.getTurnLevel()),
+                        question.getQuestionStartSec()))
                 .toList();
     }
 
