@@ -170,7 +170,12 @@
         <option value="SKIP">SKIP (답변 건너뜀, audio 없음)</option>
         <option value="MANUAL_END">MANUAL_END (수동 종료, 8:00~)</option>
         <option value="EARLY_EXIT">EARLY_EXIT (조기 이탈, ~8:00)</option>
+        <option value="HARD_CAP">HARD_CAP (12:00 초과 강제 종료)</option>
       </select>
+      <label style="display:inline-flex; align-items:center; gap:6px; margin: 8px 0 0">
+        <input type="checkbox" id="force-wrapup-checkbox">
+        isWrapUp 강제 (8:45 안 기다리고 다음 질문을 마무리 질문으로 — NORMAL_END 경로 테스트용)
+      </label>
       <div class="row">
         <button id="answer-submit-btn" disabled>답변 제출</button>
         <span id="submit-state" class="hint"></span>
@@ -538,7 +543,7 @@
       if (sec >= HARD_CAP_SEC && !state.hardCapWarned) {
         state.hardCapWarned = true;
         hardcapBanner.hidden = false;
-        document.getElementById("end-type-select").value = "HARD_CAP_PENDING";
+        document.getElementById("end-type-select").value = "HARD_CAP";
         log("12:00 경과 (HARD_CAP) — 지금 제출해주세요.", "warn");
       }
     }, 250);
@@ -676,7 +681,6 @@
     const submitBtn = document.getElementById("answer-submit-btn");
     const submitStateEl = document.getElementById("submit-state");
     let endType = document.getElementById("end-type-select").value;
-    if (endType === "HARD_CAP_PENDING") endType = "HARD_CAP";
     const hasRecording = state.recordedChunks.length > 0;
 
     if (endType === "SKIP" && hasRecording) {
@@ -698,7 +702,8 @@
     form.append("answerEndAt", String(state.answerEndSec ?? nowSec()));
     form.append("answerDuration", String((state.answerEndSec ?? 0) - (state.answerStartSec ?? 0)));
     if (endType) form.append("endType", endType);
-    const isWrapUp = state.currentQuestion.isWrapUp || nowSec() >= WRAP_UP_THRESHOLD_SEC;
+    const forceWrapUp = document.getElementById("force-wrapup-checkbox").checked;
+    const isWrapUp = state.currentQuestion.isWrapUp || forceWrapUp || nowSec() >= WRAP_UP_THRESHOLD_SEC;
     form.append("isWrapUp", String(isWrapUp));
 
     try {
@@ -723,6 +728,7 @@
       document.getElementById("record-state").textContent = "";
       document.getElementById("record-timer").textContent = "00:00";
       document.getElementById("end-type-select").value = "";
+      document.getElementById("force-wrapup-checkbox").checked = false;
 
       if (data.sessionEnded) {
         submitStateEl.textContent = "세션 종료됨";
