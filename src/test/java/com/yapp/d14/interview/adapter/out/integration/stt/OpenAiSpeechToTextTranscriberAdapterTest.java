@@ -36,6 +36,12 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
         );
     }
 
+    private static OpenAiAudioApi.StructuredResponse.Segment segment(String text, Float start, Float end) {
+        return new OpenAiAudioApi.StructuredResponse.Segment(
+                0, 0, start, end, text, List.of(), 0f, -0.1f, 1f, 0.04f
+        );
+    }
+
     @Test
     void no_speech_prob이_0점6을_초과하는_세그먼트만_실패로_센다() {
         adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties());
@@ -53,6 +59,31 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
         assertThat(result.totalSegmentCount()).isEqualTo(4);
         // 0.6은 초과가 아니므로 실패로 세지 않는다 (0.65, 0.61만 실패)
         assertThat(result.failedSegmentCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 발화_세그먼트를_TranscriptSegment로_매핑한다() {
+        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties());
+        OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
+                "ko", 3f, "안녕하세요. 반갑습니다.",
+                List.of(),
+                List.of(
+                        segment("안녕하세요.", 0.0f, 1.2f),
+                        segment(" 반갑습니다.", 1.2f, 2.4f)
+                )
+        );
+        given(openAiAudioApi.createTranscription(any(OpenAiAudioApi.TranscriptionRequest.class), eq(OpenAiAudioApi.StructuredResponse.class)))
+                .willReturn(ResponseEntity.ok(response));
+
+        TranscriptionResult result = adapter.transcribe(new byte[]{1, 2, 3});
+
+        assertThat(result.segments()).hasSize(2);
+        assertThat(result.segments().get(0).text()).isEqualTo("안녕하세요.");
+        assertThat(result.segments().get(0).startSec()).isEqualTo(0.0f);
+        assertThat(result.segments().get(0).endSec()).isEqualTo(1.2f);
+        assertThat(result.segments().get(1).text()).isEqualTo(" 반갑습니다.");
+        assertThat(result.segments().get(1).startSec()).isEqualTo(1.2f);
+        assertThat(result.segments().get(1).endSec()).isEqualTo(2.4f);
     }
 
     @Test
