@@ -212,7 +212,9 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 resolutionNotice,
                 // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
                 cardNoticesByAxis.get(card.getTestType()),
-                card.getQuestionIntentTranslation()
+                card.getQuestionIntentTranslation(),
+                // 문장 단위 발화 시각(#78 Step6에서 저장된 값으로 채운다). 아직 파이프라인 미연결이라 빈 배열.
+                List.of()
         );
     }
 

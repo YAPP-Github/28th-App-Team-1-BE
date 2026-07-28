@@ -24,6 +24,7 @@ public interface InterviewReportControllerDocs {
                     "사용자용 리포트 화면(한 줄 요약 + 항목 카드 + 영상 메타 + 지인 피드백 섹션) 형태로 반환합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 카드마다 대본(`transcript`)과 그 위에 칠할 하이라이트 구간(`highlightSpans`, 잘함/개선)이 내려옵니다.\n" +
+                    "- 카드마다 질문/답변 대본을 문장 단위로 쪼갠 발화 구간(`questionSegments`/`answerSegments`)이 내려옵니다. 각 문장의 `startSec`/`endSec`는 합성 영상(=녹화) 타임라인 기준이라, 영상 재생 위치와 맞춰 현재 발화 중인 문장을 강조할 수 있습니다.\n" +
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
                     "(화면 표시는 \"질문 {axisOrder}-{depthLevel}\", 예: 1-1, 1-2, 2-1 ...).\n" +
                     "- `status`는 채점 파이프라인의 진행 상태만 나타냅니다 — `GENERATING`(채점 중) / `READY`(생성 완료) / `INSUFFICIENT_ANALYSIS`(분석 부족) / `FAILED`(생성 실패).\n" +
@@ -76,7 +77,12 @@ public interface InterviewReportControllerDocs {
                                                     "highlightSpans": [],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
-                                                    "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다."
+                                                    "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
+                                                    "scriptSegments": [
+                                                      { "role": "QUESTION", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startIndex": 0, "endIndex": 27, "startSec": 12.0, "endSec": 15.4 },
+                                                      { "role": "QUESTION", "text": " 무엇이 문제였나요?", "startIndex": 27, "endIndex": 37, "startSec": 15.4, "endSec": 16.8 },
+                                                      { "role": "ANSWER", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startIndex": 0, "endIndex": 38, "startSec": 18.2, "endSec": 22.6 }
+                                                    ]
                                                   },
                                                   {
                                                     "axisOrder": 1,

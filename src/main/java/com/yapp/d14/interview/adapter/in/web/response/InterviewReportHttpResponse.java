@@ -93,7 +93,11 @@ public record InterviewReportHttpResponse(
             List<RedFlagNotice> cardRedFlagNotices,
 
             @Schema(description = "질문 분석(질문 의도 설명, probe_text 번역)")
-            String questionIntent
+            String questionIntent,
+
+            @Schema(description = "질문/답변 대본을 문장 단위로 쪼갠 발화 구간 목록. startSec 오름차순(실제 발화 순서: 질문 → 답변)이라, " +
+                    "영상 재생 위치(currentTime)로 한 배열만 탐색해 현재 발화 중인 문장을 강조할 수 있다. 문장 시각을 못 만든 카드는 빈 배열")
+            List<ScriptSegment> scriptSegments
     ) {
 
         private static Card from(InterviewReportQueryResult.Card card) {
@@ -105,8 +109,36 @@ public record InterviewReportHttpResponse(
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
                     card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
-                    card.questionIntent()
+                    card.questionIntent(),
+                    card.scriptSegments() == null ? null : card.scriptSegments().stream().map(ScriptSegment::from).toList()
             );
+        }
+    }
+
+    public record ScriptSegment(
+            @Schema(description = "발화 주체 — QUESTION(질문 대본) / ANSWER(답변 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다")
+            String role,
+
+            @Schema(description = "문장 텍스트")
+            String text,
+
+            @Schema(description = "role에 해당하는 대본(questionText/transcript) 문자열 기준 문장 시작 인덱스(0부터, 포함)")
+            int startIndex,
+
+            @Schema(description = "role에 해당하는 대본 문자열 기준 문장 종료 인덱스(미포함)")
+            int endIndex,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 시작(초)")
+            float startSec,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 종료(초)")
+            float endSec
+    ) {
+
+        private static ScriptSegment from(InterviewReportQueryResult.ScriptSegment segment) {
+            return new ScriptSegment(
+                    segment.role().name(), segment.text(), segment.startIndex(), segment.endIndex(),
+                    segment.startSec(), segment.endSec());
         }
     }
 
