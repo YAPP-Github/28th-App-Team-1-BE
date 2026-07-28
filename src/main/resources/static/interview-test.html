@@ -211,7 +211,14 @@ $("btnStart").onclick = async () => {
     $("preview").srcObject = state.stream;
 
     // 연속 영상 녹화 시작 (raw). 이 순간이 타임라인 t0.
-    state.videoMime = pickMime(["video/mp4", "video/webm;codecs=vp8,opus", "video/webm"]);
+    // 서버 합성이 -c:v copy(재인코딩 없음)라 mp4에 담기는 H.264를 우선한다. webm(vp8)로 떨어지면 합성이 실패할 수 있다.
+    state.videoMime = pickMime([
+      "video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=h264", "video/mp4",
+      "video/webm;codecs=vp8,opus", "video/webm",
+    ]);
+    if (!state.videoMime || state.videoMime.startsWith("video/webm")) {
+      log("⚠️ 이 브라우저는 mp4(H.264) 녹화를 지원하지 않아 webm으로 녹화됩니다 — 서버 합성(-c:v copy)이 실패할 수 있습니다(면접·세그먼트는 정상). Chrome/Safari 최신 버전 권장.");
+    }
     state.videoChunks = [];
     state.videoRecorder = new MediaRecorder(state.stream, state.videoMime ? { mimeType: state.videoMime } : undefined);
     state.videoRecorder.ondataavailable = (e) => { if (e.data.size) state.videoChunks.push(e.data); };
@@ -329,13 +336,156 @@ $("btnEnd").onclick = async () => {
   catch (e) { log("❌ " + e.message); alert(e.message); $("btnEnd").disabled = false; }
 };
 
-// Phase 2에서 영상 업로드 + 리포트 폴링/싱크로 채운다.
 async function finishInterview(r) {
   state.ended = true;
-  $("btnAnsStart").disabled = true; $("btnAnsStop").disabled = true; $("btnSubmit").disabled = true; $("btnSkip").disabled = true; $("btnEnd").disabled = true;
+  ["btnAnsStart","btnAnsStop","btnSubmit","btnSkip","btnEnd"].forEach((id) => $(id).disabled = true);
   if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) { log("마무리 멘트 재생"); await playBase64Mp3(r.wrapUpMessage.ttsAudio); }
-  if (state.videoRecorder && state.videoRecorder.state !== "inactive") state.videoRecorder.stop();
-  log("면접 종료. (Phase 2: 영상 업로드 + 리포트 합성 싱크 예정) reportId=" + r.reportId);
+  log("면접 종료 — 영상 마무리 중... reportId=" + r.reportId);
+
+  const videoBlob = await stopVideoAndGetBlob();
+  if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
+  await uploadVideoSafely(videoBlob);
+  await pollAndRenderReport();
+}
+
+function stopVideoAndGetBlob() {
+  return new Promise((resolve) => {
+    const rec = state.videoRecorder;
+    if (!rec || rec.state === "inactive") { resolve(new Blob(state.videoChunks, { type: state.videoMime || "video/webm" })); return; }
+    rec.onstop = () => resolve(new Blob(state.videoChunks, { type: state.videoMime || "video/webm" }));
+    rec.stop();
+  });
+}
+
+// 영상 업로드는 실패해도(특히 S3 CORS 미설정) 리포트 조회는 계속한다 — 세그먼트 표는 영상 없이도 볼 수 있다.
+async function uploadVideoSafely(videoBlob) {
+  try {
+    log(`영상 크기 ${(videoBlob.size/1024/1024).toFixed(1)}MB — presigned URL 발급...`);
+    const u = await api(`/api/v1/interview/sessions/${state.sessionId}/video/upload-url`, { method: "POST" });
+    log("presigned PUT 발급", { contentType: u.contentType });
+    const put = await fetch(u.uploadUrl, { method: "PUT", headers: { "Content-Type": u.contentType }, body: videoBlob });
+    if (!put.ok) throw new Error("S3 PUT 실패 " + put.status + " (버킷 CORS가 localhost PUT을 허용하는지 확인)");
+    log("S3 업로드 완료 → complete 호출(합성 트리거)");
+    await api(`/api/v1/interview/sessions/${state.sessionId}/video/complete`, { method: "POST" });
+    log("영상 complete 완료 ✅ — 서버가 합성 시작");
+  } catch (e) {
+    log("⚠️ 영상 업로드 건너뜀: " + e.message + " (리포트/세그먼트는 계속 확인)");
+  }
+}
+
+async function pollAndRenderReport() {
+  $("reportCard").style.display = "block";
+  $("reportBody").innerHTML = '<div class="muted">리포트 생성 대기 중...</div>';
+  let rep = null, videoTries = 0;
+  for (let i = 0; i < 90; i++) {
+    await sleep(3000);
+    rep = await api(`/api/v1/interview/sessions/${state.sessionId}/report`);
+    log("리포트 status", rep.status);
+    if (rep.status === "GENERATING") continue;
+    renderReport(rep);
+    // 채점은 끝났지만 합성(video.url)이 아직이면 몇 번 더 기다렸다가 다시 그린다.
+    if ((!rep.video || !rep.video.url) && videoTries < 10) { videoTries++; continue; }
+    log("리포트 렌더 완료");
+    return;
+  }
+  log("리포트 폴링 타임아웃");
+}
+
+function esc(s) { return (s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+let segIndex = []; // { el, role, startSec, endSec, cardEl, qBlock, aBlock, startIndex, endIndex, questionText, transcript }
+
+function renderReport(rep) {
+  const body = $("reportBody");
+  body.innerHTML = "";
+  segIndex = []; activeSeg = null;
+
+  // 상단 상태 + 합성 영상
+  const head = document.createElement("div");
+  head.innerHTML = `<div class="big">status: <span class="pill ${rep.status === "READY" ? "ok" : ""}">${esc(rep.status)}</span></div>
+    <div class="muted">${esc(rep.headline || "")}</div>`;
+  body.appendChild(head);
+
+  const videoUrl = rep.video && rep.video.url;
+  let player = null;
+  if (videoUrl) {
+    player = document.createElement("video");
+    player.src = videoUrl; player.controls = true; player.playsInline = true;
+    player.style.cssText = "width:100%;border-radius:8px;background:#000;margin:10px 0;";
+    body.appendChild(player);
+    log("합성 영상 재생 준비 — 재생하면 현재 발화 문장이 강조됩니다");
+  } else {
+    const note = document.createElement("div");
+    note.className = "muted"; note.style.margin = "8px 0";
+    note.textContent = "합성 영상(video.url) 없음 — 세그먼트 시각은 아래 표로 확인하세요.";
+    body.appendChild(note);
+  }
+
+  (rep.cards || []).forEach((card) => {
+    const c = document.createElement("div");
+    c.className = "card"; c.style.marginTop = "10px";
+    const qBlock = document.createElement("div");
+    const aBlock = document.createElement("div");
+    qBlock.style.margin = "4px 0"; aBlock.style.margin = "4px 0";
+    qBlock.innerHTML = `<label>질문 ${card.axisOrder}-${card.depthLevel}</label>` + esc(card.questionText);
+    aBlock.innerHTML = `<label>답변</label>` + esc(card.transcript);
+    c.appendChild(qBlock); c.appendChild(aBlock);
+
+    // 세그먼트 표
+    const segs = card.scriptSegments || [];
+    if (segs.length) {
+      const tbl = document.createElement("div");
+      tbl.innerHTML = `<label>scriptSegments (${segs.length})</label>`;
+      segs.forEach((s) => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;";
+        row.innerHTML = `<span class="pill">${esc(s.role)}</span>
+          <span style="flex:1">${esc(s.text)}</span>
+          <span class="muted">${s.startSec.toFixed(2)}–${s.endSec.toFixed(2)}s</span>`;
+        row.onclick = () => { if (player) { player.currentTime = s.startSec; player.play(); } };
+        tbl.appendChild(row);
+        segIndex.push({ el: row, role: s.role, startSec: s.startSec, endSec: s.endSec,
+          qBlock, aBlock, startIndex: s.startIndex, endIndex: s.endIndex,
+          questionText: card.questionText, transcript: card.transcript });
+      });
+      c.appendChild(tbl);
+    } else {
+      const none = document.createElement("div");
+      none.className = "muted"; none.style.fontSize = "12px"; none.textContent = "scriptSegments 없음(빈 배열)";
+      c.appendChild(none);
+    }
+    body.appendChild(c);
+  });
+
+  if (player) player.addEventListener("timeupdate", () => syncHighlight(player.currentTime));
+}
+
+let activeSeg = null;
+function syncHighlight(t) {
+  const seg = segIndex.find((s) => t >= s.startSec && t < s.endSec) || null;
+  if (seg === activeSeg) return;
+  // 이전 강조 해제
+  if (activeSeg) {
+    activeSeg.el.style.background = "";
+    resetBlock(activeSeg, activeSeg.role);
+  }
+  activeSeg = seg;
+  if (!seg) return;
+  seg.el.style.background = "rgba(37,99,235,0.25)";
+  // 대응 텍스트 블록에서 해당 문장 substring을 <mark>로 강조
+  const block = seg.role === "QUESTION" ? seg.qBlock : seg.aBlock;
+  const full = seg.role === "QUESTION" ? seg.questionText : seg.transcript;
+  const a = esc(full.slice(0, seg.startIndex));
+  const mid = esc(full.slice(seg.startIndex, seg.endIndex));
+  const b = esc(full.slice(seg.endIndex));
+  const labelHtml = seg.role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
+  block.innerHTML = labelHtml + a + "<mark>" + mid + "</mark>" + b;
+}
+function resetBlock(seg, role) {
+  const block = role === "QUESTION" ? seg.qBlock : seg.aBlock;
+  const full = role === "QUESTION" ? seg.questionText : seg.transcript;
+  const labelHtml = role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
+  block.innerHTML = labelHtml + esc(full);
 }
 </script>
 </body>
