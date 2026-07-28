@@ -43,7 +43,7 @@ public class InterviewSessionJpaEntity {
     @Column(name = "snapshot_years_of_experience")
     private Integer snapshotYearsOfExperience;
 
-    @Column(name = "jd_url")
+    @Column(name = "jd_url", columnDefinition = "TEXT")
     private String jdUrl;
 
     @Column(name = "jd_text", columnDefinition = "TEXT")
