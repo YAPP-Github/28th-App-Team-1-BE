@@ -92,6 +92,12 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                부족한 부분을 드러내거나 해명을 요구하는 질문을 위주로 만듭니다. 각 질문은 실제
                면접관이 말하듯 한 문장으로 씁니다.
 
+               answerTopicTitle(내 답변 요지)은 reason=OFF_INTENT일 때만 작성합니다. 질문이 요구한
+               것과 별개로, 지원자의 답변이 실제로 다룬 주제가 무엇인지를 짧은 명사구로 요약합니다
+               (예: 질문은 "장애 원인을 좁혀가는 순서"인데 답변이 팀 관계 이야기였다면 "팀 내 신뢰와 성향").
+               "질문 의도(questionIntentTitle) ↔ 내 답변(answerTopicTitle)" 대비로 보여줄 값이니,
+               비난·평가 없이 답변의 실제 주제만 담습니다. reason이 OFF_INTENT가 아니면 빈 문자열로 둡니다.
+
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
               분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTitle·
@@ -108,7 +114,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
             highlightSpans(quote(answerText 원문 그대로, answerText에 등장하는 순서대로)/
             tone(GOOD 또는 IMPROVE)/
             reason(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)/title(문자열)/analysis(문자열)/
-            followUpQuestions(문자열 배열, PROBE_WORTHY일 때만 1~3개, 그 외엔 빈 배열)의 배열,
+            followUpQuestions(문자열 배열, PROBE_WORTHY일 때만 1~3개, 그 외엔 빈 배열)/
+            answerTopicTitle(문자열, OFF_INTENT일 때만 내 답변 요지 명사구, 그 외엔 빈 문자열)의 배열,
             비어 있을 수 있음).
 
             [꼬리질문 생성 원칙]
@@ -258,14 +265,25 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         HighlightReason reason = resolveReason(entry.reason(), tone, followUpQuestions);
         // A/B/C를 reason 단일 소스로 결정론적으로 만든다: PROBE_WORTHY가 아니면 꼬리질문은 무조건 비운다(LLM 누출 방지).
         List<String> gatedFollowUps = reason == HighlightReason.PROBE_WORTHY ? followUpQuestions : List.of();
+        // answerTopic(내 답변 요지)는 OFF_INTENT 대비 UI 전용이므로 그 외 reason에서는 LLM이 넣었어도 버린다.
+        String answerTopicTitle = reason == HighlightReason.OFF_INTENT ? trimToNull(entry.answerTopicTitle()) : null;
         return new HighlightSpan(
                 new TextRange(start, end),
                 tone,
                 reason,
                 entry.title(),
                 entry.analysis(),
-                gatedFollowUps
+                gatedFollowUps,
+                answerTopicTitle
         );
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.strip();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     // 커서 이후로 우선 검색해 반복되는 문구를 답변에 등장하는 순서대로 소비한다(ScriptSegmentMapper와 동일 전략).

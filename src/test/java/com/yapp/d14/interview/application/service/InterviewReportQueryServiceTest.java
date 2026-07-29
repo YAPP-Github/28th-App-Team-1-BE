@@ -124,7 +124,7 @@ class InterviewReportQueryServiceTest {
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 card(1L, 21L, 2, TestType.DEPTH, "깊이 의도2", List.of()),
                 card(2L, 10L, 1, TestType.BOUNDARY, "경계 의도", List.of(
-                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.PROBE_WORTHY, "좋은 근거 제시", "좋은 근거", List.of("추가 질문1", "추가 질문2")))),
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.PROBE_WORTHY, "좋은 근거 제시", "좋은 근거", List.of("추가 질문1", "추가 질문2"), null))),
                 card(3L, 20L, 1, TestType.DEPTH, "깊이 의도1", List.of())
         ));
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
@@ -224,9 +224,9 @@ class InterviewReportQueryServiceTest {
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 card(1L, 10L, 1, TestType.DEPTH, "의도", List.of(
                         // startIndex=5 → 답변 세그먼트 [0,8) 안에 포함
-                        new HighlightSpan(new TextRange(5, 8), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목1", "분석1", List.of()),
+                        new HighlightSpan(new TextRange(5, 8), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목1", "분석1", List.of(), null),
                         // startIndex=12 → 답변 세그먼트 [8,20) 안에 포함
-                        new HighlightSpan(new TextRange(12, 15), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목2", "분석2", List.of())
+                        new HighlightSpan(new TextRange(12, 15), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목2", "분석2", List.of(), null)
                 ))
         ));
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
@@ -259,7 +259,7 @@ class InterviewReportQueryServiceTest {
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 card(1L, 10L, 1, TestType.DEPTH, "의도", List.of(
-                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목", "분석", List.of())
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목", "분석", List.of(), null)
                 ))
         ));
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));

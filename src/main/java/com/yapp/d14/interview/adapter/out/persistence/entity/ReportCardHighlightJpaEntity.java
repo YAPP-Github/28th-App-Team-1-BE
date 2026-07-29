@@ -60,6 +60,10 @@ public class ReportCardHighlightJpaEntity {
     @Column(name = "analysis", columnDefinition = "TEXT")
     private String analysis;
 
+    // 딴 답(reason=OFF_INTENT)일 때 답변이 실제로 다룬 주제 명사구. 그 외 reason에서는 null.
+    @Column(name = "answer_topic_title", columnDefinition = "TEXT")
+    private String answerTopicTitle;
+
     // 이 하이라이트에 대해 면접관이 이어서 던질 법한 추가 질문(0~3개). 순서 보존.
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "report_card_highlight_follow_up", joinColumns = @JoinColumn(name = "report_card_highlight_id"))
@@ -77,6 +81,7 @@ public class ReportCardHighlightJpaEntity {
         entity.reason = highlightSpan.reason();
         entity.title = highlightSpan.title();
         entity.analysis = highlightSpan.analysis();
+        entity.answerTopicTitle = highlightSpan.answerTopicTitle();
         entity.followUpQuestions = highlightSpan.followUpQuestions() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(highlightSpan.followUpQuestions());
@@ -84,6 +89,7 @@ public class ReportCardHighlightJpaEntity {
     }
 
     public HighlightSpan toDomain() {
-        return new HighlightSpan(new TextRange(startIndex, endIndex), tone, reason, title, analysis, List.copyOf(followUpQuestions));
+        return new HighlightSpan(new TextRange(startIndex, endIndex), tone, reason, title, analysis,
+                List.copyOf(followUpQuestions), answerTopicTitle);
     }
 }
