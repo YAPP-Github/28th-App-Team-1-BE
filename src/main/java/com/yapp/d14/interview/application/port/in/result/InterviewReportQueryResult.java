@@ -83,7 +83,12 @@ public record InterviewReportQueryResult(
             List<String> followUpQuestions,
             // 이 하이라이트가 시작하는 지점의 합성 영상(=녹화) 타임라인 시각(초). "영상 보러가기" 버튼의 이동 지점.
             // 문장 발화 시각을 못 만들었으면(세그먼트 없음) null.
-            Float startSec
+            Float startSec,
+            // 아래 3개는 reason=OFF_INTENT(딴 답)일 때만 채운다(그 외 null). "질문 의도 ↔ 내 답변" 대비 UI 전용.
+            // answerTopicTitle=내 답변 요지, questionIntentTitle/questionIntent=카드값 복사(프론트 편의).
+            String answerTopicTitle,
+            String questionIntentTitle,
+            String questionIntent
     ) {
     }
 

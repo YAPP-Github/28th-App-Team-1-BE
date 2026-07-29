@@ -196,14 +196,25 @@ public record InterviewReportHttpResponse(
 
             @Schema(description = "이 하이라이트가 시작하는 지점의 합성 영상 재생 시각(초) — \"영상 보러가기\" 버튼에서 이 시각으로 seek. " +
                     "문장 발화 시각을 못 만들었으면 null")
-            Float startSec
+            Float startSec,
+
+            @Schema(description = "딴 답(reason=OFF_INTENT)일 때 답변이 실제로 다룬 주제 명사구(예: \"팀 내 신뢰와 성향\"). " +
+                    "\"질문 의도 ↔ 내 답변\" 대비 UI의 '내 답변' 자리. OFF_INTENT가 아니면 null")
+            String answerTopicTitle,
+
+            @Schema(description = "reason=OFF_INTENT일 때, 이 카드의 questionIntentTitle을 그대로 복사한 값(프론트가 하이라이트만 보고도 대비를 그릴 수 있게). OFF_INTENT가 아니면 null")
+            String questionIntentTitle,
+
+            @Schema(description = "reason=OFF_INTENT일 때, 이 카드의 questionIntent를 그대로 복사한 값. OFF_INTENT가 아니면 null")
+            String questionIntent
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
             return new HighlightSpan(
                     span.startIndex(), span.endIndex(), span.tone().name(),
                     span.reason() == null ? null : span.reason().name(),
-                    span.title(), span.analysis(), span.followUpQuestions(), span.startSec());
+                    span.title(), span.analysis(), span.followUpQuestions(), span.startSec(),
+                    span.answerTopicTitle(), span.questionIntentTitle(), span.questionIntent());
         }
     }
 

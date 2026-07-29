@@ -279,6 +279,44 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void OFF_INTENT_하이라이트만_answerTopicTitle과_질문의도를_함께_내리고_그외는_null이다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "장애 원인을 좁혀가는지 확인", List.of(
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.IMPROVE, HighlightReason.OFF_INTENT,
+                                "질문과 무관", "딴 답 분석", List.of(), "팀 내 신뢰와 성향"),
+                        new HighlightSpan(new TextRange(4, 7), HighlightTone.GOOD, HighlightReason.SUFFICIENT,
+                                "충분", "분석", List.of(), null)
+                ))
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of());
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        List<InterviewReportQueryResult.HighlightSpan> spans = result.cards().get(0).highlightSpans();
+        InterviewReportQueryResult.HighlightSpan offIntent = spans.get(0);
+        assertThat(offIntent.answerTopicTitle()).isEqualTo("팀 내 신뢰와 성향");
+        // 카드값 복사 — card() 헬퍼는 questionIntentTitle="제목", questionIntentTranslation=intent 파라미터.
+        assertThat(offIntent.questionIntentTitle()).isEqualTo("제목");
+        assertThat(offIntent.questionIntent()).isEqualTo("장애 원인을 좁혀가는지 확인");
+
+        InterviewReportQueryResult.HighlightSpan sufficient = spans.get(1);
+        assertThat(sufficient.answerTopicTitle()).isNull();
+        assertThat(sufficient.questionIntentTitle()).isNull();
+        assertThat(sufficient.questionIntent()).isNull();
+    }
+
+    @Test
     void 전체_대본_script는_카드없는_질문의_발화까지_startSec순으로_모두_담는다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));

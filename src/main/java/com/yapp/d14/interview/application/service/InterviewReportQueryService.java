@@ -27,6 +27,7 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.ResolutionLowReason;
+import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.interview.domain.UtteranceSegment;
@@ -245,10 +246,17 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 .toList();
 
         List<InterviewReportQueryResult.HighlightSpan> highlightSpans = card.getHighlightSpans().stream()
-                .map(span -> new InterviewReportQueryResult.HighlightSpan(
-                        span.range().startIndex(), span.range().endIndex(), span.tone(), span.reason(),
-                        span.title(), span.analysis(), span.followUpQuestions(),
-                        findHighlightStartSec(span.range().startIndex(), answerSegments)))
+                .map(span -> {
+                    // OFF_INTENT(딴 답)일 때만 "질문 의도 ↔ 내 답변" 대비용 3필드를 채운다. 그 외 reason은 null.
+                    boolean offIntent = span.reason() == HighlightReason.OFF_INTENT;
+                    return new InterviewReportQueryResult.HighlightSpan(
+                            span.range().startIndex(), span.range().endIndex(), span.tone(), span.reason(),
+                            span.title(), span.analysis(), span.followUpQuestions(),
+                            findHighlightStartSec(span.range().startIndex(), answerSegments),
+                            offIntent ? span.answerTopicTitle() : null,
+                            offIntent ? card.getQuestionIntentTitle() : null,
+                            offIntent ? card.getQuestionIntentTranslation() : null);
+                })
                 .toList();
 
         List<InterviewReportQueryResult.ScriptSegment> scriptSegments = cardSegments.stream()
