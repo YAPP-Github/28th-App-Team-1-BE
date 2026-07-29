@@ -7,10 +7,13 @@ import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
+import com.yapp.d14.interview.domain.JobType;
+import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
@@ -30,6 +33,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -96,6 +100,38 @@ class InterviewControllerTest {
 
     private String validRequestBody() throws Exception {
         return requestBody(Map.of());
+    }
+
+    @Test
+    void 레포트목록_조회하면_200과_함께_필드가_매핑되어_반환된다() throws Exception {
+        LocalDateTime interviewedAt = LocalDateTime.of(2026, 7, 2, 14, 20);
+        InterviewReportListItem item = new InterviewReportListItem(
+                1024L, JobType.IOS, 2, interviewedAt, "portfolio.pdf", true,
+                "careers.example.com/jobs/1024", ReportStatus.READY, true
+        );
+        given(interviewReportListQueryUseCase.getReportList(userId)).willReturn(List.of(item));
+
+        mockMvc.perform(get("/api/v1/interview/sessions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reports[0].sessionId").value(1024))
+                .andExpect(jsonPath("$.data.reports[0].jobType").value("IOS"))
+                .andExpect(jsonPath("$.data.reports[0].jobTypeLabel").value("iOS"))
+                .andExpect(jsonPath("$.data.reports[0].careerYears").value(2))
+                .andExpect(jsonPath("$.data.reports[0].portfolioFileName").value("portfolio.pdf"))
+                .andExpect(jsonPath("$.data.reports[0].portfolioDeleted").value(true))
+                .andExpect(jsonPath("$.data.reports[0].jdUrl").value("careers.example.com/jobs/1024"))
+                .andExpect(jsonPath("$.data.reports[0].reportStatus").value("READY"))
+                .andExpect(jsonPath("$.data.reports[0].feedbackAvailable").value(true));
+    }
+
+    @Test
+    void 레포트가_없으면_200과_함께_빈_배열을_반환한다() throws Exception {
+        given(interviewReportListQueryUseCase.getReportList(userId)).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/interview/sessions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reports").isArray())
+                .andExpect(jsonPath("$.data.reports").isEmpty());
     }
 
     @Test
