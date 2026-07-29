@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
-@Tag(name = "Interview Video", description = "면접 녹화 영상 업로드 API")
+@Tag(name = "Interview Report", description = "면접 보고서 조회·영상 API")
 public interface InterviewVideoControllerDocs {
 
     @Operation(

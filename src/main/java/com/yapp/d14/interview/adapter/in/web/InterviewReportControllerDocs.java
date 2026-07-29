@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@Tag(name = "Interview Report", description = "면접 보고서 조회 API")
+@Tag(name = "Interview Report", description = "면접 보고서 조회·영상 API")
 public interface InterviewReportControllerDocs {
 
     @Operation(
