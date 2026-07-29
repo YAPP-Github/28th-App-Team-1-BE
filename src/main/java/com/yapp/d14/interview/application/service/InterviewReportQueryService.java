@@ -287,8 +287,10 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     }
 
     private InterviewReportQueryResult.GuestFeedbackSection toGuestSection(GuestFeedbackReportView view) {
+        // 지인이 한 명도 없어도 섹션은 항상 내려준다(participantCount=0, guests=[]).
+        // 프론트가 null 체크 없이 바로 guests를 순회하고, "아직 참여 없음"을 participantCount==0으로 표현하게 한다.
         if (view.participantCount() == 0) {
-            return null;
+            return new InterviewReportQueryResult.GuestFeedbackSection(0, List.of());
         }
         List<InterviewReportQueryResult.Guest> guests = view.guests().stream()
                 .map(guest -> new InterviewReportQueryResult.Guest(

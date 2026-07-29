@@ -150,7 +150,10 @@ class InterviewReportQueryServiceTest {
 
         assertThat(result.status()).isEqualTo(ReportStatus.READY);
         assertThat(result.headline()).isEqualTo("한 줄 요약");
-        assertThat(result.guestFeedback()).isNull();
+        // 지인이 0명이어도 섹션은 null이 아니라 빈 섹션(participantCount=0, guests=[])으로 내려온다.
+        assertThat(result.guestFeedback()).isNotNull();
+        assertThat(result.guestFeedback().participantCount()).isZero();
+        assertThat(result.guestFeedback().guests()).isEmpty();
 
         assertThat(result.video().url()).isNull();
         assertThat(result.video().expired()).isFalse();

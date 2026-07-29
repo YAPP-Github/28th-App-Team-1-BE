@@ -38,7 +38,7 @@ public interface InterviewReportControllerDocs {
                     "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `highlightSpans`는 빈 배열입니다.\n" +
                     "- 레드플래그는 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 내려옵니다.\n" +
                     "- `video.url`은 영상이 만료되면 `null`이며, 그때도 카드의 대본·하이라이트는 그대로 유지됩니다.\n" +
-                    "- `guestFeedback`은 지인이 한 명도 제출하지 않았으면 `null`입니다."
+                    "- `guestFeedback`은 지인이 한 명도 제출하지 않아도 `null`이 아니라 `participantCount=0`, `guests=[]`로 내려옵니다(프론트가 null 체크 없이 `guests`를 순회하고, \"아직 참여 없음\"을 `participantCount==0`으로 표현하게 하기 위함). 단 `status=GENERATING`일 때는 섹션 전체가 `null`입니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -123,7 +123,7 @@ public interface InterviewReportControllerDocs {
                                                   { "role": "INTERVIEWEE", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startSec": 18.2, "endSec": 22.6 },
                                                   { "role": "INTERVIEWER", "text": "수고하셨습니다. 면접을 마치겠습니다.", "startSec": 70.5, "endSec": 73.9 }
                                                 ],
-                                                "guestFeedback": null
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
                                             }
                                             """),
@@ -156,7 +156,7 @@ public interface InterviewReportControllerDocs {
                                                   { "role": "INTERVIEWER", "text": "Q. 장애가 났을 때 어디부터 확인하시나요?", "startSec": 10.0, "endSec": 13.5 },
                                                   { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 }
                                                 ],
-                                                "guestFeedback": null
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
                                             }
                                             """),
@@ -191,7 +191,7 @@ public interface InterviewReportControllerDocs {
                                                   { "role": "INTERVIEWER", "text": "Q. 최근에 성능을 개선한 경험이 있나요?", "startSec": 12.0, "endSec": 14.6 },
                                                   { "role": "INTERVIEWEE", "text": "네, 있습니다. 캐시를 좀 썼어요.", "startSec": 15.0, "endSec": 17.2 }
                                                 ],
-                                                "guestFeedback": null
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
                                             }
                                             """),
@@ -234,7 +234,7 @@ public interface InterviewReportControllerDocs {
                                                   { "role": "INTERVIEWER", "text": "Q. 그 결정을 내리기까지 어떤 대안들을 검토하셨나요?", "startSec": 40.0, "endSec": 43.8 },
                                                   { "role": "INTERVIEWEE", "text": "제가 Redis 캐시를 도입했습니다...", "startSec": 45.0, "endSec": 49.2 }
                                                 ],
-                                                "guestFeedback": null
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
                                             }
                                             """),

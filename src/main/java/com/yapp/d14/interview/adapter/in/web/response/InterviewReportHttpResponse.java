@@ -27,7 +27,7 @@ public record InterviewReportHttpResponse(
                 "세션의 모든 발화를 startSec 오름차순으로 담는다. 합성 영상 재생 위치로 이 한 배열만 훑어 현재 발화 중인 문장을 강조할 수 있다. GENERATING일 때는 null")
         List<ScriptLine> script,
 
-        @Schema(description = "지인 피드백 섹션. 제출한 지인이 없으면 null")
+        @Schema(description = "지인 피드백 섹션. 지인이 한 명도 제출하지 않아도 null이 아니라 participantCount=0, guests=[]로 내려온다(프론트가 null 체크 없이 순회 가능). GENERATING일 때만 null")
         GuestFeedbackSection guestFeedback
 ) {
 
