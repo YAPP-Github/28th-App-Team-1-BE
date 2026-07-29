@@ -10,6 +10,9 @@ record ReportCardContentLlmEntry(
         List<HighlightSpanLlmEntry> highlightSpans
 ) {
 
-    record HighlightSpanLlmEntry(int startIndex, int endIndex, String tone, String analysis, List<String> followUpQuestions) {
+    record HighlightSpanLlmEntry(
+            int startIndex, int endIndex, String tone, String reason, String title, String analysis,
+            List<String> followUpQuestions
+    ) {
     }
 }

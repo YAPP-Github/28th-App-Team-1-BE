@@ -23,7 +23,10 @@ public interface InterviewReportControllerDocs {
             description = "채점 파이프라인(#31)이 만들어 둔 결과를, 점수·판정·천장 같은 내부 원값 없이 " +
                     "사용자용 리포트 화면(한 줄 요약 + 항목 카드 + 영상 메타 + 지인 피드백 섹션) 형태로 반환합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- 카드마다 대본(`transcript`)과 그 위에 칠할 하이라이트 구간(`highlightSpans`, 잘함/개선)이 내려옵니다.\n" +
+                    "- 카드마다 대본(`transcript`)과 그 위에 칠할 하이라이트 구간(`highlightSpans`, 잘함/개선)이 내려옵니다. " +
+                    "각 하이라이트에는 한 줄 제목(`title`)과 개선유형(`reason`)이 함께 내려오며, `reason`으로 카드 하단 안내를 결정합니다 — " +
+                    "`PROBE_WORTHY`(꼬리질문 `followUpQuestions` 노출) / `OFF_INTENT`(질문 의도 리마인드) / `SHALLOW`·`SUFFICIENT`(코칭 한 줄만). " +
+                    "`followUpQuestions`는 `reason=PROBE_WORTHY`일 때만 채워집니다.\n" +
                     "- 카드마다 질문/답변 대본을 문장 단위로 쪼갠 발화 구간(`questionSegments`/`answerSegments`)이 내려옵니다. 각 문장의 `startSec`/`endSec`는 합성 영상(=녹화) 타임라인 기준이라, 영상 재생 위치와 맞춰 현재 발화 중인 문장을 강조할 수 있습니다.\n" +
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
                     "(화면 표시는 \"질문 {axisOrder}-{depthLevel}\", 예: 1-1, 1-2, 2-1 ...).\n" +
@@ -90,7 +93,7 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 응답이 느렸던 근본 원인은 무엇이었고, 어떻게 진단하셨나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startIndex": 12, "endIndex": 48, "tone": "GOOD", "analysis": "구체적인 수치(50개, 분석 결과)를 근거로 원인을 설명해 신뢰도가 높습니다." }
+                                                      { "startIndex": 12, "endIndex": 48, "tone": "GOOD", "reason": "PROBE_WORTHY", "title": "구체적 수치로 원인 설명", "analysis": "구체적인 수치(50개, 분석 결과)를 근거로 원인을 설명해 신뢰도가 높습니다.", "followUpQuestions": ["그 수치는 어떤 기간을 기준으로 집계한 건가요?"] }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
@@ -102,7 +105,7 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
                                                     "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
                                                     "highlightSpans": [
-                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD", "analysis": "병목 지점을 구체적으로 짚어 설명했습니다." }
+                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD", "reason": "SUFFICIENT", "title": "병목 지점 명확히 설명", "analysis": "병목 지점을 구체적으로 짚어 설명했습니다.", "followUpQuestions": [] }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,

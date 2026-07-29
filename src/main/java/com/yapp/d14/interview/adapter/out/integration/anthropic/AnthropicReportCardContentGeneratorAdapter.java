@@ -5,6 +5,7 @@ import com.yapp.d14.interview.application.port.out.ReportCardContentContext.Axis
 import com.yapp.d14.interview.application.port.out.ReportCardContentContext.Turn;
 import com.yapp.d14.interview.application.port.out.ReportCardContentGenerator;
 import com.yapp.d14.interview.application.port.out.ReportCardDraft;
+import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.HighlightSpan;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.TestType;
@@ -60,28 +61,47 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                답변에 없는 것은 추측해서 쓰지 않습니다(자신감·긴장·표정·목소리 톤·성격·감정
                같은 인상 표현 금지, 관찰된 사실만 근거로 씁니다).
 
-               각 하이라이트에는 followUpQuestions(추가 질문)도 0~3개 만듭니다. 이는 그
+               title(제목)은 이 하이라이트를 한 줄로 요약한 짧은 명사구입니다(대략 12자 내외,
+               문장부호 없이). GOOD이면 잘한 점을(예: "명확한 원인과 구조 설명"), IMPROVE이면
+               핵심 문제나 개선점을(예: "질문 의도와 다르게 답변", "구체적인 사례 제시") 명명합니다.
+
+               reason(개선유형)은 이 구간이 질문에 대해 어떤 상태인지를 하나로 판정한 값입니다.
+               먼저 tone을 정한 뒤 아래 순서로 고릅니다.
+               - tone=IMPROVE인 경우:
+                 1) 이 구간이 질문이 실제로 요구한 것과 다른 주제/딴 답이면 → OFF_INTENT
+                 2) 그렇지 않고 너무 짧거나 막연해 무슨 경험·근거인지 드러나지 않아 캐물 구체적
+                    실마리조차 없으면 → SHALLOW
+                 3) 방향은 맞고 내용도 있으나 빠진 근거·수치·대안이 있어 캐물어 보완을 유도할 수
+                    있으면 → PROBE_WORTHY
+               - tone=GOOD인 경우:
+                 1) 원인·한계·결과까지 스스로 짚어 더 물을 자연스러운 지점이 남지 않았으면 → SUFFICIENT
+                 2) 강점의 진위·경계·트레이드오프를 더 시험할 여지가 있으면 → PROBE_WORTHY
+
+               followUpQuestions(추가 질문)는 reason=PROBE_WORTHY일 때만 1~3개 만듭니다. 나머지
+               reason(OFF_INTENT·SHALLOW·SUFFICIENT)에서는 반드시 빈 배열로 둡니다. 이는 그
                구간(하이라이트가 잡은 답변 부분)을 두고 면접관이 실제로 이어서 던질 법한
                꼬리질문입니다. 아래 [꼬리질문 생성 원칙]을 전술로 삼되, 원칙 번호나 내부 용어는
                질문에 노출하지 말고, 그 구간의 실제 내용에 밀착한 구체적 질문을 만듭니다(일반론
                금지). tone=GOOD이면 더 깊이 파고들어 진위·한계를 시험하는 질문을, tone=IMPROVE이면
-               부족한 부분을 드러내거나 해명을 요구하는 질문을 위주로 만듭니다. 마땅한 질문거리가
-               없으면 빈 배열로 둡니다. 각 질문은 실제 면접관이 말하듯 한 문장으로 씁니다.
+               부족한 부분을 드러내거나 해명을 요구하는 질문을 위주로 만듭니다. 각 질문은 실제
+               면접관이 말하듯 한 문장으로 씁니다.
 
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
               분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTranslation만
               작성합니다.
             - resolutionLowReason=OFF_TOPIC(딴 답): questionIntentTranslation은 작성하고,
-              질문과 무관하게 답한 구간 하나를 tone=IMPROVE 하이라이트로 잡습니다.
+              질문과 무관하게 답한 구간 하나를 tone=IMPROVE·reason=OFF_INTENT 하이라이트로 잡습니다.
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 배열의 원소 개수는 입력으로 받은
             턴의 총 개수와 정확히 같아야 하며, 각 원소는 다음 필드를 가집니다:
             questionId(입력에서 받은 값을 그대로 echo — 어느 턴의 카드인지 식별하는 데만 쓰이니
             입력에 없던 값을 지어내지 마세요),
             questionIntentTranslation(문자열),
-            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/analysis(문자열)/
-            followUpQuestions(문자열 배열, 0~3개, 비어 있을 수 있음)의 배열, 비어 있을 수 있음).
+            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/
+            reason(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)/title(문자열)/analysis(문자열)/
+            followUpQuestions(문자열 배열, PROBE_WORTHY일 때만 1~3개, 그 외엔 빈 배열)의 배열,
+            비어 있을 수 있음).
 
             [꼬리질문 생성 원칙]
             %s
@@ -176,7 +196,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         List<HighlightSpan> highlightSpans = entry.highlightSpans() == null
                 ? List.of()
                 : entry.highlightSpans().stream()
-                        .map(this::toHighlightSpan)
+                        .map(AnthropicReportCardContentGeneratorAdapter::toHighlightSpan)
                         .toList();
 
         return new ReportCardDraft(
@@ -188,16 +208,38 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         );
     }
 
-    private HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
+    // package-private static: LLM 호출 없이 reason 폴백·꼬리질문 게이팅 규칙을 단위 테스트로 고정하기 위함.
+    static HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
+        HighlightTone tone = HighlightTone.valueOf(entry.tone().toUpperCase());
         List<String> followUpQuestions = entry.followUpQuestions() == null
                 ? List.of()
                 : entry.followUpQuestions();
+        HighlightReason reason = resolveReason(entry.reason(), tone, followUpQuestions);
+        // A/B/C를 reason 단일 소스로 결정론적으로 만든다: PROBE_WORTHY가 아니면 꼬리질문은 무조건 비운다(LLM 누출 방지).
+        List<String> gatedFollowUps = reason == HighlightReason.PROBE_WORTHY ? followUpQuestions : List.of();
         return new HighlightSpan(
                 new TextRange(entry.startIndex(), entry.endIndex()),
-                HighlightTone.valueOf(entry.tone().toUpperCase()),
+                tone,
+                reason,
+                entry.title(),
                 entry.analysis(),
-                followUpQuestions
+                gatedFollowUps
         );
+    }
+
+    // LLM이 reason을 누락·오타 냈을 때의 방어적 폴백. 톤과 꼬리질문 유무로 가장 그럴듯한 값을 고른다.
+    private static HighlightReason resolveReason(String rawReason, HighlightTone tone, List<String> followUpQuestions) {
+        if (rawReason != null) {
+            try {
+                return HighlightReason.valueOf(rawReason.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                // 알 수 없는 값이면 아래 폴백으로 넘어간다.
+            }
+        }
+        if (!followUpQuestions.isEmpty()) {
+            return HighlightReason.PROBE_WORTHY;
+        }
+        return tone == HighlightTone.GOOD ? HighlightReason.SUFFICIENT : HighlightReason.SHALLOW;
     }
 
     private static String loadPrinciplesYaml() {

@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.adapter.out.persistence.entity;
 
+import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.HighlightSpan;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.TextRange;
@@ -47,6 +48,15 @@ public class ReportCardHighlightJpaEntity {
     @Column(name = "tone", nullable = false)
     private HighlightTone tone;
 
+    // 개선유형(#78). 카드 마무리 안내(A/B/C)와 followUpQuestions 노출 여부를 결정한다.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reason")
+    private HighlightReason reason;
+
+    // 하이라이트 한 줄 제목(명사구).
+    @Column(name = "title", columnDefinition = "TEXT")
+    private String title;
+
     @Column(name = "analysis", columnDefinition = "TEXT")
     private String analysis;
 
@@ -64,6 +74,8 @@ public class ReportCardHighlightJpaEntity {
         entity.startIndex = highlightSpan.range().startIndex();
         entity.endIndex = highlightSpan.range().endIndex();
         entity.tone = highlightSpan.tone();
+        entity.reason = highlightSpan.reason();
+        entity.title = highlightSpan.title();
         entity.analysis = highlightSpan.analysis();
         entity.followUpQuestions = highlightSpan.followUpQuestions() == null
                 ? new ArrayList<>()
@@ -72,6 +84,6 @@ public class ReportCardHighlightJpaEntity {
     }
 
     public HighlightSpan toDomain() {
-        return new HighlightSpan(new TextRange(startIndex, endIndex), tone, analysis, List.copyOf(followUpQuestions));
+        return new HighlightSpan(new TextRange(startIndex, endIndex), tone, reason, title, analysis, List.copyOf(followUpQuestions));
     }
 }

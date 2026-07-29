@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.port.in.result;
 
+import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.RedFlagType;
 import com.yapp.d14.interview.domain.ReportStatus;
@@ -75,6 +76,8 @@ public record InterviewReportQueryResult(
             int startIndex,
             int endIndex,
             HighlightTone tone,
+            HighlightReason reason,
+            String title,
             String analysis,
             List<String> followUpQuestions
     ) {

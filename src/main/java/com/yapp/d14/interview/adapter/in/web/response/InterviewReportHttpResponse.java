@@ -176,15 +176,26 @@ public record InterviewReportHttpResponse(
             @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
             String tone,
 
+            @Schema(description = "개선유형 — PROBE_WORTHY(파고들 여지 있음, 꼬리질문 노출) / OFF_INTENT(딴 답, 질문 의도 리마인드) / " +
+                    "SHALLOW(짧고 얕음) / SUFFICIENT(충분함). 이 값으로 카드 하단 안내(꼬리질문/의도 리마인드/코칭 한 줄)를 결정한다. " +
+                    "followUpQuestions는 PROBE_WORTHY일 때만 채워진다")
+            String reason,
+
+            @Schema(description = "하이라이트 한 줄 제목(명사구). GOOD은 잘한 점, IMPROVE는 핵심 문제/개선점")
+            String title,
+
             @Schema(description = "이 구간이 왜 GOOD인지 또는 왜 IMPROVE인지에 대한 답변 분석")
             String analysis,
 
-            @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(0~3개). 없으면 빈 배열")
+            @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(1~3개). reason=PROBE_WORTHY가 아니면 빈 배열")
             List<String> followUpQuestions
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name(), span.analysis(), span.followUpQuestions());
+            return new HighlightSpan(
+                    span.startIndex(), span.endIndex(), span.tone().name(),
+                    span.reason() == null ? null : span.reason().name(),
+                    span.title(), span.analysis(), span.followUpQuestions());
         }
     }
 

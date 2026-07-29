@@ -16,6 +16,7 @@ import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.HeadlineBranch;
+import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.HighlightSpan;
 import com.yapp.d14.interview.domain.HighlightTone;
 import com.yapp.d14.interview.domain.InterviewVideo;
@@ -117,7 +118,7 @@ class InterviewReportQueryServiceTest {
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 card(1L, 21L, 2, TestType.DEPTH, "깊이 의도2", List.of()),
                 card(2L, 10L, 1, TestType.BOUNDARY, "경계 의도", List.of(
-                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, "좋은 근거", List.of("추가 질문1", "추가 질문2")))),
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.PROBE_WORTHY, "좋은 근거 제시", "좋은 근거", List.of("추가 질문1", "추가 질문2")))),
                 card(3L, 20L, 1, TestType.DEPTH, "깊이 의도1", List.of())
         ));
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
