@@ -2,7 +2,6 @@ package com.yapp.d14.interview.adapter.in.web.response;
 
 import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.domain.JobType;
-import com.yapp.d14.interview.domain.ReportStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -43,7 +42,7 @@ public record InterviewReportListHttpResponse(
             String jdUrl,
 
             @Schema(description = "레포트 상태 — GENERATING/READY/INSUFFICIENT_ANALYSIS/FAILED", example = "READY")
-            ReportStatus reportStatus,
+            String reportStatus,
 
             @Schema(description = "지인 피드백 요청 가능 여부. 레포트가 READY이고 아직 공유 링크를 만들지 않았을 때 true", example = "true")
             boolean feedbackAvailable
@@ -60,7 +59,7 @@ public record InterviewReportListHttpResponse(
                     item.portfolioFileName(),
                     item.portfolioDeleted(),
                     item.jdUrl(),
-                    item.reportStatus(),
+                    item.reportStatus().name(),
                     item.feedbackAvailable()
             );
         }
