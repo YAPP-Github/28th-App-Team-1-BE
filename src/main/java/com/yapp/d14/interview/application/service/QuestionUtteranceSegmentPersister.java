@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // 리포트 생성 시점에 각 질문 TTS 음성을 STT로 재변환해 문장 단위 발화 시각을 저장한다(role=INTERVIEWER, #78).
 // TTS는 문장별 타임스탬프를 주지 않으므로, 합성 영상에 실제로 얹히는 질문 음성을 다시 인식해 시각을 얻고
@@ -34,8 +36,12 @@ class QuestionUtteranceSegmentPersister {
     void persist(UUID userId, Long sessionId) {
         // 재생성(리포트 재생성) 대비로 기존 INTERVIEWER 세그먼트만 지운 뒤 다시 채운다 — 면접 중 저장된 INTERVIEWEE는 보존.
         utteranceSegmentRepository.deleteBySessionIdAndRole(sessionId, ScriptRole.INTERVIEWER);
-        for (Question question : questionRepository.findAllBySessionId(sessionId)) {
-            persistOne(userId, sessionId, question);
+        List<Question> questions = questionRepository.findAllBySessionId(sessionId);
+        // 질문마다 S3 GET + Whisper STT 호출(블로킹 I/O)이 있어 순차 처리하면 질문 수만큼 지연이 누적된다.
+        // persistOne이 이미 실패를 개별적으로 흡수하므로, 가상 스레드로 병렬 처리해도 실패 격리는 그대로 유지된다.
+        // try-with-resources가 close() 시점에 제출된 작업이 모두 끝날 때까지 대기한다(JEP 444 표준 패턴).
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            questions.forEach(question -> executor.execute(() -> persistOne(userId, sessionId, question)));
         }
     }
 
