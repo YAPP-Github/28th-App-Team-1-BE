@@ -3,11 +3,15 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.in.InterviewVideoCompositeUseCase;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor.AudioTrack;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
+import com.yapp.d14.interview.domain.InterviewEndType;
+import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.Question;
+import com.yapp.d14.interview.domain.WrapUpMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -29,6 +33,7 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
     private final AnswerRepository answerRepository;
     private final InterviewVideoCompositor interviewVideoCompositor;
     private final InterviewVideoRepository interviewVideoRepository;
+    private final InterviewSessionRepository interviewSessionRepository;
 
     @Override
     @Async("interviewCompositeTaskExecutor")
@@ -37,6 +42,7 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
         List<AudioTrack> tracks = new ArrayList<>();
         tracks.addAll(questionTracks(userId, sessionId, questions));
         tracks.addAll(answerTracks(userId, sessionId, questions));
+        tracks.addAll(wrapUpTrack(sessionId));
         tracks.sort(Comparator.comparing(AudioTrack::startSec));
 
         if (tracks.isEmpty()) {
@@ -68,6 +74,25 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
                         S3KeyGenerator.interviewVoiceKey(userId, sessionId, question.getTurnLevel()),
                         question.getQuestionStartSec()))
                 .toList();
+    }
+
+    // 면접관 마무리 멘트: 프론트가 보고한 재생 시각(wrapUpStartSec)이 있고 종료 유형에 마무리 문구가 있을 때만 얹는다.
+    // 음성 키는 종료 유형별 공용 키(system/interview/wrapup-messages/{endType}.mp3). 답변·질문 음성과 달리 세션 무관하게 공유된다.
+    // 객체가 없으면(EARLY_EXIT 등) 컴포지터가 NoSuchKeyException으로 해당 트랙만 건너뛴다.
+    private List<AudioTrack> wrapUpTrack(Long sessionId) {
+        Float startSec = interviewVideoRepository.findBySessionId(sessionId)
+                .map(InterviewVideo::getWrapUpStartSec)
+                .orElse(null);
+        if (startSec == null) {
+            return List.of();
+        }
+        InterviewEndType endType = interviewSessionRepository.findById(sessionId)
+                .map(session -> session.getEndType())
+                .orElse(null);
+        if (WrapUpMessage.textFor(endType) == null) {
+            return List.of();
+        }
+        return List.of(new AudioTrack(S3KeyGenerator.wrapUpMessageKey(endType.name()), startSec));
     }
 
     // 답변 음성: SKIP·시작 시각 없는 답변은 제외. 키는 제출 시 저장한 것과 동일하게 turnLevel로 재계산한다.

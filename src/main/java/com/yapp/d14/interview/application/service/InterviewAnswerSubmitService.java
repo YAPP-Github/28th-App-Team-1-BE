@@ -30,9 +30,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
     private static final int MAX_LLM_RETRIES = 1;
     private static final JdOpenerContext EMPTY_JD_OPENER_CONTEXT = new JdOpenerContext(List.of(), List.of());
-    private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
-    private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
-    private static final String NORMAL_END_MESSAGE = "수고하셨습니다. 오늘 면접은 여기까지입니다.";
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final QuestionRepository questionRepository;
@@ -371,13 +368,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     }
 
     private String wrapUpTextFor(InterviewEndType endType) {
-        return switch (endType) {
-            case EARLY_EXIT -> null;
-            case MANUAL_END -> MANUAL_END_MESSAGE;
-            case HARD_CAP -> HARD_CAP_MESSAGE;
-            case NORMAL_END -> NORMAL_END_MESSAGE;
-            default -> null;
-        };
+        return WrapUpMessage.textFor(endType);
     }
 
     private String resolveWrapUpAudioBase64(InterviewEndType endType, String text) {
