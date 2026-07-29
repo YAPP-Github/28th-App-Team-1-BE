@@ -206,4 +206,31 @@ public interface UserControllerDocs {
             @Parameter(hidden = true) UUID userId,
             @Valid UserProfileUpdateHttpRequest request
     );
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "계정을 즉시 삭제하고 Refresh Token을 무효화합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 계정(users row)만 삭제하며, 포트폴리오·면접 세션/레포트·이용권·지인 피드백 공유 등 연관 데이터는 삭제되지 않습니다.\n" +
+                    "- Access Token은 만료 시까지 유효하므로 클라이언트에서도 반드시 삭제해야 합니다.\n" +
+                    "- 같은 소셜 계정으로 재가입하면 신규 사용자로 처리됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "탈퇴 성공", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "USER_NOT_FOUND",
+                                      "message": "존재하지 않는 사용자입니다."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<Void> withdraw(@Parameter(hidden = true) UUID userId);
 }

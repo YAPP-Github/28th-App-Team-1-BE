@@ -41,4 +41,9 @@ class UserPersistenceAdapter implements UserRepository {
     public User save(User user) {
         return userJpaRepository.saveAndFlush(UserJpaEntity.from(user)).toDomain();
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        userJpaRepository.deleteById(id);
+    }
 }
