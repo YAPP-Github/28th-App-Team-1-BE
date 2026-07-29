@@ -52,10 +52,11 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                기준으로 각자 다시 씁니다.
 
             2. highlightSpans(대본 하이라이트) - 그 턴의 답변(answerText) 중 채점 근거가 된
-               구간마다 하나씩 만듭니다. startIndex/endIndex는 answerText 문자열의 0부터
-               시작하는 문자 인덱스입니다(startIndex 포함, endIndex 미포함). 반드시 그 턴의
-               answerText 길이 범위 안에서 고르고, 다른 하이라이트 구간과 겹치지 않게 합니다.
-               tone은 GOOD(잘함) 또는 IMPROVE(개선)입니다. analysis(답변 분석)는 그 구간이
+               구간마다 하나씩 만듭니다. quote는 그 구간을 answerText에서 한 글자도 틀리지
+               않게 그대로 옮겨 적은 원문입니다(요약·의역 금지, 공백·문장부호까지 answerText와
+               정확히 일치해야 서버가 위치를 찾을 수 있습니다). highlightSpans는 answerText에
+               등장하는 순서대로(앞에서 뒤로) 반환합니다. 다른 하이라이트 구간과 겹치지
+               않게 합니다. tone은 GOOD(잘함) 또는 IMPROVE(개선)입니다. analysis(답변 분석)는 그 구간이
                왜 GOOD인지 또는 왜 IMPROVE인지를 1~2문장으로 설명합니다 — 근거가 된 사실을
                짚고, IMPROVE라면 무엇이 부족한지를, GOOD이라면 무엇이 효과적인지를 씁니다.
                답변에 없는 것은 추측해서 쓰지 않습니다(자신감·긴장·표정·목소리 톤·성격·감정
@@ -98,7 +99,8 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
             questionId(입력에서 받은 값을 그대로 echo — 어느 턴의 카드인지 식별하는 데만 쓰이니
             입력에 없던 값을 지어내지 마세요),
             questionIntentTranslation(문자열),
-            highlightSpans(startIndex/endIndex/tone(GOOD 또는 IMPROVE)/
+            highlightSpans(quote(answerText 원문 그대로, answerText에 등장하는 순서대로)/
+            tone(GOOD 또는 IMPROVE)/
             reason(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)/title(문자열)/analysis(문자열)/
             followUpQuestions(문자열 배열, PROBE_WORTHY일 때만 1~3개, 그 외엔 빈 배열)의 배열,
             비어 있을 수 있음).
@@ -134,12 +136,13 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         }
     }
 
-    // questionId → 그 턴의 서버 확정값(testType·depthLevel). LLM echo가 아니라 이 값을 카드에 쓴다.
+    // questionId → 그 턴의 서버 확정값(testType·depthLevel·answerText). LLM echo가 아니라 이 값을 카드에 쓰고,
+    // answerText는 highlightSpans의 quote를 찾을 원문으로 쓴다.
     private Map<Long, TurnRef> indexTurnsByQuestionId(ReportCardContentContext context) {
         Map<Long, TurnRef> turnRefsById = new HashMap<>();
         for (AxisCardInput card : context.axisCards()) {
             for (Turn turn : card.turns()) {
-                turnRefsById.put(turn.questionId(), new TurnRef(card.testType(), turn.depthLevel()));
+                turnRefsById.put(turn.questionId(), new TurnRef(card.testType(), turn.depthLevel(), turn.answerText()));
             }
         }
         return turnRefsById;
@@ -169,7 +172,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         return drafts;
     }
 
-    private record TurnRef(TestType testType, int depthLevel) {
+    private record TurnRef(TestType testType, int depthLevel, String answerText) {
     }
 
     private String buildUserMessage(ReportCardContentContext context) {
@@ -193,11 +196,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     }
 
     private ReportCardDraft toDraft(ReportCardContentLlmEntry entry, TurnRef turnRef) {
-        List<HighlightSpan> highlightSpans = entry.highlightSpans() == null
-                ? List.of()
-                : entry.highlightSpans().stream()
-                        .map(AnthropicReportCardContentGeneratorAdapter::toHighlightSpan)
-                        .toList();
+        List<HighlightSpan> highlightSpans = toHighlightSpans(entry.highlightSpans(), turnRef.answerText());
 
         return new ReportCardDraft(
                 entry.questionId(),
@@ -208,8 +207,43 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         );
     }
 
-    // package-private static: LLM 호출 없이 reason 폴백·꼬리질문 게이팅 규칙을 단위 테스트로 고정하기 위함.
-    static HighlightSpan toHighlightSpan(ReportCardContentLlmEntry.HighlightSpanLlmEntry entry) {
+    // package-private static: LLM 호출 없이 quote 탐색(순서 기반 커서)·reason 폴백·꼬리질문 게이팅 규칙을
+    // 단위 테스트로 고정하기 위함. LLM이 startIndex/endIndex를 직접 세지 않고 quote(원문 그대로)만 반환하므로,
+    // answerText에서 quote를 찾아 실제 위치를 되찾는다. 커서 이후로 먼저 찾아 반복되는 문구를 등장 순서대로
+    // 소비하고, 못 찾으면 전체에서 재검색(순서 지시 위반 대비)하며, 그래도 못 찾으면(할루시네이션) 그 하이라이트를 버린다.
+    static List<HighlightSpan> toHighlightSpans(
+            List<ReportCardContentLlmEntry.HighlightSpanLlmEntry> entries, String answerText
+    ) {
+        if (entries == null || entries.isEmpty() || answerText == null || answerText.isEmpty()) {
+            return List.of();
+        }
+        List<HighlightSpan> spans = new ArrayList<>();
+        int cursor = 0;
+        for (ReportCardContentLlmEntry.HighlightSpanLlmEntry entry : entries) {
+            HighlightSpan span = toHighlightSpan(entry, answerText, cursor);
+            if (span == null) {
+                log.warn("[REPORT CARD HIGHLIGHT] quote를 answerText에서 찾지 못해 하이라이트 제외: quote={}", entry.quote());
+                continue;
+            }
+            spans.add(span);
+            cursor = span.range().endIndex();
+        }
+        return spans;
+    }
+
+    private static HighlightSpan toHighlightSpan(
+            ReportCardContentLlmEntry.HighlightSpanLlmEntry entry, String answerText, int cursor
+    ) {
+        String piece = entry.quote() == null ? "" : entry.quote().strip();
+        if (piece.isEmpty()) {
+            return null;
+        }
+        int start = locate(answerText, piece, cursor);
+        if (start < 0) {
+            return null;
+        }
+        int end = start + piece.length();
+
         HighlightTone tone = HighlightTone.valueOf(entry.tone().toUpperCase());
         List<String> followUpQuestions = entry.followUpQuestions() == null
                 ? List.of()
@@ -218,13 +252,19 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         // A/B/C를 reason 단일 소스로 결정론적으로 만든다: PROBE_WORTHY가 아니면 꼬리질문은 무조건 비운다(LLM 누출 방지).
         List<String> gatedFollowUps = reason == HighlightReason.PROBE_WORTHY ? followUpQuestions : List.of();
         return new HighlightSpan(
-                new TextRange(entry.startIndex(), entry.endIndex()),
+                new TextRange(start, end),
                 tone,
                 reason,
                 entry.title(),
                 entry.analysis(),
                 gatedFollowUps
         );
+    }
+
+    // 커서 이후로 우선 검색해 반복되는 문구를 답변에 등장하는 순서대로 소비한다(ScriptSegmentMapper와 동일 전략).
+    private static int locate(String answerText, String piece, int cursor) {
+        int found = answerText.indexOf(piece, cursor);
+        return found >= 0 ? found : answerText.indexOf(piece);
     }
 
     // LLM이 reason을 누락·오타 냈을 때의 방어적 폴백. 톤과 꼬리질문 유무로 가장 그럴듯한 값을 고른다.
