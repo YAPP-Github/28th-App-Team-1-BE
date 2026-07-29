@@ -27,11 +27,12 @@ public interface InterviewReportControllerDocs {
                     "각 하이라이트에는 한 줄 제목(`title`)과 개선유형(`reason`)이 함께 내려오며, `reason`으로 카드 하단 안내를 결정합니다 — " +
                     "`PROBE_WORTHY`(꼬리질문 `followUpQuestions` 노출) / `OFF_INTENT`(질문 의도 리마인드) / `SHALLOW`·`SUFFICIENT`(코칭 한 줄만). " +
                     "`followUpQuestions`는 `reason=PROBE_WORTHY`일 때만 채워집니다.\n" +
-                    "- 카드마다 질문/답변 대본을 문장 단위로 쪼갠 발화 구간(`questionSegments`/`answerSegments`)이 내려옵니다. 각 문장의 `startSec`/`endSec`는 합성 영상(=녹화) 타임라인 기준이라, 영상 재생 위치와 맞춰 현재 발화 중인 문장을 강조할 수 있습니다.\n" +
+                    "- 카드마다 질문/답변 대본을 문장 단위로 쪼갠 발화 구간(`scriptSegments`, 한 배열에 면접관·면접자 문장이 `role`로 구분되어 섞여 들어옵니다)이 내려옵니다. 각 문장의 `startSec`/`endSec`는 합성 영상(=녹화) 타임라인 기준이라, 영상 재생 위치와 맞춰 현재 발화 중인 문장을 강조할 수 있습니다.\n" +
+                    "- 응답 최상위에는 카드와 별개로 `script` 배열(면접 전체 대본 타임라인)이 있습니다. 카드의 `scriptSegments`가 채점 대상 턴 안에서만의 문장이라면, `script`는 첫 면접관 멘트 → 프로젝트 설명 답변 → … → 마지막 마무리 멘트까지 세션의 모든 발화를 `startSec` 오름차순으로 담은 **한 배열**입니다. 영상 플레이어의 현재 발화 강조는 이 `script` 하나만 훑으면 됩니다.\n" +
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
                     "(화면 표시는 \"질문 {axisOrder}-{depthLevel}\", 예: 1-1, 1-2, 2-1 ...).\n" +
                     "- `status`는 채점 파이프라인의 진행 상태만 나타냅니다 — `GENERATING`(채점 중) / `READY`(생성 완료) / `INSUFFICIENT_ANALYSIS`(분석 부족) / `FAILED`(생성 실패).\n" +
-                    "- `status=GENERATING`이면 `headline`/`cards`/`video`/`guestFeedback`이 모두 `null`입니다.\n" +
+                    "- `status=GENERATING`이면 `headline`/`redFlagNotices`/`video`/`cards`/`script`/`guestFeedback`이 모두 `null`입니다.\n" +
                     "- `status=INSUFFICIENT_ANALYSIS`이면 채점된 범위의 카드만 내려옵니다.\n" +
                     "- 심각한 레드플래그가 있는지는 `status`가 아니라 `redFlagNotices`가 비어 있는지로 판단합니다. `status=READY`이면서 `redFlagNotices`가 있으면 헤드라인이 중립 사실 요약으로 대체됩니다.\n" +
                     "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `highlightSpans`는 빈 배열입니다.\n" +
@@ -55,6 +56,7 @@ public interface InterviewReportControllerDocs {
                                                 "redFlagNotices": null,
                                                 "video": null,
                                                 "cards": null,
+                                                "script": null,
                                                 "guestFeedback": null
                                               }
                                             }
@@ -114,6 +116,12 @@ public interface InterviewReportControllerDocs {
                                                     "questionIntentTitle": "트래픽 확장 대응 전략",
                                                     "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
                                                   }
+                                                ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "안녕하세요, 오늘 면접을 진행하겠습니다.", "startSec": 0.0, "endSec": 3.2 },
+                                                  { "role": "INTERVIEWER", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startSec": 12.0, "endSec": 15.4 },
+                                                  { "role": "INTERVIEWEE", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startSec": 18.2, "endSec": 22.6 },
+                                                  { "role": "INTERVIEWER", "text": "수고하셨습니다. 면접을 마치겠습니다.", "startSec": 70.5, "endSec": 73.9 }
                                                 ],
                                                 "guestFeedback": null
                                               }

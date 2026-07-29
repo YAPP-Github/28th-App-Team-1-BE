@@ -138,16 +138,25 @@ public interface InterviewVideoControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "세션/영상이 존재하지 않거나 본인 소유가 아님",
+                    description = "세션이 없거나 본인 소유가 아니면 `INTERVIEW_SESSION_NOT_FOUND`, 세션은 있으나 아직 영상 레코드가 없으면(업로드 완료 전) `INTERVIEW_VIDEO_NOT_FOUND`.",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "INTERVIEW_VIDEO_NOT_FOUND",
-                                      "message": "면접 영상 정보를 찾을 수 없어요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "세션 없음/미소유", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INTERVIEW_SESSION_NOT_FOUND",
+                                              "message": "면접 세션을 찾을 수 없어요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "영상 레코드 없음", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INTERVIEW_VIDEO_NOT_FOUND",
+                                              "message": "면접 영상 정보를 찾을 수 없어요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })
