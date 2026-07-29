@@ -156,6 +156,18 @@ class ReportCardHighlightMappingTest {
     }
 
     @Test
+    void reason이_없어도_answerTopicTitle이_있으면_SHALLOW_대신_OFF_INTENT로_폴백한다() {
+        String answerText = "저는 팀 내 신뢰와 성향에 대해 이야기했습니다.";
+
+        List<HighlightSpan> spans = AnthropicReportCardContentGeneratorAdapter.toHighlightSpans(
+                List.of(entry("팀 내 신뢰와 성향에 대해 이야기했습니다", "IMPROVE", null, List.of(), "팀 내 신뢰와 성향")),
+                answerText);
+
+        assertThat(spans.get(0).reason()).isEqualTo(HighlightReason.OFF_INTENT);
+        assertThat(spans.get(0).answerTopicTitle()).isEqualTo("팀 내 신뢰와 성향");
+    }
+
+    @Test
     void OFF_INTENT면_answerTopicTitle를_유지한다() {
         String answerText = "저는 팀 내 신뢰와 성향에 대해 이야기했습니다.";
 

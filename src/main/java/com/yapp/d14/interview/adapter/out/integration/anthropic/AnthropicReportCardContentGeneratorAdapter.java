@@ -262,7 +262,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         List<String> followUpQuestions = entry.followUpQuestions() == null
                 ? List.of()
                 : entry.followUpQuestions();
-        HighlightReason reason = resolveReason(entry.reason(), tone, followUpQuestions);
+        HighlightReason reason = resolveReason(entry.reason(), tone, followUpQuestions, entry.answerTopicTitle());
         // A/B/C를 reason 단일 소스로 결정론적으로 만든다: PROBE_WORTHY가 아니면 꼬리질문은 무조건 비운다(LLM 누출 방지).
         List<String> gatedFollowUps = reason == HighlightReason.PROBE_WORTHY ? followUpQuestions : List.of();
         // answerTopic(내 답변 요지)는 OFF_INTENT 대비 UI 전용이므로 그 외 reason에서는 LLM이 넣었어도 버린다.
@@ -292,8 +292,10 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         return found >= 0 ? found : answerText.indexOf(piece);
     }
 
-    // LLM이 reason을 누락·오타 냈을 때의 방어적 폴백. 톤과 꼬리질문 유무로 가장 그럴듯한 값을 고른다.
-    private static HighlightReason resolveReason(String rawReason, HighlightTone tone, List<String> followUpQuestions) {
+    // LLM이 reason을 누락·오타 냈을 때의 방어적 폴백. 꼬리질문·answerTopicTitle 유무로 톤과 함께 가장 그럴듯한 값을 고른다.
+    private static HighlightReason resolveReason(
+            String rawReason, HighlightTone tone, List<String> followUpQuestions, String rawAnswerTopicTitle
+    ) {
         if (rawReason != null) {
             try {
                 return HighlightReason.valueOf(rawReason.trim().toUpperCase());
@@ -303,6 +305,11 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         }
         if (!followUpQuestions.isEmpty()) {
             return HighlightReason.PROBE_WORTHY;
+        }
+        // answerTopicTitle은 프롬프트상 OFF_INTENT일 때만 LLM이 채우므로, reason이 없어도 이 값이 있으면
+        // SHALLOW보다 OFF_INTENT일 가능성이 훨씬 높다(SHALLOW·SUFFICIENT는 이 값을 채울 근거가 없음).
+        if (tone == HighlightTone.IMPROVE && trimToNull(rawAnswerTopicTitle) != null) {
+            return HighlightReason.OFF_INTENT;
         }
         return tone == HighlightTone.GOOD ? HighlightReason.SUFFICIENT : HighlightReason.SHALLOW;
     }
