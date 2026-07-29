@@ -215,6 +215,67 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void 하이라이트_시작지점의_영상_재생시각을_답변세그먼트에서_floor매칭으로_찾는다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of(
+                        // startIndex=5 → 답변 세그먼트 [0,8) 안에 포함
+                        new HighlightSpan(new TextRange(5, 8), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목1", "분석1", List.of()),
+                        // startIndex=12 → 답변 세그먼트 [8,20) 안에 포함
+                        new HighlightSpan(new TextRange(12, 15), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목2", "분석2", List.of())
+                ))
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변 전체 문자열입니다")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
+                10L, List.of(
+                        new UtteranceSegment(ScriptRole.INTERVIEWER, "질문", 0, 2, 1.0f, 2.0f),
+                        new UtteranceSegment(ScriptRole.INTERVIEWEE, "0~8구간", 0, 8, 20.0f, 25.0f),
+                        new UtteranceSegment(ScriptRole.INTERVIEWEE, "8~20구간", 8, 20, 26.0f, 33.0f)
+                )
+        ));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        List<InterviewReportQueryResult.HighlightSpan> highlights = result.cards().get(0).highlightSpans();
+        assertThat(highlights.get(0).startSec()).isEqualTo(20.0f);
+        assertThat(highlights.get(1).startSec()).isEqualTo(26.0f);
+    }
+
+    @Test
+    void 답변_세그먼트가_없으면_하이라이트_startSec은_null이다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of(
+                        new HighlightSpan(new TextRange(0, 3), HighlightTone.GOOD, HighlightReason.SUFFICIENT, "제목", "분석", List.of())
+                ))
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of());
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.cards().get(0).highlightSpans().get(0).startSec()).isNull();
+    }
+
+    @Test
     void 전체_대본_script는_카드없는_질문의_발화까지_startSec순으로_모두_담는다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));

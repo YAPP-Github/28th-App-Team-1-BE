@@ -192,14 +192,18 @@ public record InterviewReportHttpResponse(
             String analysis,
 
             @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(1~3개). reason=PROBE_WORTHY가 아니면 빈 배열")
-            List<String> followUpQuestions
+            List<String> followUpQuestions,
+
+            @Schema(description = "이 하이라이트가 시작하는 지점의 합성 영상 재생 시각(초) — \"영상 보러가기\" 버튼에서 이 시각으로 seek. " +
+                    "문장 발화 시각을 못 만들었으면 null")
+            Float startSec
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
             return new HighlightSpan(
                     span.startIndex(), span.endIndex(), span.tone().name(),
                     span.reason() == null ? null : span.reason().name(),
-                    span.title(), span.analysis(), span.followUpQuestions());
+                    span.title(), span.analysis(), span.followUpQuestions(), span.startSec());
         }
     }
 

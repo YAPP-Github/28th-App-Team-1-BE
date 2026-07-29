@@ -236,18 +236,26 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         ResolutionLowReason lowReason = lowReasonByAxis.get(card.getTestType());
         String resolutionNotice = lowReason == null ? null : RESOLUTION_NOTICE.get(lowReason);
 
+        List<UtteranceSegment> cardSegments = segmentsByQuestionId.getOrDefault(card.getQuestionId(), List.of());
+        // 하이라이트 startIndex는 answer 대본(transcript) 기준이므로, 같은 좌표계인 INTERVIEWEE 세그먼트만으로
+        // "영상 보러가기" 시각을 찾는다. startIndex 오름차순으로 정렬해 floor 매칭(findHighlightStartSec)에 쓴다.
+        List<UtteranceSegment> answerSegments = cardSegments.stream()
+                .filter(segment -> segment.role() == ScriptRole.INTERVIEWEE)
+                .sorted(Comparator.comparingInt(UtteranceSegment::startIndex))
+                .toList();
+
         List<InterviewReportQueryResult.HighlightSpan> highlightSpans = card.getHighlightSpans().stream()
                 .map(span -> new InterviewReportQueryResult.HighlightSpan(
                         span.range().startIndex(), span.range().endIndex(), span.tone(), span.reason(),
-                        span.title(), span.analysis(), span.followUpQuestions()))
+                        span.title(), span.analysis(), span.followUpQuestions(),
+                        findHighlightStartSec(span.range().startIndex(), answerSegments)))
                 .toList();
 
-        List<InterviewReportQueryResult.ScriptSegment> scriptSegments =
-                segmentsByQuestionId.getOrDefault(card.getQuestionId(), List.of()).stream()
-                        .map(segment -> new InterviewReportQueryResult.ScriptSegment(
-                                segment.role(), segment.text(), segment.startIndex(), segment.endIndex(),
-                                segment.startSec(), segment.endSec()))
-                        .toList();
+        List<InterviewReportQueryResult.ScriptSegment> scriptSegments = cardSegments.stream()
+                .map(segment -> new InterviewReportQueryResult.ScriptSegment(
+                        segment.role(), segment.text(), segment.startIndex(), segment.endIndex(),
+                        segment.startSec(), segment.endSec()))
+                .toList();
 
         return new InterviewReportQueryResult.Card(
                 axisOrderByType.getOrDefault(card.getTestType(), 0),
@@ -262,6 +270,20 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 card.getQuestionIntentTranslation(),
                 scriptSegments
         );
+    }
+
+    // 하이라이트 시작 인덱스 이하로 시작하는 세그먼트 중 가장 뒤(가장 큰 startIndex)의 startSec을 쓴다(floor 매칭).
+    // 세그먼트 경계에 정확히 포함되지 않아도(근사 배치 등으로 생기는 작은 틈) 항상 가장 가까운 답을 찾는다.
+    // answerSegmentsAscending은 startIndex 오름차순이어야 한다. 세그먼트가 하나도 없으면 null.
+    private Float findHighlightStartSec(int highlightStartIndex, List<UtteranceSegment> answerSegmentsAscending) {
+        Float startSec = null;
+        for (UtteranceSegment segment : answerSegmentsAscending) {
+            if (segment.startIndex() > highlightStartIndex) {
+                break;
+            }
+            startSec = segment.startSec();
+        }
+        return startSec;
     }
 
     private InterviewReportQueryResult.GuestFeedbackSection toGuestSection(GuestFeedbackReportView view) {

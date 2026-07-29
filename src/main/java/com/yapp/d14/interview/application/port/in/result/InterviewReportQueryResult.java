@@ -80,7 +80,10 @@ public record InterviewReportQueryResult(
             HighlightReason reason,
             String title,
             String analysis,
-            List<String> followUpQuestions
+            List<String> followUpQuestions,
+            // 이 하이라이트가 시작하는 지점의 합성 영상(=녹화) 타임라인 시각(초). "영상 보러가기" 버튼의 이동 지점.
+            // 문장 발화 시각을 못 만들었으면(세그먼트 없음) null.
+            Float startSec
     ) {
     }
 
