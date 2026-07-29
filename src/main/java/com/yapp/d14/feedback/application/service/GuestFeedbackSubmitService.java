@@ -73,7 +73,7 @@ class GuestFeedbackSubmitService implements GuestFeedbackSubmitUseCase {
         if (!share.isActive()) {
             throw new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_CLOSED);
         }
-        InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getStatus(sessionId);
+        InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getGuestStatus(sessionId);
         if (videoStatus.expired()) {
             throw new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_CLOSED);
         }

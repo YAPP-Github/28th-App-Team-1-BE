@@ -23,10 +23,17 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
     private final InterviewSessionOwnerQueryUseCase interviewSessionOwnerQueryUseCase;
 
     @Override
-    public InterviewVideoStatusResult getStatus(Long sessionId) {
+    public InterviewVideoStatusResult getOwnerStatus(Long sessionId) {
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
         return new InterviewVideoStatusResult(video.getExpiresAt(), video.isExpired());
+    }
+
+    @Override
+    public InterviewVideoStatusResult getGuestStatus(Long sessionId) {
+        InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
+        return new InterviewVideoStatusResult(video.getExpiresAt(), video.isExpiredForGuest());
     }
 
     @Override
@@ -35,10 +42,10 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
         // URL이 필요할 때만(합성 완료+만료 전) 소유자 조회·presign을 수행한다 — 그 외엔 헛작업을 하지 않는다.
         String playbackUrl = null;
-        if (video.isComposited() && !video.isExpired()) {
+        if (video.isComposited() && !video.isExpiredForGuest()) {
             UUID ownerUserId = interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId);
             playbackUrl = interviewVideoStorage.presignComposite(ownerUserId, sessionId);
         }
-        return new InterviewVideoPlaybackResult(video.getExpiresAt(), video.isExpired(), playbackUrl);
+        return new InterviewVideoPlaybackResult(video.getExpiresAt(), video.isExpiredForGuest(), playbackUrl);
     }
 }

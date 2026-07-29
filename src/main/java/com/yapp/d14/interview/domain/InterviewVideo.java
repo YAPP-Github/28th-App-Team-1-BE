@@ -83,4 +83,9 @@ public class InterviewVideo {
     public boolean isExpired() {
         return deleted || LocalDateTime.now().isAfter(expiresAt);
     }
+
+    /** 지인(공유 링크) 접근 전용 판정. 소유자 쪽 단계형 expiresAt과 무관하게 baseAt+30일(영상 최대보유기간) 하드캡으로만 판정한다. */
+    public boolean isExpiredForGuest() {
+        return deleted || LocalDateTime.now().isAfter(baseAt.plus(VideoRetentionTrigger.GUEST_FIRST_SUBMITTED.getExtension()));
+    }
 }

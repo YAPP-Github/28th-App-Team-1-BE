@@ -65,7 +65,7 @@ class GuestFeedbackSubmitServiceTest {
     }
 
     private void stubOpenVideo() {
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
+        given(interviewVideoQueryUseCase.getGuestStatus(sessionId))
                 .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), false));
     }
 
@@ -93,15 +93,34 @@ class GuestFeedbackSubmitServiceTest {
     }
 
     @Test
-    void 영상이_만료됐으면_예외를_던진다() {
+    void 영상이_30일_하드캡을_넘겨_만료됐으면_예외를_던진다() {
         given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
+        given(interviewVideoQueryUseCase.getGuestStatus(sessionId))
                 .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), true));
 
         assertThatThrownBy(() -> service.submit(commandWith("지인1", List.of(AttitudeAxis.GAZE))))
                 .isInstanceOf(FeedbackException.class)
                 .extracting(e -> ((FeedbackException) e).getErrorCode())
                 .isEqualTo(FeedbackErrorCode.FEEDBACK_SHARE_CLOSED);
+    }
+
+    @Test
+    void 소유자_단계형_만료_시각은_지났어도_30일_이내면_제출_가능하다() {
+        given(feedbackShareRepository.findByTokenForUpdate(TOKEN)).willReturn(Optional.of(activeShare(List.of(AttitudeAxis.GAZE))));
+        // 소유자 화면 기준(getOwnerStatus)으로는 이미 만료됐을 시각이지만, 지인 판정(getGuestStatus)은 30일 하드캡 이내라 열려 있다.
+        given(interviewVideoQueryUseCase.getGuestStatus(sessionId))
+                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusHours(1), false));
+        given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
+        given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(0L);
+        given(guestFeedbackRepository.save(any())).willAnswer(invocation -> {
+            GuestFeedback fb = invocation.getArgument(0);
+            return GuestFeedback.of(1L, fb.getSessionId(), fb.getNickname(), fb.getDeviceId(), fb.getRatings(), fb.getSubmittedAt());
+        });
+
+        GuestFeedbackSubmitResult result = service.submit(commandWith("지인1", List.of(AttitudeAxis.GAZE)));
+
+        assertThat(result.submissionId()).isEqualTo(1L);
+        verify(interviewVideoQueryUseCase, never()).getOwnerStatus(any());
     }
 
     @Test
