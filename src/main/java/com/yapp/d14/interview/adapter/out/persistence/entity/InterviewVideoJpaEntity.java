@@ -39,6 +39,13 @@ public class InterviewVideoJpaEntity {
     @Column(name = "composited", nullable = false, columnDefinition = "boolean default false")
     private boolean composited;
 
+    // 면접관 마무리 멘트 재생 구간(녹화 타임라인 기준 초). 마무리 멘트가 없으면 null.
+    @Column(name = "wrap_up_start_sec")
+    private Float wrapUpStartSec;
+
+    @Column(name = "wrap_up_end_sec")
+    private Float wrapUpEndSec;
+
     public static InterviewVideoJpaEntity from(InterviewVideo interviewVideo) {
         InterviewVideoJpaEntity entity = new InterviewVideoJpaEntity();
         entity.id = interviewVideo.getId();
@@ -48,10 +55,12 @@ public class InterviewVideoJpaEntity {
         entity.deleted = interviewVideo.isDeleted();
         entity.uploaded = interviewVideo.isUploaded();
         entity.composited = interviewVideo.isComposited();
+        entity.wrapUpStartSec = interviewVideo.getWrapUpStartSec();
+        entity.wrapUpEndSec = interviewVideo.getWrapUpEndSec();
         return entity;
     }
 
     public InterviewVideo toDomain() {
-        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted, uploaded, composited);
+        return InterviewVideo.of(id, sessionId, baseAt, expiresAt, deleted, uploaded, composited, wrapUpStartSec, wrapUpEndSec);
     }
 }

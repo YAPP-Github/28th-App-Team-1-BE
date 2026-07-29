@@ -41,7 +41,7 @@ class InterviewVideoQueryServiceTest {
 
     private InterviewVideo video(boolean composited, boolean expiredInFuture) {
         LocalDateTime expiresAt = expiredInFuture ? NOW.plusDays(1) : NOW.minusDays(1);
-        return InterviewVideo.of(1L, SESSION_ID, NOW, expiresAt, false, true, composited);
+        return InterviewVideo.of(1L, SESSION_ID, NOW, expiresAt, false, true, composited, null, null);
     }
 
     @Test
