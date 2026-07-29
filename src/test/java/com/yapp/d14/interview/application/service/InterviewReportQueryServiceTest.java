@@ -6,6 +6,7 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnershipCheck
 import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryResult;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
@@ -19,6 +20,8 @@ import com.yapp.d14.interview.domain.HeadlineBranch;
 import com.yapp.d14.interview.domain.HighlightReason;
 import com.yapp.d14.interview.domain.HighlightSpan;
 import com.yapp.d14.interview.domain.HighlightTone;
+import com.yapp.d14.interview.domain.InterviewEndType;
+import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.RedFlag;
@@ -46,6 +49,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -58,6 +62,8 @@ class InterviewReportQueryServiceTest {
 
     @Mock
     private InterviewSessionOwnershipCheckUseCase interviewSessionOwnershipCheckUseCase;
+    @Mock
+    private InterviewSessionRepository interviewSessionRepository;
     @Mock
     private ReportRepository reportRepository;
     @Mock
@@ -242,6 +248,43 @@ class InterviewReportQueryServiceTest {
         assertThat(result.script())
                 .extracting(InterviewReportQueryResult.ScriptLine::startSec)
                 .containsExactly(5.0f, 30.0f, 33.0f, 60.0f);
+    }
+
+    @Test
+    void 마무리_멘트_재생구간이_있으면_종료문구를_대본_끝에_INTERVIEWER로_이어붙인다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 20L, 1, TestType.DEPTH, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(20L, "중간 질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(20L, "중간 답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                axisEval(TestType.DEPTH, ResolutionLevel.NORMAL, null)
+        ));
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // 마무리 멘트 재생 구간(70~73초)이 저장돼 있고 종료 유형이 NORMAL_END면 해당 문구가 대본 끝에 붙는다.
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(
+                InterviewVideo.of(1L, SESSION_ID, NOW, LocalDateTime.now().plusDays(3), false, true, false, 70.0f, 73.0f)));
+        InterviewSession session = mock(InterviewSession.class);
+        given(session.getEndType()).willReturn(InterviewEndType.NORMAL_END);
+        given(interviewSessionRepository.findById(SESSION_ID)).willReturn(Optional.of(session));
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+        given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
+                20L, List.of(
+                        new UtteranceSegment(ScriptRole.INTERVIEWER, "중간 질문", 0, 5, 30.0f, 32.0f),
+                        new UtteranceSegment(ScriptRole.INTERVIEWEE, "중간 답변", 0, 5, 33.0f, 36.0f))
+        ));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        List<InterviewReportQueryResult.ScriptLine> script = result.script();
+        InterviewReportQueryResult.ScriptLine last = script.get(script.size() - 1);
+        assertThat(last.role()).isEqualTo(ScriptRole.INTERVIEWER);
+        assertThat(last.text()).isEqualTo("수고하셨습니다. 오늘 면접은 여기까지입니다.");
+        assertThat(last.startSec()).isEqualTo(70.0f);
+        assertThat(last.endSec()).isEqualTo(73.0f);
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnershipCheck
 import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryResult;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
@@ -16,6 +17,8 @@ import com.yapp.d14.interview.application.port.out.ReportRepository;
 import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
+import com.yapp.d14.interview.domain.InterviewEndType;
+import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.RedFlag;
 import com.yapp.d14.interview.domain.RedFlagType;
@@ -24,8 +27,10 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.ResolutionLowReason;
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.interview.domain.UtteranceSegment;
+import com.yapp.d14.interview.domain.WrapUpMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +68,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     private static final int MAX_TOP_LEVEL_NOTICES = 2;
 
     private final InterviewSessionOwnershipCheckUseCase interviewSessionOwnershipCheckUseCase;
+    private final InterviewSessionRepository interviewSessionRepository;
     private final ReportRepository reportRepository;
     private final ReportCardRepository reportCardRepository;
     private final RedFlagRepository redFlagRepository;
@@ -102,15 +108,19 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<TestType, Integer> axisOrderByType = computeAxisOrder(cards);
         Map<TestType, ResolutionLowReason> lowReasonByAxis = lowResolutionByAxis(sessionId);
         Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis = cardNoticesByAxis(redFlags);
-        // 문장 단위 발화 시각(질문/답변)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(질문 → 답변).
+        // 문장 단위 발화 시각(면접관/면접자)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(면접관 → 면접자).
         Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
+        InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
         // 카드(채점 대상 턴) 유무와 무관하게, 세션의 모든 발화를 startSec 순으로 이어붙인 전체 대본 타임라인(영상 싱크용).
-        List<InterviewReportQueryResult.ScriptLine> script = segmentsByQuestionId.values().stream()
+        List<InterviewReportQueryResult.ScriptLine> script = new ArrayList<>(segmentsByQuestionId.values().stream()
                 .flatMap(List::stream)
                 .sorted(Comparator.comparing(UtteranceSegment::startSec))
                 .map(segment -> new InterviewReportQueryResult.ScriptLine(
                         segment.role(), segment.text(), segment.startSec(), segment.endSec()))
-                .toList();
+                .toList());
+        // 면접관 마무리 멘트는 질문(Question)이 아니라 세그먼트로 저장되지 않으므로, 종료 유형별 고정 문구를
+        // 프론트가 보고한 재생 구간(video.wrapUp*)에 얹어 대본 맨 끝에 이어붙인다. 마무리 멘트가 없으면 생략.
+        appendWrapUpLine(script, video, sessionId);
 
         List<InterviewReportQueryResult.Card> cardResults = cards.stream()
                 .sorted(Comparator
@@ -120,26 +130,40 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId, segmentsByQuestionId))
                 .toList();
 
-        InterviewReportQueryResult.Video video = interviewVideoRepository.findBySessionId(sessionId)
-                .map(v -> {
-                    // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
-                    // 합성 전/실패 시에는 null (원본 raw.mp4 폴백은 하지 않는다).
-                    String url = v.isComposited() && !v.isExpired()
-                            ? interviewVideoStorage.presignComposite(userId, sessionId)
-                            : null;
-                    return new InterviewReportQueryResult.Video(url, v.isExpired(), v.getExpiresAt());
-                })
-                .orElse(null);
+        // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
+        // 합성 전/실패 시에는 null (원본 raw.mp4 폴백은 하지 않는다).
+        InterviewReportQueryResult.Video videoResult = video == null ? null : new InterviewReportQueryResult.Video(
+                video.isComposited() && !video.isExpired() ? interviewVideoStorage.presignComposite(userId, sessionId) : null,
+                video.isExpired(),
+                video.getExpiresAt());
 
         return new InterviewReportQueryResult(
                 report.getStatus(),
                 report.getHeadline(),
                 topLevelNotices(redFlags),
-                video,
+                videoResult,
                 cardResults,
                 script,
                 toGuestSection(guestFeedbackReportQueryUseCase.getForReport(sessionId))
         );
+    }
+
+    // 마무리 멘트를 전체 대본 끝에 이어붙인다. 프론트가 재생 구간(wrapUpStartSec)을 보고했고 종료 유형에 마무리 문구가 있을 때만.
+    // endSec은 보고값이 없으면 startSec으로 대체(재생 위치 강조가 순간으로만 잡힐 뿐 대본 노출엔 영향 없음).
+    private void appendWrapUpLine(List<InterviewReportQueryResult.ScriptLine> script, InterviewVideo video, Long sessionId) {
+        if (video == null || video.getWrapUpStartSec() == null) {
+            return;
+        }
+        InterviewEndType endType = interviewSessionRepository.findById(sessionId)
+                .map(session -> session.getEndType())
+                .orElse(null);
+        String text = WrapUpMessage.textFor(endType);
+        if (text == null) {
+            return;
+        }
+        float startSec = video.getWrapUpStartSec();
+        float endSec = video.getWrapUpEndSec() != null ? video.getWrapUpEndSec() : startSec;
+        script.add(new InterviewReportQueryResult.ScriptLine(ScriptRole.INTERVIEWER, text, startSec, endSec));
     }
 
     private InterviewReportQueryResult statusOnly(ReportStatus status) {
