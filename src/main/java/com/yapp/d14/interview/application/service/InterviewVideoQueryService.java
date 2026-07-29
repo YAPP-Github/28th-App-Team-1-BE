@@ -33,7 +33,7 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
     public InterviewVideoStatusResult getGuestStatus(Long sessionId) {
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.INTERVIEW_VIDEO_NOT_FOUND));
-        return new InterviewVideoStatusResult(video.getExpiresAt(), video.isExpiredForGuest());
+        return new InterviewVideoStatusResult(video.getGuestExpiresAt(), video.isExpiredForGuest());
     }
 
     @Override
@@ -46,6 +46,6 @@ class InterviewVideoQueryService implements InterviewVideoQueryUseCase {
             UUID ownerUserId = interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId);
             playbackUrl = interviewVideoStorage.presignComposite(ownerUserId, sessionId);
         }
-        return new InterviewVideoPlaybackResult(video.getExpiresAt(), video.isExpiredForGuest(), playbackUrl);
+        return new InterviewVideoPlaybackResult(video.getGuestExpiresAt(), video.isExpiredForGuest(), playbackUrl);
     }
 }

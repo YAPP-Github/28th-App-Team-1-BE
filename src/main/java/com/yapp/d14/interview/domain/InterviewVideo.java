@@ -86,6 +86,11 @@ public class InterviewVideo {
 
     /** 지인(공유 링크) 접근 전용 판정. 소유자 쪽 단계형 expiresAt과 무관하게 baseAt+30일(영상 최대보유기간) 하드캡으로만 판정한다. */
     public boolean isExpiredForGuest() {
-        return deleted || LocalDateTime.now().isAfter(baseAt.plus(VideoRetentionTrigger.GUEST_FIRST_SUBMITTED.getExtension()));
+        return deleted || LocalDateTime.now().isAfter(getGuestExpiresAt());
+    }
+
+    /** 지인 접근 하드캡 시각(baseAt+30일, 영상 최대보유기간). 소유자 쪽 단계형 expiresAt과는 다른 값이다. */
+    public LocalDateTime getGuestExpiresAt() {
+        return baseAt.plus(VideoRetentionTrigger.GUEST_FIRST_SUBMITTED.getExtension());
     }
 }

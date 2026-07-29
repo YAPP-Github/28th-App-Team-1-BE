@@ -65,4 +65,14 @@ class InterviewVideoTest {
 
         assertThat(video.isExpiredForGuest()).isTrue();
     }
+
+    @Test
+    void 지인_하드캡_시각은_소유자_단계형_만료_시각과_무관하게_baseAt_30일이다() {
+        LocalDateTime baseAt = LocalDateTime.now().minusDays(10);
+        InterviewVideo video = InterviewVideo.of(
+                1L, 100L, baseAt, baseAt.plusHours(48), false, false, false
+        );
+
+        assertThat(video.getGuestExpiresAt()).isEqualTo(baseAt.plusDays(30));
+    }
 }

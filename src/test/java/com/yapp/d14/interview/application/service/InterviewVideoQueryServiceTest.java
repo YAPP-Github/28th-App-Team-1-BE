@@ -110,7 +110,7 @@ class InterviewVideoQueryServiceTest {
     }
 
     @Test
-    void getGuestStatus는_baseAt_30일_하드캡_기준으로_판정한다() {
+    void getGuestStatus는_baseAt_30일_하드캡_기준으로_판정하고_하드캡_시각을_반환한다() {
         LocalDateTime baseAt = NOW.minusDays(10);
         InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true);
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video));
@@ -118,5 +118,6 @@ class InterviewVideoQueryServiceTest {
         var result = service.getGuestStatus(SESSION_ID);
 
         assertThat(result.expired()).isFalse();
+        assertThat(result.expiresAt()).isEqualTo(baseAt.plusDays(30));
     }
 }
