@@ -258,6 +258,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 resolutionNotice,
                 // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
                 cardNoticesByAxis.get(card.getTestType()),
+                card.getQuestionIntentTitle(),
                 card.getQuestionIntentTranslation(),
                 scriptSegments
         );

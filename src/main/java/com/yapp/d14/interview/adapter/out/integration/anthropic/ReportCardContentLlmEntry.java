@@ -6,6 +6,7 @@ import java.util.List;
 // 식별하는 키로 echo 받고, testType·depthLevel은 questionId로 서버 컨텍스트에서 되찾는다.
 record ReportCardContentLlmEntry(
         Long questionId,
+        String questionIntentTitle,
         String questionIntentTranslation,
         List<HighlightSpanLlmEntry> highlightSpans
 ) {

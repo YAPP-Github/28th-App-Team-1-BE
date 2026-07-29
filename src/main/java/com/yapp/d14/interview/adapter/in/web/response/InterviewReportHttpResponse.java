@@ -97,6 +97,9 @@ public record InterviewReportHttpResponse(
             @Schema(description = "이 카드에 걸린 레드플래그 안내 줄")
             List<RedFlagNotice> cardRedFlagNotices,
 
+            @Schema(description = "질문 의도 짧은 제목(명사구, 예: \"트래픽 확장 대응 전략\")")
+            String questionIntentTitle,
+
             @Schema(description = "질문 분석(질문 의도 설명, probe_text 번역)")
             String questionIntent,
 
@@ -114,6 +117,7 @@ public record InterviewReportHttpResponse(
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
                     card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
+                    card.questionIntentTitle(),
                     card.questionIntent(),
                     card.scriptSegments() == null ? null : card.scriptSegments().stream().map(ScriptSegment::from).toList()
             );

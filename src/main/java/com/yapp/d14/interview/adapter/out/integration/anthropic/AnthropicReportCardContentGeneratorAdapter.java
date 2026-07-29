@@ -46,10 +46,15 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
             턴(카드)마다 아래를 만듭니다.
 
-            1. questionIntentTranslation(질문 분석) - 이 턴의 질문에서 무엇을 확인하려 했는지를
-               지원자가 이해할 수 있는 말로 풀어씁니다. 내부 채점 용어(축·천장·resolution 등)는
-               쓰지 않습니다. 같은 axis의 다른 턴과 내용이 겹치더라도, 그 턴 자체의 질문 의도를
-               기준으로 각자 다시 씁니다.
+            1. questionIntentTitle(질문 의도 제목) + questionIntentTranslation(질문 분석) - 이 턴의
+               질문에서 무엇을 확인하려 했는지를 지원자가 이해할 수 있는 말로 설명합니다. 내부
+               채점 용어(축·천장·resolution 등)는 쓰지 않습니다. 같은 axis의 다른 턴과 내용이
+               겹치더라도, 그 턴 자체의 질문 의도를 기준으로 각자 다시 씁니다.
+               questionIntentTitle은 이 질문의 핵심 주제를 짧은 명사구로 요약합니다(대략
+               10~15자 내외, 문장부호 없이. 예: "트래픽 확장 대응 전략"). questionIntentTranslation은
+               그 제목을 풀어 이 질문이 실제로 무엇을, 왜 확인하려 하는지 1~2문장으로 설명합니다
+               (예: "트래픽이 증가했을 때 발생할 병목지점과 시스템의 한계, 그리고 이를 어떻게
+               판단할지 설명하는 질문입니다").
 
             2. highlightSpans(대본 하이라이트) - 그 턴의 답변(answerText) 중 채점 근거가 된
                구간마다 하나씩 만듭니다. quote는 그 구간을 answerText에서 한 글자도 틀리지
@@ -89,16 +94,17 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
             resolutionLevel=LOW인 axis에 속한 턴(카드) 전부에 적용되는 처리:
             - resolutionLowReason=FEW_TURNS 또는 SHALLOW_ANSWER(짧음·얕음): 능력을 판단하는
-              분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTranslation만
-              작성합니다.
-            - resolutionLowReason=OFF_TOPIC(딴 답): questionIntentTranslation은 작성하고,
-              질문과 무관하게 답한 구간 하나를 tone=IMPROVE·reason=OFF_INTENT 하이라이트로 잡습니다.
+              분석은 보류합니다. highlightSpans는 빈 배열로 두고, questionIntentTitle·
+              questionIntentTranslation만 작성합니다.
+            - resolutionLowReason=OFF_TOPIC(딴 답): questionIntentTitle·questionIntentTranslation은
+              작성하고, 질문과 무관하게 답한 구간 하나를 tone=IMPROVE·reason=OFF_INTENT
+              하이라이트로 잡습니다.
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 배열의 원소 개수는 입력으로 받은
             턴의 총 개수와 정확히 같아야 하며, 각 원소는 다음 필드를 가집니다:
             questionId(입력에서 받은 값을 그대로 echo — 어느 턴의 카드인지 식별하는 데만 쓰이니
             입력에 없던 값을 지어내지 마세요),
-            questionIntentTranslation(문자열),
+            questionIntentTitle(문자열), questionIntentTranslation(문자열),
             highlightSpans(quote(answerText 원문 그대로, answerText에 등장하는 순서대로)/
             tone(GOOD 또는 IMPROVE)/
             reason(PROBE_WORTHY/OFF_INTENT/SHALLOW/SUFFICIENT)/title(문자열)/analysis(문자열)/
@@ -202,6 +208,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
                 entry.questionId(),
                 turnRef.depthLevel(),
                 turnRef.testType(),
+                entry.questionIntentTitle(),
                 entry.questionIntentTranslation(),
                 highlightSpans
         );

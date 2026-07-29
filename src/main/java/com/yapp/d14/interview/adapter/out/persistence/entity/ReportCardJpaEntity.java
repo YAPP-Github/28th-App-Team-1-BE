@@ -43,6 +43,9 @@ public class ReportCardJpaEntity {
     @Column(name = "test_type", nullable = false)
     private TestType testType;
 
+    @Column(name = "question_intent_title", columnDefinition = "TEXT")
+    private String questionIntentTitle;
+
     @Column(name = "question_intent_translation", columnDefinition = "TEXT")
     private String questionIntentTranslation;
 
@@ -60,6 +63,7 @@ public class ReportCardJpaEntity {
         entity.questionId = reportCard.getQuestionId();
         entity.depthLevel = reportCard.getDepthLevel();
         entity.testType = reportCard.getTestType();
+        entity.questionIntentTitle = reportCard.getQuestionIntentTitle();
         entity.questionIntentTranslation = reportCard.getQuestionIntentTranslation();
         entity.highlightSpans = reportCard.getHighlightSpans().stream()
                 .map(span -> ReportCardHighlightJpaEntity.from(entity, span))
@@ -75,6 +79,7 @@ public class ReportCardJpaEntity {
                 questionId,
                 depthLevel,
                 testType,
+                questionIntentTitle,
                 questionIntentTranslation,
                 highlightSpans.stream().map(ReportCardHighlightJpaEntity::toDomain).toList(),
                 createdAt

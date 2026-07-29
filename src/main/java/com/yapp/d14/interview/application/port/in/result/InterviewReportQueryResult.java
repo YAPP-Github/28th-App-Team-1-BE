@@ -43,6 +43,7 @@ public record InterviewReportQueryResult(
             List<HighlightSpan> highlightSpans,
             String resolutionNotice,
             List<RedFlagNotice> cardRedFlagNotices,
+            String questionIntentTitle,
             String questionIntent,
             List<ScriptSegment> scriptSegments
     ) {

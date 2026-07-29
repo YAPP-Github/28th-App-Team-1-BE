@@ -375,7 +375,7 @@ class InterviewReportQueryServiceTest {
     }
 
     private ReportCard card(Long id, Long questionId, int depthLevel, TestType testType, String intent, List<HighlightSpan> spans) {
-        return ReportCard.of(id, SESSION_ID, questionId, depthLevel, testType, intent, spans, NOW);
+        return ReportCard.of(id, SESSION_ID, questionId, depthLevel, testType, "제목", intent, spans, NOW);
     }
 
     private Question question(Long id, String content) {

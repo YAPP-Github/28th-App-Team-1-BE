@@ -363,7 +363,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
 
         return drafts.stream()
                 .map(draft -> ReportCard.create(
-                        sessionId, draft.questionId(), draft.depthLevel(), draft.testType(), draft.questionIntentTranslation(),
+                        sessionId, draft.questionId(), draft.depthLevel(), draft.testType(),
+                        draft.questionIntentTitle(), draft.questionIntentTranslation(),
                         draft.highlightSpans()
                 ))
                 .toList();

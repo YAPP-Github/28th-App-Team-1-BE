@@ -80,6 +80,7 @@ public interface InterviewReportControllerDocs {
                                                     "highlightSpans": [],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "성능 저하 인지 수준",
                                                     "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
                                                     "scriptSegments": [
                                                       { "role": "INTERVIEWER", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startIndex": 0, "endIndex": 27, "startSec": 12.0, "endSec": 15.4 },
@@ -97,6 +98,7 @@ public interface InterviewReportControllerDocs {
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "근본 원인 진단 방법",
                                                     "questionIntent": "근본 원인을 어떤 체계적인 방법으로 찾아냈는지 확인하는 질문입니다."
                                                   },
                                                   {
@@ -109,6 +111,7 @@ public interface InterviewReportControllerDocs {
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "트래픽 확장 대응 전략",
                                                     "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
                                                   }
                                                 ],
@@ -137,6 +140,7 @@ public interface InterviewReportControllerDocs {
                                                     "highlightSpans": [],
                                                     "resolutionNotice": "질문의 의도와 다른 방향의 답변이었어요. 다음 연습 때는 질문이 묻는 것부터 짚고 시작해보세요.",
                                                     "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "장애 원인 좁히기",
                                                     "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
                                                   }
                                                 ],
@@ -192,6 +196,7 @@ public interface InterviewReportControllerDocs {
                                                         "message": "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
                                                       }
                                                     ],
+                                                    "questionIntentTitle": "의사결정 기여도",
                                                     "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다."
                                                   }
                                                 ],
