@@ -18,4 +18,7 @@ public interface InterviewVideoRepository {
 
     /** 업로드 완료로 표시한다. 레코드가 없으면 보관 타이머와 함께 생성(uploaded=true)한다. */
     void upsertUploaded(InterviewVideo interviewVideo);
+
+    /** 합성 완료로 표시한다. composited 컬럼만 갱신하며, 갱신된 행 수를 반환한다(레코드가 없으면 0). */
+    int markComposited(Long sessionId);
 }

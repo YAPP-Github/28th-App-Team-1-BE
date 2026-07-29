@@ -46,8 +46,8 @@ class S3InterviewVideoStorageAdapter implements InterviewVideoStorage {
     }
 
     @Override
-    public String presignPlayback(UUID userId, Long sessionId) {
-        String key = S3KeyGenerator.interviewRecordingKey(userId, sessionId);
+    public String presignComposite(UUID userId, Long sessionId) {
+        String key = S3KeyGenerator.interviewCompositeKey(userId, sessionId);
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(s3Properties.getBucket())
                 .key(key)

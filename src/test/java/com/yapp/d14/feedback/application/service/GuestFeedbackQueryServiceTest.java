@@ -11,7 +11,7 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnerQueryUseC
 import com.yapp.d14.interview.application.port.in.InterviewVideoQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoRetentionExtendUseCase;
 import com.yapp.d14.interview.application.port.in.QuestionBoundaryQueryUseCase;
-import com.yapp.d14.interview.application.port.in.result.InterviewVideoStatusResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewVideoPlaybackResult;
 import com.yapp.d14.interview.application.port.in.result.QuestionBoundaryResult;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import com.yapp.d14.user.domain.Provider;
@@ -71,6 +71,11 @@ class GuestFeedbackQueryServiceTest {
         );
     }
 
+    private InterviewVideoPlaybackResult playback(boolean expired, String url) {
+        LocalDateTime expiresAt = expired ? LocalDateTime.now().minusDays(1) : LocalDateTime.now().plusDays(1);
+        return new InterviewVideoPlaybackResult(expiresAt, expired, url);
+    }
+
     @Test
     void 비공개_링크는_PRIVATE_게이트를_반환한다() {
         FeedbackShare share = FeedbackShare.of(
@@ -81,14 +86,13 @@ class GuestFeedbackQueryServiceTest {
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
         assertThat(result.gate()).isEqualTo(GuestGate.PRIVATE);
-        verify(interviewVideoQueryUseCase, never()).getStatus(any());
+        verify(interviewVideoQueryUseCase, never()).getPlayback(any());
     }
 
     @Test
     void 영상이_만료됐으면_EXPIRED_게이트를_반환한다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().minusDays(1), true));
+        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(true, null));
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
@@ -96,21 +100,9 @@ class GuestFeedbackQueryServiceTest {
     }
 
     @Test
-    void 영상이_삭제됐으면_EXPIRED_게이트를_반환한다() {
+    void 동일_기기가_이미_제출했으면_ALREADY_SUBMITTED_게이트를_반환하고_영상은_노출하지_않는다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), true));
-
-        GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
-
-        assertThat(result.gate()).isEqualTo(GuestGate.EXPIRED);
-    }
-
-    @Test
-    void 동일_기기가_이미_제출했으면_ALREADY_SUBMITTED_게이트를_반환한다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), false));
+        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(true);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, LocalDateTime.now(), LocalDateTime.now()));
@@ -119,14 +111,14 @@ class GuestFeedbackQueryServiceTest {
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
         assertThat(result.gate()).isEqualTo(GuestGate.ALREADY_SUBMITTED);
+        assertThat(result.videoUrl()).isNull();
         verify(interviewVideoRetentionExtendUseCase, never()).extendForGuestFirstViewed(any());
     }
 
     @Test
-    void 정원이_찼으면_FULL_게이트를_반환한다() {
+    void 정원이_찼으면_FULL_게이트를_반환하고_영상은_노출하지_않는다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), false));
+        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(4L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
@@ -136,14 +128,14 @@ class GuestFeedbackQueryServiceTest {
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
         assertThat(result.gate()).isEqualTo(GuestGate.FULL);
+        assertThat(result.videoUrl()).isNull();
         verify(interviewVideoRetentionExtendUseCase, never()).extendForGuestFirstViewed(any());
     }
 
     @Test
     void 정상이면_OPEN_게이트와_함께_요청자_이름과_질문_경계를_돌려주고_영상_보관을_연장한다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), false));
+        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(1L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
@@ -156,6 +148,7 @@ class GuestFeedbackQueryServiceTest {
         assertThat(result.gate()).isEqualTo(GuestGate.OPEN);
         assertThat(result.requesterName()).isEqualTo("재원");
         assertThat(result.axes()).containsExactly(AttitudeAxis.GAZE);
+        assertThat(result.videoUrl()).isEqualTo("https://s3/final.mp4");
         assertThat(result.questionBoundaries()).hasSize(1);
         assertThat(result.questionBoundaries().get(0).questionText()).isEqualTo("질문 내용");
         verify(interviewVideoRetentionExtendUseCase).extendForGuestFirstViewed(sessionId);
@@ -164,8 +157,7 @@ class GuestFeedbackQueryServiceTest {
     @Test
     void deviceId가_없으면_중복_제출_검사를_생략한다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getStatus(sessionId))
-                .willReturn(new InterviewVideoStatusResult(LocalDateTime.now().plusDays(1), false));
+        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(0L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, LocalDateTime.now(), LocalDateTime.now()));

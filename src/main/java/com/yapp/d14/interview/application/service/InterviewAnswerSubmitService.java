@@ -67,6 +67,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             throw new InterviewException(InterviewErrorCode.ANSWER_ALREADY_SUBMITTED);
         }
 
+        // 답변 음성을 S3에 보관해 리포트 영상 합성 시 면접자 목소리로 얹는다. 면접 흐름을 막지 않도록 비동기로,
+        // turnLevel 기반 결정적 키에 저장한다(합성 단계에서 같은 키를 재계산해 사용). SKIP 등 오디오가 없으면 생략.
+        if (command.audioContent() != null) {
+            archiveAnswerAudioSafely(userId, session.getId(), question.getTurnLevel(), command.audioContent());
+        }
+
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
             return handleFirstTurn(session, question, command);
         }
@@ -232,6 +238,16 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         jdOpenerContextCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
+    }
+
+    // 합성용 답변 음성 보관은 부가 기능이라, 아카이브 큐가 가득 차(RejectedExecutionException) 등 어떤 이유로도
+    // 답변 제출 자체를 실패시키면 안 된다 — 질문 TTS 아카이브(AudioStreamService)와 동일하게 예외를 삼키고 로깅만 한다.
+    private void archiveAnswerAudioSafely(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
+        try {
+            interviewVoiceStorage.uploadAnswerAsync(userId, sessionId, turnLevel, audioContent);
+        } catch (Exception e) {
+            log.warn("[ANSWER ARCHIVE] 답변 음성 업로드 요청 실패, 면접 흐름에는 영향 없음: sessionId={}, turnLevel={}", sessionId, turnLevel, e);
+        }
     }
 
     // 답변은 이미 커밋된 뒤라 캐시 추가 실패로 재시도 불가능한 요청 전체 실패를 만들지 않는다 — 로그만 남기고 삼킨다.

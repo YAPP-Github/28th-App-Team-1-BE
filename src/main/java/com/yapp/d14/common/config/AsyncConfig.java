@@ -53,6 +53,21 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "interviewCompositeTaskExecutor")
+    public Executor interviewCompositeTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        // FFmpeg 서브프로세스는 CPU·디스크 바운드이고 프로세스 자체가 멀티스레드를 쓰므로,
+        // 동시 실행 수를 작게 잡아 서버 리소스 과점을 막는다(I/O 대기 위주인 report 풀과 다르다).
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(20);
+        executor.setThreadNamePrefix("interview-composite-async-");
+        // 큐가 가득 차면 즉시 RejectedExecutionException을 던져 호출부(트리거)에서 로깅 처리한다.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "interviewReportTaskExecutor")
     public Executor interviewReportTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

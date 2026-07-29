@@ -14,8 +14,10 @@ public class InterviewVideo {
     private final LocalDateTime baseAt;
     private LocalDateTime expiresAt;
     private boolean deleted;
-    // 프론트가 S3 업로드를 끝내고 complete를 호출하면 true. 재생 URL은 uploaded=true일 때만 발급한다.
+    // 프론트가 녹화본(raw.mp4) S3 업로드를 끝내고 complete를 호출하면 true. 합성 트리거 조건일 뿐, 재생 URL 발급 기준은 아니다.
     private boolean uploaded;
+    // 녹화본에 답변·질문 음성을 합성한 final.mp4가 준비되면 true. 재생 URL(videoUrl)은 composited=true && 만료 전일 때만 발급한다(그 외 null).
+    private boolean composited;
 
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewVideo(
@@ -24,7 +26,8 @@ public class InterviewVideo {
             LocalDateTime baseAt,
             LocalDateTime expiresAt,
             boolean deleted,
-            boolean uploaded
+            boolean uploaded,
+            boolean composited
     ) {
         this.id = id;
         this.sessionId = sessionId;
@@ -32,6 +35,7 @@ public class InterviewVideo {
         this.expiresAt = expiresAt;
         this.deleted = deleted;
         this.uploaded = uploaded;
+        this.composited = composited;
     }
 
     /** 1차 레포트 생성 성공(Step1) 시점에 생성한다. baseAt은 이후 재계산하지 않는다. */
@@ -42,6 +46,7 @@ public class InterviewVideo {
                 .expiresAt(baseAt)
                 .deleted(false)
                 .uploaded(false)
+                .composited(false)
                 .build();
         video.extend(VideoRetentionTrigger.REPORT_GENERATED);
         return video;
@@ -53,7 +58,8 @@ public class InterviewVideo {
             LocalDateTime baseAt,
             LocalDateTime expiresAt,
             boolean deleted,
-            boolean uploaded
+            boolean uploaded,
+            boolean composited
     ) {
         return InterviewVideo.builder()
                 .id(id)
@@ -62,6 +68,7 @@ public class InterviewVideo {
                 .expiresAt(expiresAt)
                 .deleted(deleted)
                 .uploaded(uploaded)
+                .composited(composited)
                 .build();
     }
 
