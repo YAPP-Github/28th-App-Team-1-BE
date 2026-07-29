@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.common.util.AfterCommitExecutor;
+import com.yapp.d14.interview.application.command.InterviewVideoUploadCompleteCommand;
 import com.yapp.d14.interview.application.port.in.InterviewSessionOwnershipCheckUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoCompositeUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoUploadCompleteUseCase;
@@ -28,11 +29,13 @@ class InterviewVideoUploadCompleteService implements InterviewVideoUploadComplet
     // uploaded 한 컬럼만 건드려 보관기간 연장과의 Lost Update도 없다.
     @Override
     @Transactional
-    public void complete(UUID userId, Long sessionId, Float wrapUpStartSec, Float wrapUpEndSec) {
+    public void complete(InterviewVideoUploadCompleteCommand command) {
+        Long sessionId = command.sessionId();
+        UUID userId = command.userId();
         interviewSessionOwnershipCheckUseCase.requireOwned(userId, sessionId);
         // 마무리 멘트 재생 구간을 함께 저장해 합성(Step4)·대본(Step5)에서 마무리 멘트를 얹는다. 없으면 null.
         interviewVideoRepository.upsertUploaded(
-                InterviewVideo.create(sessionId, LocalDateTime.now(), wrapUpStartSec, wrapUpEndSec));
+                InterviewVideo.create(sessionId, LocalDateTime.now(), command.wrapUpStartSec(), command.wrapUpEndSec()));
         // raw.mp4가 S3에 올라온 지금이 합성의 유일한 blocker 해소 시점이다(질문 타임스탬프는 면접 중 이미 기록됨).
         // 마킹 대상 row가 커밋된 뒤에만 합성을 트리거해, 롤백 시 헛작업과 markComposited 0행 갱신을 막는다.
         AfterCommitExecutor.runAfterCommit(() -> triggerComposite(userId, sessionId));

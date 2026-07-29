@@ -46,9 +46,7 @@ class InterviewVideoController implements InterviewVideoControllerDocs {
             @PathVariable Long sessionId,
             @RequestBody(required = false) InterviewVideoCompleteHttpRequest request
     ) {
-        Float wrapUpStartSec = request == null ? null : request.wrapUpStartSec();
-        Float wrapUpEndSec = request == null ? null : request.wrapUpEndSec();
-        interviewVideoUploadCompleteUseCase.complete(userId, sessionId, wrapUpStartSec, wrapUpEndSec);
+        interviewVideoUploadCompleteUseCase.complete(InterviewVideoCompleteHttpRequest.toCommand(userId, sessionId, request));
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
