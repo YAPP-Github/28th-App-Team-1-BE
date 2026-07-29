@@ -2,6 +2,7 @@ package com.yapp.d14.interview.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
+import com.yapp.d14.interview.adapter.in.web.request.InterviewVideoCompleteHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewVideoUploadUrlHttpResponse;
 import com.yapp.d14.interview.application.port.in.InterviewVideoUploadCompleteUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoUploadUrlIssueUseCase;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -37,9 +39,12 @@ class InterviewVideoController implements InterviewVideoControllerDocs {
     @PostMapping("/{sessionId}/video/complete")
     public ResponseEntity<ApiResponse<Void>> completeUpload(
             @CurrentUser UUID userId,
-            @PathVariable Long sessionId
+            @PathVariable Long sessionId,
+            @RequestBody(required = false) InterviewVideoCompleteHttpRequest request
     ) {
-        interviewVideoUploadCompleteUseCase.complete(userId, sessionId);
+        Float wrapUpStartSec = request == null ? null : request.wrapUpStartSec();
+        Float wrapUpEndSec = request == null ? null : request.wrapUpEndSec();
+        interviewVideoUploadCompleteUseCase.complete(userId, sessionId, wrapUpStartSec, wrapUpEndSec);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 }

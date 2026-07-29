@@ -2,6 +2,7 @@ package com.yapp.d14.interview.adapter.in.web;
 
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
+import com.yapp.d14.interview.adapter.in.web.request.InterviewVideoCompleteHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewVideoUploadUrlHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
@@ -70,7 +72,9 @@ public interface InterviewVideoControllerDocs {
             description = "프론트가 presigned URL로 S3 업로드를 끝낸 뒤 호출합니다. 해당 세션 영상을 \"업로드 완료\"로 표시해 리포트 조회 시 재생 URL(`video.url`)이 제공되도록 합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 멱등(idempotent)합니다. 여러 번 호출해도 안전합니다.\n" +
-                    "- 실제 업로드(S3 PUT)가 성공한 뒤에만 호출하세요."
+                    "- 실제 업로드(S3 PUT)가 성공한 뒤에만 호출하세요.\n" +
+                    "- 바디는 선택입니다. 면접관 마무리 멘트를 재생했다면 그 재생 구간(`wrapUpStartSec`/`wrapUpEndSec`, 녹화 타임라인 기준 초)을 함께 보내면 " +
+                    "합성 영상에 마무리 멘트가 얹히고 리포트 대본에도 포함됩니다. 조기 종료 등으로 마무리 멘트가 없으면 바디를 생략하세요."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -102,6 +106,7 @@ public interface InterviewVideoControllerDocs {
     })
     ResponseEntity<ApiResponse<Void>> completeUpload(
             @Parameter(hidden = true) @CurrentUser UUID userId,
-            @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId
+            @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId,
+            @RequestBody(required = false) InterviewVideoCompleteHttpRequest request
     );
 }

@@ -28,7 +28,8 @@ class InterviewVideoUploadCompleteService implements InterviewVideoUploadComplet
     // uploaded 한 컬럼만 건드려 보관기간 연장과의 Lost Update도 없다.
     @Override
     @Transactional
-    public void complete(UUID userId, Long sessionId) {
+    public void complete(UUID userId, Long sessionId, Float wrapUpStartSec, Float wrapUpEndSec) {
+        // TODO(step3): wrapUpStartSec/wrapUpEndSec을 InterviewVideo에 저장해 합성·대본에 마무리 멘트를 얹는다.
         interviewSessionOwnershipCheckUseCase.requireOwned(userId, sessionId);
         interviewVideoRepository.upsertUploaded(InterviewVideo.create(sessionId, LocalDateTime.now()));
         // raw.mp4가 S3에 올라온 지금이 합성의 유일한 blocker 해소 시점이다(질문 타임스탬프는 면접 중 이미 기록됨).

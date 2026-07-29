@@ -34,7 +34,7 @@ class InterviewVideoUploadCompleteServiceTest {
 
     @Test
     void 완료_확정은_소유권을_확인하고_uploaded_upsert를_호출한다() {
-        service.complete(USER_ID, SESSION_ID);
+        service.complete(USER_ID, SESSION_ID, null, null);
 
         verify(interviewSessionOwnershipCheckUseCase).requireOwned(USER_ID, SESSION_ID);
         ArgumentCaptor<InterviewVideo> captor = ArgumentCaptor.forClass(InterviewVideo.class);
@@ -48,7 +48,7 @@ class InterviewVideoUploadCompleteServiceTest {
     @Test
     void 완료_확정_후_합성을_트리거한다() {
         // 유닛 테스트엔 활성 트랜잭션이 없어 runAfterCommit이 즉시 실행된다.
-        service.complete(USER_ID, SESSION_ID);
+        service.complete(USER_ID, SESSION_ID, null, null);
 
         verify(interviewVideoCompositeUseCase).composite(USER_ID, SESSION_ID);
     }
