@@ -24,9 +24,12 @@ public interface InterviewReportControllerDocs {
                     "사용자용 리포트 화면(한 줄 요약 + 항목 카드 + 영상 메타 + 지인 피드백 섹션) 형태로 반환합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 카드마다 대본(`transcript`)과 그 위에 칠할 하이라이트 구간(`highlightSpans`, 잘함/개선)이 내려옵니다. " +
-                    "각 하이라이트에는 한 줄 제목(`title`)과 개선유형(`reason`)이 함께 내려오며, `reason`으로 카드 하단 안내를 결정합니다 — " +
-                    "`PROBE_WORTHY`(꼬리질문 `followUpQuestions` 노출) / `OFF_INTENT`(질문 의도 리마인드) / `SHALLOW`·`SUFFICIENT`(코칭 한 줄만). " +
-                    "`followUpQuestions`는 `reason=PROBE_WORTHY`일 때만 채워집니다.\n" +
+                    "각 하이라이트는 한 줄 제목(`title`)·개선유형(`reason`)·분석(`analysis`)을 가집니다. " +
+                    "`reason`은 `PROBE_WORTHY`(파고들 여지) / `OFF_INTENT`(질문과 다른 답) / `SHALLOW`(짧고 얕음) / `SUFFICIENT`(충분함) 중 하나이며, " +
+                    "`followUpQuestions`(꼬리질문)는 `reason=PROBE_WORTHY`일 때만 채워집니다(그 외엔 빈 배열).\n" +
+                    "- `reason=OFF_INTENT`(질문과 다른 답)인 하이라이트에는 추가로 `answerTopicTitle`(답변이 실제로 다룬 주제 명사구)와, 그 카드의 " +
+                    "`questionIntentTitle`·`questionIntent`를 복사한 값이 함께 내려옵니다 — 하이라이트만으로 '질문 의도 ↔ 내 답변' 대비를 구성할 수 있게 하기 위함. " +
+                    "그 외 `reason`에서는 이 세 필드가 모두 `null`입니다.\n" +
                     "- 카드마다 질문/답변 대본을 문장 단위로 쪼갠 발화 구간(`scriptSegments`, 한 배열에 면접관·면접자 문장이 `role`로 구분되어 섞여 들어옵니다)이 내려옵니다. 각 문장의 `startSec`/`endSec`는 합성 영상(=녹화) 타임라인 기준이라, 영상 재생 위치와 맞춰 현재 발화 중인 문장을 강조할 수 있습니다.\n" +
                     "- 응답 최상위에는 카드와 별개로 `script` 배열(면접 전체 대본 타임라인)이 있습니다. 카드의 `scriptSegments`가 채점 대상 턴 안에서만의 문장이라면, `script`는 첫 면접관 멘트 → 프로젝트 설명 답변 → … → 마지막 마무리 멘트까지 세션의 모든 발화를 `startSec` 오름차순으로 담은 **한 배열**입니다. 영상 플레이어의 현재 발화 강조는 이 `script` 하나만 훑으면 됩니다.\n" +
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
@@ -35,7 +38,7 @@ public interface InterviewReportControllerDocs {
                     "- `status=GENERATING`이면 `headline`/`redFlagNotices`/`video`/`cards`/`script`/`guestFeedback`이 모두 `null`입니다.\n" +
                     "- `status=INSUFFICIENT_ANALYSIS`이면 채점된 범위의 카드만 내려옵니다.\n" +
                     "- 심각한 레드플래그가 있는지는 `status`가 아니라 `redFlagNotices`가 비어 있는지로 판단합니다. `status=READY`이면서 `redFlagNotices`가 있으면 헤드라인이 중립 사실 요약으로 대체됩니다.\n" +
-                    "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `highlightSpans`는 빈 배열입니다.\n" +
+                    "- `resolutionNotice`가 있으면(해상도 낮음) 그 항목의 능력 판단성 분석을 보류한 상태입니다. 사유가 짧음·얕음이면 `highlightSpans`는 빈 배열이고, 딴 답(OFF_TOPIC)이면 `reason=OFF_INTENT` 하이라이트 1개가 붙습니다.\n" +
                     "- 레드플래그는 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 내려옵니다.\n" +
                     "- `video.url`은 영상이 만료되면 `null`이며, 그때도 카드의 대본·하이라이트는 그대로 유지됩니다.\n" +
                     "- `guestFeedback`은 지인이 한 명도 제출하지 않아도 `participantCount=0`, `guests=[]`로 내려옵니다. `status=GENERATING`일 때만 `null`입니다."
@@ -146,7 +149,7 @@ public interface InterviewReportControllerDocs {
                                                     "questionText": "Q. 장애가 났을 때 어디부터 확인하시나요?",
                                                     "transcript": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...",
                                                     "highlightSpans": [],
-                                                    "resolutionNotice": "질문의 의도와 다른 방향의 답변이었어요. 다음 연습 때는 질문이 묻는 것부터 짚고 시작해보세요.",
+                                                    "resolutionNotice": "답변이 짧고 얕아 이 항목은 능력 판단을 보류했어요.",
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "장애 원인 좁히기",
                                                     "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
@@ -155,6 +158,53 @@ public interface InterviewReportControllerDocs {
                                                 "script": [
                                                   { "role": "INTERVIEWER", "text": "Q. 장애가 났을 때 어디부터 확인하시나요?", "startSec": 10.0, "endSec": 13.5 },
                                                   { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 }
+                                                ],
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "딴 답(OFF_INTENT) 하이라이트", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "status": "READY",
+                                                "headline": "이번 면접에서는 장애 대응 경험을 중심으로 이야기를 나눴어요.",
+                                                "redFlagNotices": null,
+                                                "video": {
+                                                  "url": "https://cdn.example.com/videos/abc.mp4",
+                                                  "expired": false,
+                                                  "expiresAt": "2026-07-21T13:00:00"
+                                                },
+                                                "cards": [
+                                                  {
+                                                    "axisOrder": 1,
+                                                    "depthLevel": 1,
+                                                    "questionText": "Q. 앱 업데이트 이후 성능이 저하되었습니다. 가장 먼저 확인할 항목은 무엇인가요?",
+                                                    "transcript": "대학교에서는 시각디자인을 전공하며, 디자인 동아리 활동과 여러 공모전에 도전하면서 회사 일 감각을 키워왔습니다.",
+                                                    "highlightSpans": [
+                                                      {
+                                                        "startIndex": 20,
+                                                        "endIndex": 62,
+                                                        "tone": "IMPROVE",
+                                                        "reason": "OFF_INTENT",
+                                                        "title": "질문과 다른 주제로 답변",
+                                                        "analysis": "질문 의도와 맞지 않는 답변입니다. 실무 경험 사례를 구체적으로 설명해 보세요.",
+                                                        "followUpQuestions": [],
+                                                        "startSec": 34.0,
+                                                        "answerTopicTitle": "전공·동아리 활동 경험",
+                                                        "questionIntentTitle": "장애 원인을 좁혀가는 순서",
+                                                        "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
+                                                      }
+                                                    ],
+                                                    "resolutionNotice": "질문과 다른 답변이 있어 이 항목은 능력 판단을 보류했어요.",
+                                                    "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "장애 원인을 좁혀가는 순서",
+                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
+                                                  }
+                                                ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "Q. 앱 업데이트 이후 성능이 저하되었습니다. 가장 먼저 확인할 항목은 무엇인가요?", "startSec": 30.0, "endSec": 33.6 },
+                                                  { "role": "INTERVIEWEE", "text": "대학교에서는 시각디자인을 전공하며, 디자인 동아리 활동과...", "startSec": 34.0, "endSec": 41.2 }
                                                 ],
                                                 "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
