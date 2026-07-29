@@ -107,9 +107,9 @@ public interface InterviewReportControllerDocs {
                                                     "axisOrder": 2,
                                                     "depthLevel": 1,
                                                     "questionText": "Q. 트래픽이 10배일 때 가장 치명적인 지점과, 그 임계치를 어떻게 생각하시나요?",
-                                                    "transcript": "실제로 팀 프로젝트에서는 사용자 피드백을 50개 이상 모아 분석한 뒤...",
+                                                    "transcript": "트래픽이 10배로 늘면 결제 승인 API가 먼저 병목이 될 것 같고, DB 커넥션 풀이 임계치라고 봐요.",
                                                     "highlightSpans": [
-                                                      { "startIndex": 5, "endIndex": 30, "tone": "GOOD", "reason": "SUFFICIENT", "title": "병목 지점 명확히 설명", "analysis": "병목 지점을 구체적으로 짚어 설명했습니다.", "followUpQuestions": [], "startSec": 61.2 }
+                                                      { "startIndex": 12, "endIndex": 32, "tone": "GOOD", "reason": "SUFFICIENT", "title": "병목 지점 명확히 설명", "analysis": "병목 지점을 구체적으로 짚어 설명했습니다.", "followUpQuestions": [], "startSec": 61.2 }
                                                     ],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
@@ -152,6 +152,10 @@ public interface InterviewReportControllerDocs {
                                                     "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
                                                   }
                                                 ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "Q. 장애가 났을 때 어디부터 확인하시나요?", "startSec": 10.0, "endSec": 13.5 },
+                                                  { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 }
+                                                ],
                                                 "guestFeedback": null
                                               }
                                             }
@@ -168,7 +172,25 @@ public interface InterviewReportControllerDocs {
                                                   "expired": false,
                                                   "expiresAt": "2026-07-21T13:00:00"
                                                 },
-                                                "cards": [],
+                                                "cards": [
+                                                  {
+                                                    "axisOrder": 1,
+                                                    "depthLevel": 1,
+                                                    "questionText": "Q. 최근에 성능을 개선한 경험이 있나요?",
+                                                    "transcript": "네, 있습니다. 캐시를 좀 썼어요.",
+                                                    "highlightSpans": [
+                                                      { "startIndex": 8, "endIndex": 16, "tone": "IMPROVE", "reason": "SHALLOW", "title": "근거·수치 부족", "analysis": "무엇을 어떻게 개선했는지 구체적 근거나 수치가 없어 깊이가 부족합니다.", "followUpQuestions": [], "startSec": 15.0 }
+                                                    ],
+                                                    "resolutionNotice": null,
+                                                    "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "성능 개선 경험",
+                                                    "questionIntent": "성능 문제를 어떻게 정의하고 개선했는지 확인하는 질문입니다."
+                                                  }
+                                                ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "Q. 최근에 성능을 개선한 경험이 있나요?", "startSec": 12.0, "endSec": 14.6 },
+                                                  { "role": "INTERVIEWEE", "text": "네, 있습니다. 캐시를 좀 썼어요.", "startSec": 15.0, "endSec": 17.2 }
+                                                ],
                                                 "guestFeedback": null
                                               }
                                             }
@@ -208,6 +230,10 @@ public interface InterviewReportControllerDocs {
                                                     "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다."
                                                   }
                                                 ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "Q. 그 결정을 내리기까지 어떤 대안들을 검토하셨나요?", "startSec": 40.0, "endSec": 43.8 },
+                                                  { "role": "INTERVIEWEE", "text": "제가 Redis 캐시를 도입했습니다...", "startSec": 45.0, "endSec": 49.2 }
+                                                ],
                                                 "guestFeedback": null
                                               }
                                             }
@@ -225,6 +251,10 @@ public interface InterviewReportControllerDocs {
                                                   "expiresAt": "2026-08-04T13:00:00"
                                                 },
                                                 "cards": [],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "안녕하세요, 오늘 면접을 진행하겠습니다.", "startSec": 0.0, "endSec": 3.2 },
+                                                  { "role": "INTERVIEWEE", "text": "네, 잘 부탁드립니다.", "startSec": 4.0, "endSec": 5.4 }
+                                                ],
                                                 "guestFeedback": {
                                                   "participantCount": 2,
                                                   "guests": [
