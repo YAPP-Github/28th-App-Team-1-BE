@@ -44,7 +44,7 @@ class SocialLoginServiceTest {
     void 로그인에_성공하면_토큰과_프로필_스냅샷을_함께_반환한다() {
         User user = User.create("a@a.com", Provider.KAKAO, "pid");
         SocialUserInfo userInfo = new SocialUserInfo("pid", "a@a.com", "카카오닉네임");
-        UserProfileResult profile = new UserProfileResult(user.getId(), "a@a.com", null, false, null, null, 3);
+        UserProfileResult profile = new UserProfileResult(user.getId(), "a@a.com", Provider.KAKAO, null, false, null, null, 3);
 
         given(socialAuthClient.getUserInfo(Provider.KAKAO, "credential")).willReturn(userInfo);
         given(socialUserProvisionService.provision(Provider.KAKAO, userInfo)).willReturn(user);

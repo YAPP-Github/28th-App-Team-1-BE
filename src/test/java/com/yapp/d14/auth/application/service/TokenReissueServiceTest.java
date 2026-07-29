@@ -39,7 +39,7 @@ class TokenReissueServiceTest {
     void 재발급에_성공하면_새_토큰과_프로필_스냅샷을_함께_반환한다() {
         UUID userId = UUID.randomUUID();
         JwtClaims claims = new JwtClaims(userId, Provider.KAKAO);
-        UserProfileResult profile = new UserProfileResult(userId, "a@a.com", "홍길동", true, null, null, 3);
+        UserProfileResult profile = new UserProfileResult(userId, "a@a.com", Provider.KAKAO, "홍길동", true, null, null, 3);
 
         given(jwtProvider.parseRefreshToken("oldRefresh")).willReturn(claims);
         given(tokenRepository.find(userId)).willReturn(Optional.of("oldRefresh"));

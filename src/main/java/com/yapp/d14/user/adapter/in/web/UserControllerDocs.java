@@ -112,7 +112,8 @@ public interface UserControllerDocs {
 
     @Operation(
             summary = "회원 프로필 조회",
-            description = "이름, 직무, 연차, 잔여 이용권 수를 조회합니다.\n\n" +
+            description = "이름, 이메일, 소셜 로그인 제공자, 직무, 연차, 잔여 이용권 수를 조회합니다.\n\n" +
+                    "이메일은 소셜 계정에서 제공되지 않은 경우 null일 수 있습니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
