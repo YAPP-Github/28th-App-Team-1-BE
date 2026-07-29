@@ -1,5 +1,6 @@
 package com.yapp.d14.portfolio.application.service;
 
+import com.yapp.d14.portfolio.application.port.in.PortfolioActiveCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
@@ -15,9 +16,19 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseCase {
+class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseCase, PortfolioActiveCheckUseCase {
 
     private final PortfolioRepository portfolioRepository;
+
+    @Override
+    public boolean isActive(UUID portfolioId) {
+        if (portfolioId == null) {
+            return false;
+        }
+        return portfolioRepository.findById(portfolioId)
+                .map(portfolio -> !portfolio.isDeleted())
+                .orElse(false);
+    }
 
     @Override
     @Transactional

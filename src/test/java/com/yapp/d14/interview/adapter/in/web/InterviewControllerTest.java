@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.common.exception.GlobalExceptionHandler;
 import com.yapp.d14.common.web.CurrentUserArgumentResolver;
 import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
@@ -51,6 +52,9 @@ class InterviewControllerTest {
     @Mock
     private InterviewAnswerSubmitUseCase interviewAnswerSubmitUseCase;
 
+    @Mock
+    private InterviewReportListQueryUseCase interviewReportListQueryUseCase;
+
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final UUID userId = UUID.randomUUID();
@@ -59,7 +63,8 @@ class InterviewControllerTest {
     @BeforeEach
     void setUp() {
         InterviewController controller = new InterviewController(
-                interviewSessionCreateUseCase, interviewSessionStatusUseCase, interviewAnswerSubmitUseCase);
+                interviewSessionCreateUseCase, interviewSessionStatusUseCase, interviewAnswerSubmitUseCase,
+                interviewReportListQueryUseCase);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new CurrentUserArgumentResolver())
