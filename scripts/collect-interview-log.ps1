@@ -19,7 +19,7 @@ if (-not $files) {
 }
 
 $pattern = "sessionId=$SessionId(?!\d)"
-$matches = $files | Get-Content | Select-String -Pattern $pattern
+$matches = $files | Get-Content -Encoding utf8 | Select-String -Pattern $pattern
 
 if (-not $matches) {
     Write-Warning "sessionId=$SessionId 로 매칭되는 로그가 없어요."
