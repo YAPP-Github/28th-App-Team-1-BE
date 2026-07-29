@@ -38,7 +38,7 @@ public interface InterviewReportControllerDocs {
                     "- 카드 상단에 `resolutionNotice`가 있으면(해상도 낮음) 능력 판단성 분석을 보류한 상태이며, `highlightSpans`는 빈 배열입니다.\n" +
                     "- 레드플래그는 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 내려옵니다.\n" +
                     "- `video.url`은 영상이 만료되면 `null`이며, 그때도 카드의 대본·하이라이트는 그대로 유지됩니다.\n" +
-                    "- `guestFeedback`은 지인이 한 명도 제출하지 않아도 `null`이 아니라 `participantCount=0`, `guests=[]`로 내려옵니다(프론트가 null 체크 없이 `guests`를 순회하고, \"아직 참여 없음\"을 `participantCount==0`으로 표현하게 하기 위함). 단 `status=GENERATING`일 때는 섹션 전체가 `null`입니다."
+                    "- `guestFeedback`은 지인이 한 명도 제출하지 않아도 `participantCount=0`, `guests=[]`로 내려옵니다. `status=GENERATING`일 때만 `null`입니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
