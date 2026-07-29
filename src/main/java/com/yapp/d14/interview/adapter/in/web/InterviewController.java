@@ -5,9 +5,11 @@ import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewAnswerSubmitHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewSessionCreateHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewAnswerSubmitHttpResponse;
+import com.yapp.d14.interview.adapter.in.web.response.InterviewReportListHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionCreateHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionStatusHttpResponse;
 import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
@@ -38,6 +40,14 @@ class InterviewController implements InterviewControllerDocs {
     private final InterviewSessionCreateUseCase interviewSessionCreateUseCase;
     private final InterviewSessionStatusUseCase interviewSessionStatusUseCase;
     private final InterviewAnswerSubmitUseCase interviewAnswerSubmitUseCase;
+    private final InterviewReportListQueryUseCase interviewReportListQueryUseCase;
+
+    @Override
+    @GetMapping
+    public ResponseEntity<ApiResponse<InterviewReportListHttpResponse>> getReportList(@CurrentUser UUID userId) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                InterviewReportListHttpResponse.from(interviewReportListQueryUseCase.getReportList(userId))));
+    }
 
     @Override
     @PostMapping
