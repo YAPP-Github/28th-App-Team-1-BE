@@ -78,13 +78,13 @@ class QuestionUtteranceSegmentPersisterTest {
         persister.persist(USER_ID, SESSION_ID);
 
         // 재생성 대비로 QUESTION 세그먼트만 먼저 지운다.
-        verify(utteranceSegmentRepository).deleteBySessionIdAndRole(SESSION_ID, ScriptRole.QUESTION);
+        verify(utteranceSegmentRepository).deleteBySessionIdAndRole(SESSION_ID, ScriptRole.INTERVIEWER);
 
         ArgumentCaptor<List<UtteranceSegment>> captor = ArgumentCaptor.forClass(List.class);
         verify(utteranceSegmentRepository).saveAll(eq(SESSION_ID), eq(10L), captor.capture());
         List<UtteranceSegment> saved = captor.getValue();
         assertThat(saved).hasSize(2);
-        assertThat(saved.get(0).role()).isEqualTo(ScriptRole.QUESTION);
+        assertThat(saved.get(0).role()).isEqualTo(ScriptRole.INTERVIEWER);
         assertThat(saved.get(0).text()).isEqualTo("안녕하세요.");
         assertThat(saved.get(0).startSec()).isEqualTo(12.0f); // 0.0 + 12 오프셋
         assertThat(saved.get(1).text()).isEqualTo("반갑습니다.");
@@ -99,7 +99,7 @@ class QuestionUtteranceSegmentPersisterTest {
 
         persister.persist(USER_ID, SESSION_ID);
 
-        verify(utteranceSegmentRepository).deleteBySessionIdAndRole(SESSION_ID, ScriptRole.QUESTION);
+        verify(utteranceSegmentRepository).deleteBySessionIdAndRole(SESSION_ID, ScriptRole.INTERVIEWER);
         verify(speechToTextTranscriber, never()).transcribe(any());
         verify(utteranceSegmentRepository, never()).saveAll(any(), any(), any());
     }

@@ -82,9 +82,9 @@ public interface InterviewReportControllerDocs {
                                                     "cardRedFlagNotices": null,
                                                     "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
                                                     "scriptSegments": [
-                                                      { "role": "QUESTION", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startIndex": 0, "endIndex": 27, "startSec": 12.0, "endSec": 15.4 },
-                                                      { "role": "QUESTION", "text": " 무엇이 문제였나요?", "startIndex": 27, "endIndex": 37, "startSec": 15.4, "endSec": 16.8 },
-                                                      { "role": "ANSWER", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startIndex": 0, "endIndex": 38, "startSec": 18.2, "endSec": 22.6 }
+                                                      { "role": "INTERVIEWER", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startIndex": 0, "endIndex": 27, "startSec": 12.0, "endSec": 15.4 },
+                                                      { "role": "INTERVIEWER", "text": " 무엇이 문제였나요?", "startIndex": 27, "endIndex": 37, "startSec": 15.4, "endSec": 16.8 },
+                                                      { "role": "INTERVIEWEE", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startIndex": 0, "endIndex": 38, "startSec": 18.2, "endSec": 22.6 }
                                                     ]
                                                   },
                                                   {

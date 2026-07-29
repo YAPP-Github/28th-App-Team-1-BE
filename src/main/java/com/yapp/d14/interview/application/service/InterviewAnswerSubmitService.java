@@ -262,7 +262,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         try {
             float offsetSec = command.answerStartSec() == null ? 0f : command.answerStartSec();
             List<UtteranceSegment> segments = ScriptSegmentMapper.map(
-                    ScriptRole.ANSWER, transcription.text(), transcription.segments(), offsetSec);
+                    ScriptRole.INTERVIEWEE, transcription.text(), transcription.segments(), offsetSec);
             utteranceSegmentRepository.saveAll(sessionId, question.getId(), segments);
         } catch (Exception e) {
             log.warn("[ANSWER SEGMENT] 답변 문장 발화 시각 저장 실패, 면접 흐름에는 영향 없음: sessionId={}, questionId={}",

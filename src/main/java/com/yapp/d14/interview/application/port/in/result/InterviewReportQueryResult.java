@@ -48,8 +48,8 @@ public record InterviewReportQueryResult(
     ) {
     }
 
-    // 대본(질문/답변)을 문장 단위로 쪼갠 한 조각. 한 카드의 세그먼트는 startSec 오름차순(실제 발화 순서: 질문 → 답변)이다.
-    // role은 이 문장이 질문/답변 중 무엇인지와, startIndex/endIndex가 어느 대본 문자열(questionText/transcript)
+    // 대본(면접관/면접자)을 문장 단위로 쪼갠 한 조각. 한 카드의 세그먼트는 startSec 오름차순(실제 발화 순서: 면접관 → 면접자)이다.
+    // role은 이 문장이 면접관/면접자 발화 중 무엇인지와, startIndex/endIndex가 어느 대본 문자열(questionText/transcript)
     // 기준 문자 오프셋인지를 함께 뜻한다. startSec/endSec는 합성 영상(=녹화) 타임라인 기준 발화 구간(초)이다.
     public record ScriptSegment(
             ScriptRole role,

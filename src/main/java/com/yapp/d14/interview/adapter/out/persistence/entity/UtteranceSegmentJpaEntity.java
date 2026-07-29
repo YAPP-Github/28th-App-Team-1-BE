@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-// 문장 단위 발화 시각 1건(#78). 질문/답변을 role로 구분해 한 테이블에 담고, 리포트 조회 때 sessionId로 읽어 questionId로 카드에 매핑한다.
+// 문장 단위 발화 시각 1건(#78). 면접관/면접자를 role로 구분해 한 테이블에 담고, 리포트 조회 때 sessionId로 읽어 questionId로 카드에 매핑한다.
 @Entity
 @Table(name = "utterance_segment", indexes = @Index(name = "idx_utterance_segment_session", columnList = "session_id"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

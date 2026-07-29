@@ -783,7 +783,7 @@ class InterviewAnswerSubmitServiceTest {
         verify(utteranceSegmentRepository).saveAll(eq(sessionId), eq(summaryQuestionId), captor.capture());
         List<UtteranceSegment> saved = captor.getValue();
         assertThat(saved).hasSize(2);
-        assertThat(saved.get(0).role()).isEqualTo(ScriptRole.ANSWER);
+        assertThat(saved.get(0).role()).isEqualTo(ScriptRole.INTERVIEWEE);
         assertThat(saved.get(0).text()).isEqualTo("안녕하세요.");
         assertThat(saved.get(0).startSec()).isEqualTo(200.0f); // 0.0 + 200 오프셋
         assertThat(saved.get(0).endSec()).isEqualTo(201.0f);

@@ -17,12 +17,12 @@ class ScriptSegmentMapperTest {
                 new TranscriptSegment(" 반갑습니다.", 1.2f, 2.4f)
         );
 
-        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.ANSWER, fullText, sttSegments, 10.0f);
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 10.0f);
 
         assertThat(result).hasSize(2);
 
         UtteranceSegment first = result.get(0);
-        assertThat(first.role()).isEqualTo(ScriptRole.ANSWER);
+        assertThat(first.role()).isEqualTo(ScriptRole.INTERVIEWEE);
         assertThat(first.text()).isEqualTo("안녕하세요.");
         assertThat(first.startIndex()).isZero();
         assertThat(first.endIndex()).isEqualTo(6);
@@ -48,7 +48,7 @@ class ScriptSegmentMapperTest {
                 new TranscriptSegment(" 네.", 0.5f, 1.0f)
         );
 
-        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.ANSWER, fullText, sttSegments, 0.0f);
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 0.0f);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).startIndex()).isZero();
@@ -63,7 +63,7 @@ class ScriptSegmentMapperTest {
                 new TranscriptSegment("반갑습니다.", 0.3f, 1.5f)
         );
 
-        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.ANSWER, fullText, sttSegments, 0.0f);
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 0.0f);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).text()).isEqualTo("반갑습니다.");
@@ -71,16 +71,16 @@ class ScriptSegmentMapperTest {
 
     @Test
     void 세그먼트가_없거나_대본이_비면_빈_리스트다() {
-        assertThat(ScriptSegmentMapper.map(ScriptRole.ANSWER, "대본", List.of(), 0.0f)).isEmpty();
-        assertThat(ScriptSegmentMapper.map(ScriptRole.ANSWER, "", List.of(new TranscriptSegment("x", 0f, 1f)), 0.0f)).isEmpty();
-        assertThat(ScriptSegmentMapper.map(ScriptRole.ANSWER, null, List.of(new TranscriptSegment("x", 0f, 1f)), 0.0f)).isEmpty();
+        assertThat(ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, "대본", List.of(), 0.0f)).isEmpty();
+        assertThat(ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, "", List.of(new TranscriptSegment("x", 0f, 1f)), 0.0f)).isEmpty();
+        assertThat(ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, null, List.of(new TranscriptSegment("x", 0f, 1f)), 0.0f)).isEmpty();
     }
 
     @Test
     void 음수_시각은_0으로_보정한다() {
         // 오프셋이 없고 세그먼트 상대 시각이 음수로 들어오는 비정상 입력 방어
         List<UtteranceSegment> result = ScriptSegmentMapper.map(
-                ScriptRole.QUESTION, "질문입니다.", List.of(new TranscriptSegment("질문입니다.", -0.5f, 1.0f)), 0.0f);
+                ScriptRole.INTERVIEWER, "질문입니다.", List.of(new TranscriptSegment("질문입니다.", -0.5f, 1.0f)), 0.0f);
 
         assertThat(result.get(0).startSec()).isEqualTo(0.0f);
         assertThat(result.get(0).endSec()).isEqualTo(1.0f);

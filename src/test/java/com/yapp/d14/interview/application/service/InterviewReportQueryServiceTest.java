@@ -191,8 +191,8 @@ class InterviewReportQueryServiceTest {
         // 저장된 세그먼트는 questionId 10의 카드에 startSec 순(질문 → 답변)으로 붙어야 한다.
         given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
                 10L, List.of(
-                        new UtteranceSegment(ScriptRole.QUESTION, "질문입니다.", 0, 6, 12.0f, 14.0f),
-                        new UtteranceSegment(ScriptRole.ANSWER, "답변입니다.", 0, 6, 15.0f, 17.0f)
+                        new UtteranceSegment(ScriptRole.INTERVIEWER, "질문입니다.", 0, 6, 12.0f, 14.0f),
+                        new UtteranceSegment(ScriptRole.INTERVIEWEE, "답변입니다.", 0, 6, 15.0f, 17.0f)
                 )
         ));
 
@@ -200,11 +200,11 @@ class InterviewReportQueryServiceTest {
 
         List<InterviewReportQueryResult.ScriptSegment> segments = result.cards().get(0).scriptSegments();
         assertThat(segments).hasSize(2);
-        assertThat(segments.get(0).role()).isEqualTo(ScriptRole.QUESTION);
+        assertThat(segments.get(0).role()).isEqualTo(ScriptRole.INTERVIEWER);
         assertThat(segments.get(0).text()).isEqualTo("질문입니다.");
         assertThat(segments.get(0).startSec()).isEqualTo(12.0f);
         assertThat(segments.get(0).endSec()).isEqualTo(14.0f);
-        assertThat(segments.get(1).role()).isEqualTo(ScriptRole.ANSWER);
+        assertThat(segments.get(1).role()).isEqualTo(ScriptRole.INTERVIEWEE);
         assertThat(segments.get(1).startSec()).isEqualTo(15.0f);
     }
 
@@ -226,11 +226,11 @@ class InterviewReportQueryServiceTest {
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
                 .willReturn(new GuestFeedbackReportView(0, List.of()));
         given(utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(SESSION_ID)).willReturn(Map.of(
-                10L, List.of(new UtteranceSegment(ScriptRole.QUESTION, "첫 면접관 멘트", 0, 7, 5.0f, 8.0f)),   // 카드 없음
+                10L, List.of(new UtteranceSegment(ScriptRole.INTERVIEWER, "첫 면접관 멘트", 0, 7, 5.0f, 8.0f)),   // 카드 없음
                 20L, List.of(
-                        new UtteranceSegment(ScriptRole.QUESTION, "중간 질문", 0, 5, 30.0f, 32.0f),
-                        new UtteranceSegment(ScriptRole.ANSWER, "중간 답변", 0, 5, 33.0f, 36.0f)),
-                30L, List.of(new UtteranceSegment(ScriptRole.ANSWER, "마지막 멘트", 0, 6, 60.0f, 63.0f))     // 카드 없음
+                        new UtteranceSegment(ScriptRole.INTERVIEWER, "중간 질문", 0, 5, 30.0f, 32.0f),
+                        new UtteranceSegment(ScriptRole.INTERVIEWEE, "중간 답변", 0, 5, 33.0f, 36.0f)),
+                30L, List.of(new UtteranceSegment(ScriptRole.INTERVIEWEE, "마지막 멘트", 0, 6, 60.0f, 63.0f))     // 카드 없음
         ));
 
         InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);

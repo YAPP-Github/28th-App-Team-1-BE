@@ -100,7 +100,7 @@ public record InterviewReportHttpResponse(
             @Schema(description = "질문 분석(질문 의도 설명, probe_text 번역)")
             String questionIntent,
 
-            @Schema(description = "질문/답변 대본을 문장 단위로 쪼갠 발화 구간 목록. startSec 오름차순(실제 발화 순서: 질문 → 답변)이라, " +
+            @Schema(description = "대본을 문장 단위로 쪼갠 발화 구간 목록. startSec 오름차순(실제 발화 순서: 면접관 → 면접자)이라, " +
                     "영상 재생 위치(currentTime)로 한 배열만 탐색해 현재 발화 중인 문장을 강조할 수 있다. 문장 시각을 못 만든 카드는 빈 배열")
             List<ScriptSegment> scriptSegments
     ) {
@@ -121,7 +121,7 @@ public record InterviewReportHttpResponse(
     }
 
     public record ScriptSegment(
-            @Schema(description = "발화 주체 — QUESTION(질문 대본) / ANSWER(답변 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다")
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 대본) / INTERVIEWEE(면접자 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다")
             String role,
 
             @Schema(description = "문장 텍스트")
@@ -148,7 +148,7 @@ public record InterviewReportHttpResponse(
     }
 
     public record ScriptLine(
-            @Schema(description = "발화 주체 — QUESTION(면접관 질문) / ANSWER(면접자 답변)")
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 발화) / INTERVIEWEE(면접자 발화)")
             String role,
 
             @Schema(description = "문장 텍스트")
