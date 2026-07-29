@@ -118,6 +118,32 @@ public interface InterviewReportControllerDocs {
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "트래픽 확장 대응 전략",
                                                     "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
+                                                  },
+                                                  {
+                                                    "axisOrder": 3,
+                                                    "depthLevel": 1,
+                                                    "questionText": "Q. 장애가 났을 때 가장 먼저 확인하는 지표는 무엇인가요?",
+                                                    "transcript": "저는 원래 디자인을 전공해서 그런지 이런 장애 대응보다는 협업 프로세스나 팀 분위기가 더 중요하다고 생각해요.",
+                                                    "highlightSpans": [
+                                                      {
+                                                        "startIndex": 0,
+                                                        "endIndex": 52,
+                                                        "tone": "IMPROVE",
+                                                        "reason": "OFF_INTENT",
+                                                        "title": "질문과 다른 주제로 답변",
+                                                        "analysis": "장애 대응 지표가 아니라 협업 분위기에 대해 답변해 질문 의도와 어긋납니다.",
+                                                        "followUpQuestions": [],
+                                                        "startSec": 80.0,
+                                                        "answerTopicTitle": "협업 프로세스와 팀 분위기",
+                                                        "questionIntentTitle": "장애 탐지 우선순위",
+                                                        "questionIntent": "장애 발생 시 가장 먼저 확인하는 지표와 그 이유를 확인하는 질문입니다."
+                                                      }
+                                                    ],
+                                                    "resolutionNotice": null,
+                                                    "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "장애 탐지 우선순위",
+                                                    "questionIntent": "장애 발생 시 가장 먼저 확인하는 지표와 그 이유를 확인하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   }
                                                 ],
                                                 "script": [
@@ -158,53 +184,6 @@ public interface InterviewReportControllerDocs {
                                                 "script": [
                                                   { "role": "INTERVIEWER", "text": "Q. 장애가 났을 때 어디부터 확인하시나요?", "startSec": 10.0, "endSec": 13.5 },
                                                   { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 }
-                                                ],
-                                                "guestFeedback": { "participantCount": 0, "guests": [] }
-                                              }
-                                            }
-                                            """),
-                                    @ExampleObject(name = "딴 답(OFF_INTENT) 하이라이트", value = """
-                                            {
-                                              "success": true,
-                                              "data": {
-                                                "status": "READY",
-                                                "headline": "이번 면접에서는 장애 대응 경험을 중심으로 이야기를 나눴어요.",
-                                                "redFlagNotices": null,
-                                                "video": {
-                                                  "url": "https://cdn.example.com/videos/abc.mp4",
-                                                  "expired": false,
-                                                  "expiresAt": "2026-07-21T13:00:00"
-                                                },
-                                                "cards": [
-                                                  {
-                                                    "axisOrder": 1,
-                                                    "depthLevel": 1,
-                                                    "questionText": "Q. 앱 업데이트 이후 성능이 저하되었습니다. 가장 먼저 확인할 항목은 무엇인가요?",
-                                                    "transcript": "대학교에서는 시각디자인을 전공하며, 디자인 동아리 활동과 여러 공모전에 도전하면서 회사 일 감각을 키워왔습니다.",
-                                                    "highlightSpans": [
-                                                      {
-                                                        "startIndex": 20,
-                                                        "endIndex": 62,
-                                                        "tone": "IMPROVE",
-                                                        "reason": "OFF_INTENT",
-                                                        "title": "질문과 다른 주제로 답변",
-                                                        "analysis": "질문 의도와 맞지 않는 답변입니다. 실무 경험 사례를 구체적으로 설명해 보세요.",
-                                                        "followUpQuestions": [],
-                                                        "startSec": 34.0,
-                                                        "answerTopicTitle": "전공·동아리 활동 경험",
-                                                        "questionIntentTitle": "장애 원인을 좁혀가는 순서",
-                                                        "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
-                                                      }
-                                                    ],
-                                                    "resolutionNotice": "질문과 다른 답변이 있어 이 항목은 능력 판단을 보류했어요.",
-                                                    "cardRedFlagNotices": null,
-                                                    "questionIntentTitle": "장애 원인을 좁혀가는 순서",
-                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
-                                                  }
-                                                ],
-                                                "script": [
-                                                  { "role": "INTERVIEWER", "text": "Q. 앱 업데이트 이후 성능이 저하되었습니다. 가장 먼저 확인할 항목은 무엇인가요?", "startSec": 30.0, "endSec": 33.6 },
-                                                  { "role": "INTERVIEWEE", "text": "대학교에서는 시각디자인을 전공하며, 디자인 동아리 활동과...", "startSec": 34.0, "endSec": 41.2 }
                                                 ],
                                                 "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
