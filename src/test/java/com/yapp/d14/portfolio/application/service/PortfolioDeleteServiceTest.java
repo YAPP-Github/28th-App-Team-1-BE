@@ -78,6 +78,7 @@ class PortfolioDeleteServiceTest {
         assertThat(portfolio.isDeleted()).isTrue();
         assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.CANCELLED);
         verify(portfolioRepository).save(portfolio);
+        verify(portfolioRepository).acquirePortfolioLock(portfolio.getId());
         verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
         verify(portfolioFileUploader).delete(portfolio.getS3Key());
     }

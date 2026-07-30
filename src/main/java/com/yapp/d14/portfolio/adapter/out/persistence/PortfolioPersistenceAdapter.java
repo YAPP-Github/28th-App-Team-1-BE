@@ -29,6 +29,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public void acquirePortfolioLock(UUID portfolioId) {
+        portfolioJpaRepository.acquirePortfolioLock("portfolio:" + portfolioId);
+    }
+
+    @Override
     public boolean existsActiveByUserId(UUID userId) {
         return portfolioJpaRepository.existsByUserIdAndDeletedFalse(userId);
     }

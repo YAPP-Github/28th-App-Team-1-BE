@@ -29,6 +29,9 @@ class PortfolioDeleteService implements PortfolioDeleteUseCase {
     @Override
     @Transactional
     public PortfolioDeleteResult delete(UUID userId, UUID portfolioId) {
+        // 세션 생성 쪽(InterviewSessionPersister)이 같은 키로 이 락을 잡으므로, 둘 중 먼저 잡은 트랜잭션이
+        // 끝날 때까지 나머지가 대기한다 — "확인 직후 삭제된 포트폴리오를 참조하는 세션이 생성"되는 경합을 막는다.
+        portfolioRepository.acquirePortfolioLock(portfolioId);
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
 
         if (interviewSessionInProgressCheckUseCase.existsInProgress(portfolioId)) {

@@ -10,12 +10,16 @@ import com.yapp.d14.interview.domain.InterviewAxisPlan;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.portfolio.application.port.in.PortfolioLockedStatusCheckUseCase;
+import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
+import com.yapp.d14.portfolio.exception.PortfolioException;
 import com.yapp.d14.ticket.application.port.in.TicketHoldUseCase;
 import com.yapp.d14.ticket.exception.TicketErrorCode;
 import com.yapp.d14.ticket.exception.TicketException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -43,6 +49,9 @@ class InterviewSessionPersisterTest {
 
     @Mock
     private TicketHoldUseCase ticketHoldUseCase;
+
+    @Mock
+    private PortfolioLockedStatusCheckUseCase portfolioLockedStatusCheckUseCase;
 
     @InjectMocks
     private InterviewSessionPersister persister;
@@ -123,5 +132,35 @@ class InterviewSessionPersisterTest {
 
         assertThatThrownBy(() -> persister.persist(command, context, command.jdText(), weights, assignments))
                 .isInstanceOf(TicketException.class);
+    }
+
+    @Test
+    void 저장_전에_포트폴리오_락_재검증을_먼저_수행한다() {
+        stubSessionSaveWithId(1L);
+        given(interviewAxisPlanRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+        Map<TestType, Integer> weights = weights();
+        Map<TestType, AxisAssignment> assignments = assignments(weights);
+
+        persister.persist(command, context, command.jdText(), weights, assignments);
+
+        InOrder order = inOrder(portfolioLockedStatusCheckUseCase, interviewSessionRepository);
+        order.verify(portfolioLockedStatusCheckUseCase).requireReadyWithLock(userId, portfolioId);
+        order.verify(interviewSessionRepository).save(any());
+    }
+
+    @Test
+    void 검증_이후_삭제등으로_포트폴리오가_더이상_READY가_아니면_세션을_저장하지_않는다() {
+        doThrow(new PortfolioException(PortfolioErrorCode.PORTFOLIO_NOT_FOUND))
+                .when(portfolioLockedStatusCheckUseCase).requireReadyWithLock(userId, portfolioId);
+        Map<TestType, Integer> weights = weights();
+        Map<TestType, AxisAssignment> assignments = assignments(weights);
+
+        assertThatThrownBy(() -> persister.persist(command, context, command.jdText(), weights, assignments))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.PORTFOLIO_NOT_FOUND);
+
+        verify(interviewSessionRepository, never()).save(any());
+        verify(ticketHoldUseCase, never()).hold(any(), any());
     }
 }

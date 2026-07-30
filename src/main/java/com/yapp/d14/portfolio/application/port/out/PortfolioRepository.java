@@ -16,6 +16,11 @@ public interface PortfolioRepository {
     // 기존 row를 잠그는 SELECT ... FOR UPDATE로는 막을 수 없는 경합(phantom)이 생긴다.
     void acquireRegistrationLock(UUID userId);
 
+    // 포트폴리오 단위로 삭제와 "삭제 여부 확인 후 사용(면접 세션 생성)"을 직렬화하는 DB 어드바이저리 락.
+    // 삭제(PortfolioDeleteService)와 세션 생성 시 재검증(InterviewSessionPersister)이 같은 키로 이 락을 잡아,
+    // "확인 시점엔 살아있었는데 그 사이 삭제된 포트폴리오를 참조하는 세션이 생성되는" TOCTOU 경합을 막는다.
+    void acquirePortfolioLock(UUID portfolioId);
+
     boolean existsActiveByUserId(UUID userId);
 
     boolean existsAnyByUserId(UUID userId);

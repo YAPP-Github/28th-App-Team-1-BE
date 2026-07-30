@@ -15,6 +15,9 @@ interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID>
     @Query(value = "SELECT pg_advisory_xact_lock(hashtext(:lockKey)::bigint)", nativeQuery = true)
     void acquireRegistrationLock(@Param("lockKey") String lockKey);
 
+    @Query(value = "SELECT pg_advisory_xact_lock(hashtext(:lockKey)::bigint)", nativeQuery = true)
+    void acquirePortfolioLock(@Param("lockKey") String lockKey);
+
     List<PortfolioJpaEntity> findAllByUserIdAndDeletedFalse(UUID userId);
 
     boolean existsByUserIdAndDeletedFalse(UUID userId);
