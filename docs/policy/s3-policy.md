@@ -87,3 +87,4 @@ video_expires_at > NOW() 확인
   - pgvector 청크 삭제(`PortfolioEmbeddingStore.deleteByPortfolioId`)는 같은 PostgreSQL 데이터소스를 쓰므로 DB 갱신과 같은 트랜잭션 안에서 처리한다. S3 삭제만 그 트랜잭션 커밋 후 별도로 실행한다 (전부-또는-전무 원칙 — pgvector 삭제가 실패하면 DB 갱신도 함께 롤백된다).
   - 소프트 삭제된 포트폴리오는 ID 기반 상태 조회·재삭제 API에서는 존재하지 않는 것으로 취급된다(404).
     목록 조회에서는 제외되며, 목록 API 자체는 200으로 반환된다. row 보존은 순수하게 재업로드 제한 판정용이다.
+- 열람: `GET /api/v1/portfolios/{portfolioId}/file-url` — `PortfolioFileUrlQueryService`가 소유권·`READY` 상태를 확인한 뒤 `PortfolioFileUploader.presignDownload(key)`로 GET presigned URL(유효시간 10분)을 발급한다. 면접 영상 재생(§3.3)과 동일하게 서버는 파일 바이트를 직접 다루지 않고 URL만 반환한다.

@@ -2,6 +2,7 @@ package com.yapp.d14.portfolio.adapter.in.web;
 
 import com.yapp.d14.portfolio.adapter.in.web.request.PortfolioRegisterHttpRequest;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioDeleteHttpResponse;
+import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioFileUrlHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioListHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioRegisterHttpResponse;
 import com.yapp.d14.portfolio.adapter.in.web.response.PortfolioStatusHttpResponse;
@@ -156,6 +157,61 @@ public interface PortfolioControllerDocs {
     })
     ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(
             @Parameter(hidden = true) @CurrentUser UUID userId
+    );
+
+    @Operation(
+            summary = "포트폴리오 파일 열람 URL 발급",
+            description = "포트폴리오 목록에서 항목을 클릭했을 때 PDF 원본을 열람할 수 있는 URL을 발급합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 응답의 `fileUrl`은 S3 presigned GET URL이며 발급 후 10분간만 유효합니다. 매번 새로 호출해 발급받아야 합니다.\n" +
+                    "- `portfolioId`로 지정한 포트폴리오는 반드시 `READY` 상태여야 합니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "발급 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "아직 처리 중이거나 처리에 실패한 포트폴리오",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "포트폴리오 처리 중", value = """
+                                            {
+                                              "success": false,
+                                              "code": "PORTFOLIO_PROCESSING",
+                                              "message": "포트폴리오를 아직 분석하고 있어요. 잠시 후 다시 시도해 주세요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "포트폴리오 처리 실패", value = """
+                                            {
+                                              "success": false,
+                                              "code": "PORTFOLIO_UPLOAD_FAILED",
+                                              "message": "포트폴리오 처리에 실패했어요. 다시 업로드해 주세요."
+                                            }
+                                            """)
+                            }
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "포트폴리오가 존재하지 않거나 본인 소유가 아님",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "PORTFOLIO_NOT_FOUND",
+                                      "message": "포트폴리오를 찾을 수 없어요."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<ApiResponse<PortfolioFileUrlHttpResponse>> getFileUrl(
+            @Parameter(hidden = true) @CurrentUser UUID userId,
+            @Parameter(description = "포트폴리오 ID") UUID portfolioId
     );
 
     @Operation(

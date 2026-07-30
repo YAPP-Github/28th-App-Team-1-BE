@@ -9,7 +9,12 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+
+import java.time.Duration;
 
 @Slf4j
 @Component
@@ -17,8 +22,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
 
     private static final int MAX_ATTEMPTS = 3;
+    // presigned URL 자체의 서명 유효시간(interview 영상 재생 프리사인과 동일한 관례, s3-policy.md §2).
+    private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(10);
 
     private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
     private final S3Properties s3Properties;
 
     @Override
@@ -56,5 +64,19 @@ class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
         } catch (SdkException e) {
             log.error("[S3 DELETE] 삭제 실패, 고아 파일로 남을 수 있음: key={}", key, e);
         }
+    }
+
+    @Override
+    public String presignDownload(String key) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .build();
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(DOWNLOAD_TTL)
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 }
