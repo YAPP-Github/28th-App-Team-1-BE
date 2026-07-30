@@ -40,6 +40,9 @@ public class SecurityConfig {
                         // 로컬 수동 테스트용 정적 하네스 페이지. dev 프로파일에서만 컨트롤러가 등록되어(DevInterviewTestPageController)
                         // 운영에서는 이 경로 자체가 404이므로 permitAll이어도 노출되지 않는다. API는 그대로 JWT가 필요하다.
                         .requestMatchers("/interview-test.html", "/favicon.ico").permitAll()
+                        // 면접 진행 수동 테스트 하네스(정적 페이지, dev 전용). 액세스 토큰은 페이지 안에서 직접 입력하고,
+                        // 실제 API 호출은 JwtAuthenticationFilter를 그대로 거친다.
+                        .requestMatchers("/interview-harness/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

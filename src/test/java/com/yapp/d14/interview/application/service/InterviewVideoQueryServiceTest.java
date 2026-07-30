@@ -39,14 +39,15 @@ class InterviewVideoQueryServiceTest {
     @InjectMocks
     private InterviewVideoQueryService service;
 
-    private InterviewVideo video(boolean composited, boolean expiredInFuture) {
-        LocalDateTime expiresAt = expiredInFuture ? NOW.plusDays(1) : NOW.minusDays(1);
-        return InterviewVideo.of(1L, SESSION_ID, NOW, expiresAt, false, true, composited, null, null);
+    // getPlayback/getGuestStatus는 baseAt+30일 하드캡(isExpiredForGuest)으로 판정하므로, baseAt을 조절해 하드캡 이내/초과를 만든다.
+    private InterviewVideo video(boolean composited, boolean guestExpired) {
+        LocalDateTime baseAt = guestExpired ? NOW.minusDays(31) : NOW.minusDays(1);
+        return InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(24), false, true, composited, null, null);
     }
 
     @Test
-    void 합성이_끝났고_만료_전이면_합성본_presigned_URL과_상태를_함께_반환한다() {
-        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, true)));
+    void 합성이_끝났고_30일_하드캡_이내면_합성본_presigned_URL과_상태를_함께_반환한다() {
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, false)));
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(SESSION_ID)).willReturn(OWNER_ID);
         given(interviewVideoStorage.presignComposite(OWNER_ID, SESSION_ID)).willReturn("https://s3/final.mp4");
 
@@ -57,15 +58,15 @@ class InterviewVideoQueryServiceTest {
 
     @Test
     void 합성_전이면_URL_없이_null을_반환한다() {
-        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(false, true)));
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(false, false)));
 
         assertThat(service.getPlayback(SESSION_ID).playbackUrl()).isNull();
         verify(interviewVideoStorage, never()).presignComposite(any(), any());
     }
 
     @Test
-    void 합성됐어도_만료됐으면_null을_반환한다() {
-        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, false)));
+    void 합성됐어도_30일_하드캡을_넘겼으면_null을_반환한다() {
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video(true, true)));
 
         var result = service.getPlayback(SESSION_ID);
         assertThat(result.playbackUrl()).isNull();
@@ -74,9 +75,49 @@ class InterviewVideoQueryServiceTest {
     }
 
     @Test
+    void 소유자_단계형_만료_시각은_지났어도_30일_하드캡_이내면_지인용_재생_URL을_준다() {
+        LocalDateTime baseAt = NOW.minusDays(10);
+        InterviewVideo ownerExpiredButGuestOpen = InterviewVideo.of(
+                1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null
+        );
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(ownerExpiredButGuestOpen));
+        given(interviewSessionOwnerQueryUseCase.getOwnerUserId(SESSION_ID)).willReturn(OWNER_ID);
+        given(interviewVideoStorage.presignComposite(OWNER_ID, SESSION_ID)).willReturn("https://s3/final.mp4");
+
+        var result = service.getPlayback(SESSION_ID);
+
+        assertThat(result.expired()).isFalse();
+        assertThat(result.playbackUrl()).isEqualTo("https://s3/final.mp4");
+    }
+
+    @Test
     void 영상_레코드가_없으면_예외를_던진다() {
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getPlayback(SESSION_ID)).isInstanceOf(InterviewException.class);
+    }
+
+    @Test
+    void getOwnerStatus는_단계형_만료_시각_기준으로_판정한다() {
+        LocalDateTime baseAt = NOW.minusDays(10);
+        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null);
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video));
+
+        var result = service.getOwnerStatus(SESSION_ID);
+
+        assertThat(result.expired()).isTrue();
+        assertThat(result.expiresAt()).isEqualTo(baseAt.plusHours(48));
+    }
+
+    @Test
+    void getGuestStatus는_baseAt_30일_하드캡_기준으로_판정하고_하드캡_시각을_반환한다() {
+        LocalDateTime baseAt = NOW.minusDays(10);
+        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null);
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video));
+
+        var result = service.getGuestStatus(SESSION_ID);
+
+        assertThat(result.expired()).isFalse();
+        assertThat(result.expiresAt()).isEqualTo(baseAt.plusDays(30));
     }
 }
