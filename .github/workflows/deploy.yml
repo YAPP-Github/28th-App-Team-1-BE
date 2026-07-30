@@ -123,6 +123,7 @@ jobs:
             APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
             APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}
             APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}
+            KAKAO_ADMIN_KEY=${{ secrets.KAKAO_ADMIN_KEY }}
             ENVEOF
             chmod 600 /opt/d14/.env
 
