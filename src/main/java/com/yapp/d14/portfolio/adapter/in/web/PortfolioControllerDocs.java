@@ -113,7 +113,92 @@ public interface PortfolioControllerDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "조회 성공"
+                    description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "PROCESSING — 분석 중", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "PROCESSING",
+                                                "message": "포트폴리오를 분석하고 있어요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "READY — 처리 완료", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "READY",
+                                                "message": "포트폴리오 처리가 완료되었습니다."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_FILE — 파일 손상·암호 보호", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_FILE",
+                                                "message": "파일이 손상되었거나 암호로 보호되어 있어요. 다시 업로드해 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_FILE — 텍스트 인식 불가(스캔본 등)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_FILE",
+                                                "message": "텍스트를 인식할 수 없어요. 스캔본이 아닌 PDF 파일로 다시 업로드해 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_SYSTEM — S3 업로드 실패", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_SYSTEM",
+                                                "message": "파일 업로드에 실패했어요. 잠시 후 다시 시도해 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_SYSTEM — 분석(임베딩) 실패", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_SYSTEM",
+                                                "message": "포트폴리오 분석에 실패했어요. 잠시 후 다시 시도해 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_SYSTEM — 처리 시간 초과", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_SYSTEM",
+                                                "message": "처리 시간이 초과되었어요. 다시 시도해 주세요."
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "FAILED_SYSTEM — 비동기 처리 큐 포화(등록 직후 즉시 실패)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                "status": "FAILED_SYSTEM",
+                                                "message": "현재 요청이 많아 처리가 지연되고 있어요. 잠시 후 다시 시도해 주세요."
+                                              }
+                                            }
+                                            """)
+                            }
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -152,7 +237,108 @@ public interface PortfolioControllerDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "조회 성공"
+                    description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "등록된 포트폴리오 없음", value = """
+                                            {
+                                              "success": true,
+                                              "data": { "portfolios": [] }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "처리 중(PROCESSING)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "PROCESSING",
+                                                  "uploadedAt": null,
+                                                  "replaceAvailable": true,
+                                                  "nextAvailableAt": null,
+                                                  "interviewInProgress": false
+                                                }]
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "완료(READY) — 삭제·재업로드 기회 있음", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000002",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "READY",
+                                                  "uploadedAt": "2026-07-01T10:00:00",
+                                                  "replaceAvailable": true,
+                                                  "nextAvailableAt": null,
+                                                  "interviewInProgress": false
+                                                }]
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "완료(READY) — 이번 달 삭제·재업로드 기회 소진", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000003",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "READY",
+                                                  "uploadedAt": "2026-07-15T10:00:00",
+                                                  "replaceAvailable": false,
+                                                  "nextAvailableAt": "2026-08-01T00:00:00",
+                                                  "interviewInProgress": false
+                                                }]
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "완료(READY) — 진행 중인 면접이 사용 중이라 삭제 불가", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000004",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "READY",
+                                                  "uploadedAt": "2026-07-20T10:00:00",
+                                                  "replaceAvailable": true,
+                                                  "nextAvailableAt": null,
+                                                  "interviewInProgress": true
+                                                }]
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "처리 실패(FAILED_FILE·FAILED_SYSTEM)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000005",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "FAILED_FILE",
+                                                  "uploadedAt": null,
+                                                  "replaceAvailable": true,
+                                                  "nextAvailableAt": null,
+                                                  "interviewInProgress": false
+                                                }]
+                                              }
+                                            }
+                                            """)
+                            }
+                    )
             )
     })
     ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(
