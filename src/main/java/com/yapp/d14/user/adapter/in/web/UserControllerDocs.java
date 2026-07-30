@@ -112,7 +112,8 @@ public interface UserControllerDocs {
 
     @Operation(
             summary = "회원 프로필 조회",
-            description = "이름, 직무, 연차, 잔여 이용권 수를 조회합니다.\n\n" +
+            description = "이름, 이메일, 소셜 로그인 제공자, 직무, 연차, 잔여 이용권 수를 조회합니다.\n\n" +
+                    "이메일은 소셜 계정에서 제공되지 않은 경우 null일 수 있습니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
@@ -205,4 +206,63 @@ public interface UserControllerDocs {
             @Parameter(hidden = true) UUID userId,
             @Valid UserProfileUpdateHttpRequest request
     );
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "계정을 즉시 삭제하고 Refresh Token을 무효화합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 계정(users row)만 삭제하며, 포트폴리오·면접 세션/레포트·이용권·지인 피드백 공유 등 연관 데이터는 삭제되지 않습니다.\n" +
+                    "- 계정 삭제 전에 카카오 연결끊기(unlink) 또는 애플 토큰 폐기(revoke) API를 호출해 소셜 연동을 함께 해제합니다. " +
+                    "이 호출이 실패하면 탈퇴 자체가 실패하며 계정은 삭제되지 않습니다.\n" +
+                    "- 애플 계정은 로그인 시 저장된 refresh_token으로 revoke를 호출합니다. 이 기능 배포 이전에 가입해 저장된 토큰이 없는 경우, " +
+                    "재로그인 후 다시 탈퇴를 요청해야 합니다.\n" +
+                    "- Access Token은 만료 시까지 유효하므로 클라이언트에서도 반드시 삭제해야 합니다.\n" +
+                    "- 같은 소셜 계정으로 재가입하면 신규 사용자로 처리됩니다."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "탈퇴 성공", content = @Content),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 사용자",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "USER_NOT_FOUND",
+                                      "message": "존재하지 않는 사용자입니다."
+                                    }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "저장된 애플 refresh_token이 없어 소셜 연동 해제를 할 수 없음 (재로그인 필요)",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "SOCIAL_RECONNECT_REQUIRED",
+                                      "message": "소셜 연동 정보가 없어 탈퇴할 수 없습니다. 다시 로그인한 뒤 탈퇴해주세요."
+                                    }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "502",
+                    description = "카카오 연결끊기 또는 애플 토큰 폐기 API 호출 실패",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": false,
+                                      "code": "SOCIAL_UNLINK_FAILED",
+                                      "message": "소셜 연동 해제에 실패했습니다. 잠시 후 다시 시도해주세요."
+                                    }
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<Void> withdraw(@Parameter(hidden = true) UUID userId);
 }

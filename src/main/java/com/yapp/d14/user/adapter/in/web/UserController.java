@@ -10,10 +10,12 @@ import com.yapp.d14.user.application.port.in.UserNameDuplicateCheckUseCase;
 import com.yapp.d14.user.application.port.in.UserNameRegisterUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileUpdateUseCase;
+import com.yapp.d14.user.application.port.in.UserWithdrawUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +35,7 @@ class UserController implements UserControllerDocs {
     private final UserNameDuplicateCheckUseCase userNameDuplicateCheckUseCase;
     private final UserProfileQueryUseCase userProfileQueryUseCase;
     private final UserProfileUpdateUseCase userProfileUpdateUseCase;
+    private final UserWithdrawUseCase userWithdrawUseCase;
 
     @Override
     @PatchMapping("/me/name")
@@ -68,5 +71,12 @@ class UserController implements UserControllerDocs {
     ) {
         userProfileUpdateUseCase.update(request.toCommand(userId));
         return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    @Override
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> withdraw(@CurrentUser UUID userId) {
+        userWithdrawUseCase.withdraw(userId);
+        return ResponseEntity.noContent().build();
     }
 }

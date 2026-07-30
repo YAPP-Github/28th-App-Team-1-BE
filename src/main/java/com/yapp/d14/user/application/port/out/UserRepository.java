@@ -17,4 +17,6 @@ public interface UserRepository {
     boolean existsByNameAndIdNot(String name, UUID id);
 
     User save(User user);
+
+    void deleteById(UUID id);
 }

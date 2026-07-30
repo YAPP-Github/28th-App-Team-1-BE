@@ -5,6 +5,7 @@ import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewAnswerSubmitHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.request.InterviewSessionCreateHttpRequest;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewAnswerSubmitHttpResponse;
+import com.yapp.d14.interview.adapter.in.web.response.InterviewReportListHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionCreateHttpResponse;
 import com.yapp.d14.interview.adapter.in.web.response.InterviewSessionStatusHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,26 @@ import java.util.UUID;
 
 @Tag(name = "Interview", description = "면접 세션 API")
 public interface InterviewControllerDocs {
+
+    @Operation(
+            summary = "내 면접 레포트 목록 조회",
+            description = "마이페이지 '내 면접 레포트' 목록을 최신순으로 조회합니다.\n\n" +
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 레포트 생성이 시도된(Report가 존재하는) 세션만 포함합니다. 준비중·진행중 세션은 제외됩니다.\n" +
+                    "- 직군·연차·포트폴리오 파일명·JD는 면접 진행 당시의 스냅샷 값입니다.\n" +
+                    "- `portfolioDeleted=true`면 사용한 포트폴리오가 이후 삭제된 것으로, '삭제된 포트폴리오' 배지를 표시합니다.\n" +
+                    "- `jdUrl`이 null이면 JD를 직접 입력했거나 없이 진행한 것으로 '직접 입력함' 등으로 표기합니다.\n" +
+                    "- `reportStatus=FAILED`면 레포트 생성에 실패한 것이며, 이 경우 이용권은 차감되지 않습니다.\n" +
+                    "- `feedbackAvailable=true`면 지인 피드백 링크를 새로 요청할 수 있습니다(레포트 READY & 공유 링크 미생성)."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = InterviewReportListHttpResponse.class))
+            )
+    })
+    ResponseEntity<ApiResponse<InterviewReportListHttpResponse>> getReportList(@Parameter(hidden = true) @CurrentUser UUID userId);
 
     @Operation(
             summary = "면접 세션 생성",
