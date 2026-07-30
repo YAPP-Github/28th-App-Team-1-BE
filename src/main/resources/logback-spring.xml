@@ -9,8 +9,33 @@
     -->
     <springProfile name="local">
         <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+        <!--
+          면접 수동 테스트 하네스(interview-harness)에서 세션 종료 후 sessionId로 로그를 추출해
+          별도 파일로 뽑아볼 수 있도록, local 프로파일에 한해 콘솔과 동일한 로그를 logs/app.log 에도 남긴다.
+          scripts/collect-interview-log.ps1 참고.
+        -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/app.log</file>
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/app.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>7</maxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <!--
+          면접 진행 중 캐물지점 풀/선택, 축 전환(예산 소진·천장 판정), 질문·답변 텍스트 같은
+          내용성 로그는 DEBUG로 남긴다. 배포 환경(!local)은 root가 INFO 그대로라 영향 없다.
+        -->
+        <logger name="com.yapp.d14.interview" level="DEBUG"/>
+
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
         </root>
     </springProfile>
 

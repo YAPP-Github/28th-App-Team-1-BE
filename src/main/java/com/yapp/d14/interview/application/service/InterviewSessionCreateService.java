@@ -48,6 +48,7 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
         InterviewSession session = interviewSessionPersister.persist(command, jdText, portfolioFileName, weights, assignments);
+        logAxisBudget(session.getId(), command, weights, assignments);
 
         triggerPreload(session.getId());
 
@@ -62,6 +63,18 @@ class InterviewSessionCreateService implements InterviewSessionCreateUseCase {
         return jdContentQueryUseCase.getContent(command.jdUrl())
                 .filter(StringUtils::hasText)
                 .orElseThrow(() -> new InterviewException(InterviewErrorCode.JD_CONTENT_NOT_FOUND));
+    }
+
+    // 직군/연차로부터 계산된 axis 가중치와 tier/예산(budget) 배분 결과를 남긴다.
+    private void logAxisBudget(
+            Long sessionId, InterviewSessionCreateCommand command, Map<TestType, Integer> weights, Map<TestType, AxisAssignment> assignments
+    ) {
+        log.info("[INTERVIEW AXIS BUDGET] sessionId={}, jobRole={}, careerYears={}, weights={}",
+                sessionId, command.jobRole(), command.careerYears(), weights);
+        assignments.forEach((axis, assignment) -> log.info(
+                "[INTERVIEW AXIS BUDGET] sessionId={}, axis={}, tier={}, budget={}",
+                sessionId, axis, assignment.tier(), assignment.budget()
+        ));
     }
 
     private void triggerPreload(Long sessionId) {
