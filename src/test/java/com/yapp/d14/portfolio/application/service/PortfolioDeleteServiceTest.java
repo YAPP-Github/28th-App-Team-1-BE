@@ -1,11 +1,13 @@
 package com.yapp.d14.portfolio.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioDeleteResult;
 import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
+import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,9 @@ class PortfolioDeleteServiceTest {
 
     @Mock
     private PortfolioEmbeddingStore portfolioEmbeddingStore;
+
+    @Mock
+    private InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
 
     @InjectMocks
     private PortfolioDeleteService portfolioDeleteService;
@@ -75,5 +80,33 @@ class PortfolioDeleteServiceTest {
         verify(portfolioRepository).save(portfolio);
         verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
         verify(portfolioFileUploader).delete(portfolio.getS3Key());
+    }
+
+    @Test
+    void 진행중인_면접이_사용_중이면_삭제하지_않는다() {
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())).willReturn(true);
+
+        assertThatThrownBy(() -> portfolioDeleteService.delete(userId, portfolio.getId()))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW);
+
+        verify(portfolioRepository, never()).save(any());
+        verify(portfolioEmbeddingStore, never()).deleteByPortfolioId(any());
+    }
+
+    @Test
+    void 이번달_재업로드_기회를_이미_썼으면_삭제하지_않는다() {
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
+
+        assertThatThrownBy(() -> portfolioDeleteService.delete(userId, portfolio.getId()))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.REPLACEMENT_LIMIT_EXCEEDED);
+
+        verify(portfolioRepository, never()).save(any());
+        verify(portfolioEmbeddingStore, never()).deleteByPortfolioId(any());
     }
 }

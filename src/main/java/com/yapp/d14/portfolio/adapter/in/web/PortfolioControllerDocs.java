@@ -140,7 +140,10 @@ public interface PortfolioControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
                     "- 소프트 삭제된 포트폴리오는 응답에서 제외됩니다.\n" +
-                    "- `replaceAvailable`: 이번 달 재업로드(삭제 후 교체) 가능 여부. `nextAvailableAt`: 재업로드가 막혀 있을 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다."
+                    "- `replaceAvailable`: 이번 달 남은 업로드·삭제 기회를 함께 나타내는 값입니다. " +
+                    "`true`면 삭제할 수 있는 기회도 1회, 업로드(재업로드)할 수 있는 기회도 1회 남아있다는 뜻입니다. " +
+                    "`false`면 둘 다 0회로, 이미 이번 달 교체를 마쳐 삭제 API 호출 시 `REPLACEMENT_LIMIT_EXCEEDED`로 거부됩니다. " +
+                    "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -155,7 +158,9 @@ public interface PortfolioControllerDocs {
     @Operation(
             summary = "포트폴리오 삭제",
             description = "포트폴리오를 삭제합니다.\n\n" +
-                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
+                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
+                    "- 진행 중인 면접이 이 포트폴리오를 사용 중이면 삭제할 수 없습니다.\n" +
+                    "- 이번 달 재업로드(교체) 기회를 이미 사용했다면(목록 조회 응답의 `replaceAvailable=false`) 삭제할 수 없습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -174,6 +179,29 @@ public interface PortfolioControllerDocs {
                                       "message": "포트폴리오를 찾을 수 없어요."
                                     }
                                     """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "진행 중인 면접이 사용 중이거나, 이번 달 재업로드 횟수를 이미 사용해 삭제할 수 없음",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "진행 중인 면접이 사용 중", value = """
+                                            {
+                                              "success": false,
+                                              "code": "PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW",
+                                              "message": "진행 중인 면접이 있어 포트폴리오를 삭제할 수 없어요. 면접 종료 후 다시 시도해 주세요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "이번 달 재업로드 횟수 소진", value = """
+                                            {
+                                              "success": false,
+                                              "code": "REPLACEMENT_LIMIT_EXCEEDED",
+                                              "message": "포트폴리오 재업로드는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })

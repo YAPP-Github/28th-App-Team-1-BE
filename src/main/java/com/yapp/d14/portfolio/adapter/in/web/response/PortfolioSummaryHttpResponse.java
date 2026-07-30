@@ -26,7 +26,7 @@ public record PortfolioSummaryHttpResponse(
         @Schema(description = "업로드 시각")
         LocalDateTime uploadedAt,
 
-        @Schema(description = "이번 달 재업로드(삭제 후 교체) 가능 여부")
+        @Schema(description = "이번 달 남은 업로드·삭제 기회 여부. true면 삭제·재업로드 모두 1회씩 가능, false면 둘 다 0회(삭제 시도 시 REPLACEMENT_LIMIT_EXCEEDED)")
         boolean replaceAvailable,
 
         @Schema(description = "재업로드가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
