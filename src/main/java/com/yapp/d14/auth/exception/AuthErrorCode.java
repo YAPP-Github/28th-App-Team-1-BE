@@ -14,7 +14,8 @@ public enum AuthErrorCode implements ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "TOKEN_EXPIRED", "만료된 토큰입니다."),
     LOGIN_EXPIRED(HttpStatus.UNAUTHORIZED, "LOGIN_EXPIRED", "로그인 세션이 만료되었습니다. 다시 로그인해 주세요."),
-    SOCIAL_UNLINK_FAILED(HttpStatus.BAD_GATEWAY, "SOCIAL_UNLINK_FAILED", "소셜 연동 해제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    SOCIAL_UNLINK_FAILED(HttpStatus.BAD_GATEWAY, "SOCIAL_UNLINK_FAILED", "소셜 연동 해제에 실패했습니다. 잠시 후 다시 시도해주세요."),
+    SOCIAL_RECONNECT_REQUIRED(HttpStatus.CONFLICT, "SOCIAL_RECONNECT_REQUIRED", "소셜 연동 정보가 없어 탈퇴할 수 없습니다. 다시 로그인한 뒤 탈퇴해주세요.");
 
     private final HttpStatus httpStatus;
     private final String code;
