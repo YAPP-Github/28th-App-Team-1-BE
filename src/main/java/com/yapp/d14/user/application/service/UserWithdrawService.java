@@ -11,10 +11,12 @@ import com.yapp.d14.user.domain.User;
 import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class UserWithdrawService implements UserWithdrawUseCase {
@@ -39,7 +41,14 @@ class UserWithdrawService implements UserWithdrawUseCase {
     }
 
     private void deleteAndLogout(UUID userId) {
-        userRepository.deleteById(userId);
+        try {
+            userRepository.deleteById(userId);
+        } catch (RuntimeException e) {
+            // 소셜 연동은 이미 해제되어 되돌릴 수 없는 상태에서 계정 삭제만 실패한 것이므로
+            // 운영자가 즉시 알아채고 수동 조치할 수 있도록 명확히 남긴다.
+            log.error("[USER WITHDRAW] 소셜 연동 해제 후 계정 삭제 실패로 상태 불일치 발생: userId={}", userId, e);
+            throw e;
+        }
 
         // 위 deleteById가 이미 커밋된 뒤이므로 활성 트랜잭션이 없어 즉시 실행된다.
         AfterCommitExecutor.runAfterCommit(() -> logoutUseCase.logout(new LogoutCommand(userId)));
