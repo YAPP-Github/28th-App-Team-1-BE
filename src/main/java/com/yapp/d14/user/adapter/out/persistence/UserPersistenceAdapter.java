@@ -44,6 +44,8 @@ class UserPersistenceAdapter implements UserRepository {
 
     @Override
     public void deleteById(UUID id) {
-        userJpaRepository.deleteById(id);
+        // 서비스단에서 이미 존재를 확인했으므로, deleteById() 내부의 findById 재조회를 피하기 위해
+        // getReferenceById(프록시)로 select 없이 삭제한다.
+        userJpaRepository.delete(userJpaRepository.getReferenceById(id));
     }
 }
