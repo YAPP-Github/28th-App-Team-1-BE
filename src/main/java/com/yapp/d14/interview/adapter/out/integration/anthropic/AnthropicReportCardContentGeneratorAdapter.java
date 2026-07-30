@@ -236,8 +236,7 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         for (ReportCardContentLlmEntry.HighlightSpanLlmEntry entry : entries) {
             HighlightSpan span = toHighlightSpan(entry, answerText, cursor);
             if (span == null) {
-                log.warn("[REPORT CARD HIGHLIGHT] quote를 answerText에서 찾지 못해 하이라이트 제외: quote={}", entry.quote());
-                continue;
+                continue; // 실패 사유(quote 미검출/tone 파싱 실패)는 toHighlightSpan에서 개별 로깅한다.
             }
             spans.add(span);
             cursor = span.range().endIndex();
@@ -254,11 +253,16 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         }
         int start = locate(answerText, piece, cursor);
         if (start < 0) {
+            log.warn("[REPORT CARD HIGHLIGHT] quote를 answerText에서 찾지 못해 하이라이트 제외: quote={}", entry.quote());
             return null;
         }
         int end = start + piece.length();
 
-        HighlightTone tone = HighlightTone.valueOf(entry.tone().toUpperCase());
+        HighlightTone tone = resolveTone(entry.tone());
+        if (tone == null) {
+            log.warn("[REPORT CARD HIGHLIGHT] tone을 해석할 수 없어 하이라이트 제외: tone={}", entry.tone());
+            return null;
+        }
         List<String> followUpQuestions = entry.followUpQuestions() == null
                 ? List.of()
                 : entry.followUpQuestions();
@@ -278,6 +282,19 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         );
     }
 
+    // LLM이 tone을 누락하거나 오타를 냈을 때 예외 대신 null을 돌려주는 방어적 파싱.
+    // 하이라이트 하나의 형식 오류 때문에 리포트 카드 생성 전체(재시도 소진 후 FAILED)가 실패하지 않도록 한다.
+    private static HighlightTone resolveTone(String rawTone) {
+        if (rawTone == null) {
+            return null;
+        }
+        try {
+            return HighlightTone.valueOf(rawTone.strip().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     private static String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -286,7 +303,9 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    // 커서 이후로 우선 검색해 반복되는 문구를 답변에 등장하는 순서대로 소비한다(ScriptSegmentMapper와 동일 전략).
+    // 커서 이후로 우선 검색해 반복되는 문구를 답변에 등장하는 순서대로 소비한다. LLM이 지시한 하이라이트 순서가
+    // 실제 답변 내 등장 순서와 다를 수 있어(ReportCardHighlightMappingTest의 "순서 지시를 어겨도..." 케이스),
+    // ScriptSegmentMapper(STT 세그먼트는 항상 시간 순)와 달리 여기서는 cursor 이전으로의 폴백도 그대로 허용한다.
     private static int locate(String answerText, String piece, int cursor) {
         int found = answerText.indexOf(piece, cursor);
         return found >= 0 ? found : answerText.indexOf(piece);
