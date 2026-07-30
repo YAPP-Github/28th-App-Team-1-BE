@@ -37,7 +37,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/feedback/guest/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // 로컬 수동 테스트용 정적 하네스 페이지. 페이지 자체엔 비밀이 없고 API는 그대로 JWT가 필요하다.
+                        // 로컬 수동 테스트용 정적 하네스 페이지. dev 프로파일에서만 컨트롤러가 등록되어(DevInterviewTestPageController)
+                        // 운영에서는 이 경로 자체가 404이므로 permitAll이어도 노출되지 않는다. API는 그대로 JWT가 필요하다.
                         .requestMatchers("/interview-test.html", "/favicon.ico").permitAll()
                         .anyRequest().authenticated()
                 )
