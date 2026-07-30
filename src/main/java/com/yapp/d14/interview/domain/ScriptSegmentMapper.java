@@ -51,7 +51,13 @@ public final class ScriptSegmentMapper {
 
     private static int locate(String fullText, String piece, int cursor) {
         int found = fullText.indexOf(piece, cursor);
-        return found >= 0 ? found : fullText.indexOf(piece);
+        if (found >= 0) {
+            return found;
+        }
+        int fallback = fullText.indexOf(piece);
+        // 폴백 검색 결과가 cursor보다 앞이면 채택하지 않는다 — 반복되는 짧은 간투사("네.", "음." 등)에서
+        // cursor를 뒤로 되돌려 이후 세그먼트의 인덱스가 역행·중복되는 것을 막는다.
+        return fallback >= cursor ? fallback : -1;
     }
 
     private static float clampNonNegative(float value) {

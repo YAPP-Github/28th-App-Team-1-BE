@@ -56,6 +56,27 @@ class ScriptSegmentMapperTest {
     }
 
     @Test
+    void 이후에_다시_등장하지_않는_짧은_구간은_커서를_역행시키지_않는다() {
+        // "네"는 인덱스 0에만 존재한다. 세 번째 세그먼트가 앞서 소비된 "네"와 같은 텍스트를 반환하면
+        // (Whisper가 간투사를 중복/재인식하는 경우) cursor 이후 전방 탐색은 실패하고,
+        // 전체 재검색 폴백이 cursor보다 앞선 위치(0)를 찾아낸다 — 이 값은 채택하면 안 된다.
+        String fullText = "네 압니다";
+        List<TranscriptSegment> sttSegments = List.of(
+                new TranscriptSegment("네", 0.0f, 0.3f),
+                new TranscriptSegment("압니다", 0.3f, 1.0f),
+                new TranscriptSegment("네", 1.0f, 1.3f)
+        );
+
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 0.0f);
+
+        assertThat(result).hasSize(3);
+        assertThat(result.get(0).startIndex()).isZero();
+        assertThat(result.get(1).startIndex()).isEqualTo(2);
+        // cursor(5)보다 앞선 위치(0)를 되찾지 않고, 근사 배치(cursor 위치)로 처리해 인덱스가 역행하지 않는다.
+        assertThat(result.get(2).startIndex()).isGreaterThanOrEqualTo(result.get(1).endIndex());
+    }
+
+    @Test
     void 공백뿐인_세그먼트는_건너뛴다() {
         String fullText = "반갑습니다.";
         List<TranscriptSegment> sttSegments = List.of(
