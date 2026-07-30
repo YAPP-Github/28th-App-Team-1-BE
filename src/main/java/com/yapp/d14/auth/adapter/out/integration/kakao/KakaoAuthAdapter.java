@@ -30,7 +30,7 @@ class KakaoAuthAdapter implements KakaoSocialClient {
                     ? response.getKakaoAccount().getProfile().getNickname()
                     : null;
 
-            return new SocialUserInfo(providerId, email, name);
+            return new SocialUserInfo(providerId, email, name, null);
         } catch (Exception e) {
             log.error("[KAKAO LOGIN] 카카오 유저 정보 조회 실패", e);
             throw new AuthException(AuthErrorCode.SOCIAL_LOGIN_FAILED);

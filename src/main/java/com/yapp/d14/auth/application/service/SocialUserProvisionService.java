@@ -18,7 +18,7 @@ class SocialUserProvisionService {
 
     @Transactional
     public User provision(Provider provider, SocialUserInfo userInfo) {
-        return userRepository.findByProviderAndProviderId(provider, userInfo.providerId())
+        User user = userRepository.findByProviderAndProviderId(provider, userInfo.providerId())
                 .orElseGet(() -> {
                     User newUser = userRepository.save(
                             User.create(userInfo.email(), provider, userInfo.providerId())
@@ -26,5 +26,12 @@ class SocialUserProvisionService {
                     ticketInitializeUseCase.initialize(newUser.getId());
                     return newUser;
                 });
+
+        if (provider == Provider.APPLE && userInfo.appleRefreshToken() != null) {
+            user.updateAppleRefreshToken(userInfo.appleRefreshToken());
+            user = userRepository.save(user);
+        }
+
+        return user;
     }
 }

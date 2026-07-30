@@ -50,6 +50,8 @@ public class UserJpaEntity {
 
     private Integer careerYears;
 
+    private String appleRefreshToken;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -66,12 +68,16 @@ public class UserJpaEntity {
         entity.providerId = user.getProviderId();
         entity.jobRole = user.getJobRole();
         entity.careerYears = user.getCareerYears();
+        entity.appleRefreshToken = user.getAppleRefreshToken();
         entity.createdAt = user.getCreatedAt();
         entity.updatedAt = user.getUpdatedAt();
         return entity;
     }
 
     public User toDomain() {
-        return User.of(id, email, name, nameRegistered, provider, providerId, jobRole, careerYears, createdAt, updatedAt);
+        return User.of(
+                id, email, name, nameRegistered, provider, providerId, jobRole, careerYears,
+                appleRefreshToken, createdAt, updatedAt
+        );
     }
 }

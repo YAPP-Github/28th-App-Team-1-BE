@@ -38,7 +38,7 @@ class AppleAuthAdapter implements AppleSocialClient {
         String providerId = claims.getSubject();
         String email = claims.get("email", String.class);
 
-        return new SocialUserInfo(providerId, email, null);
+        return new SocialUserInfo(providerId, email, null, tokenResponse.getRefreshToken());
     }
 
     private AppleTokenResponse exchangeAuthorizationCode(String authorizationCode) {
