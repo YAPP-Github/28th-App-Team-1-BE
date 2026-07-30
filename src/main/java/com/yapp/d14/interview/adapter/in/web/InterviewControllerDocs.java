@@ -256,7 +256,21 @@ public interface InterviewControllerDocs {
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "세션 종료(마무리 멘트 음성 포함)", value = """
+                                    @ExampleObject(name = "세션 종료 — NORMAL_END(자연 종료)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": {
+                                                  "ttsAudio": "base64로 인코딩된 mp3"
+                                                },
+                                                "endType": "NORMAL_END"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — MANUAL_END(수동 종료)", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -267,6 +281,44 @@ public interface InterviewControllerDocs {
                                                   "ttsAudio": "base64로 인코딩된 mp3"
                                                 },
                                                 "endType": "MANUAL_END"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — HARD_CAP(최대 한도 도달)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": {
+                                                  "ttsAudio": "base64로 인코딩된 mp3"
+                                                },
+                                                "endType": "HARD_CAP"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — EARLY_EXIT(중도 이탈, 마무리 멘트 없음)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": null,
+                                                "endType": "EARLY_EXIT"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — STT_RESET(STT 인식 실패로 무효화)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": null,
+                                                "endType": "STT_RESET"
                                               }
                                             }
                                             """)
