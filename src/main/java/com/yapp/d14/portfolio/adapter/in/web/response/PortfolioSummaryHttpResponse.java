@@ -30,7 +30,10 @@ public record PortfolioSummaryHttpResponse(
         boolean replaceAvailable,
 
         @Schema(description = "재업로드가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
-        LocalDateTime nextAvailableAt
+        LocalDateTime nextAvailableAt,
+
+        @Schema(description = "이 포트폴리오를 사용 중인 진행 중(IN_PROGRESS) 면접 세션이 있는지 여부. true면 삭제 시도 시 PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW로 거부됨")
+        boolean interviewInProgress
 ) {
 
     public static PortfolioSummaryHttpResponse from(PortfolioSummary summary) {
@@ -42,7 +45,8 @@ public record PortfolioSummaryHttpResponse(
                 summary.status(),
                 summary.uploadedAt(),
                 summary.replaceAvailable(),
-                summary.nextAvailableAt()
+                summary.nextAvailableAt(),
+                summary.interviewInProgress()
         );
     }
 }

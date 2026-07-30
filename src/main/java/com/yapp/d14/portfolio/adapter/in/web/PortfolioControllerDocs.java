@@ -143,7 +143,10 @@ public interface PortfolioControllerDocs {
                     "- `replaceAvailable`: 이번 달 남은 업로드·삭제 기회를 함께 나타내는 값입니다. " +
                     "`true`면 삭제할 수 있는 기회도 1회, 업로드(재업로드)할 수 있는 기회도 1회 남아있다는 뜻입니다. " +
                     "`false`면 둘 다 0회로, 이미 이번 달 교체를 마쳐 삭제 API 호출 시 `REPLACEMENT_LIMIT_EXCEEDED`로 거부됩니다. " +
-                    "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다."
+                    "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
+                    "- `interviewInProgress`: 이 포트폴리오로 진행 중인 면접이 있으면 `true`이며, 이 경우 재업로드 기회와 무관하게 삭제 API 호출 시 " +
+                    "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress`와 `replaceAvailable`을 함께 보면 " +
+                    "삭제 불가 사유(면접 진행 중 vs 이번 달 기회 소진)를 구분해 안내 메시지를 다르게 보여줄 수 있습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

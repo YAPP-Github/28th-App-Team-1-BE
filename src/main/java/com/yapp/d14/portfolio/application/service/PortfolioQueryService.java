@@ -1,5 +1,6 @@
 package com.yapp.d14.portfolio.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
@@ -18,6 +19,7 @@ import java.util.UUID;
 class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseCase {
 
     private final PortfolioRepository portfolioRepository;
+    private final InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
 
     @Override
     @Transactional
@@ -56,7 +58,8 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
                 portfolio.getStatus(),
                 portfolio.getUploadedAt(),
                 !blocked,
-                blocked ? PortfolioReplacementPolicy.nextMonthStart() : null
+                blocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
+                interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())
         );
     }
 }

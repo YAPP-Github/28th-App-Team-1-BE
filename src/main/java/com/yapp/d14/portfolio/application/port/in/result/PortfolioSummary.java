@@ -13,6 +13,7 @@ public record PortfolioSummary(
         PortfolioStatus status,
         LocalDateTime uploadedAt,
         boolean replaceAvailable,
-        LocalDateTime nextAvailableAt
+        LocalDateTime nextAvailableAt,
+        boolean interviewInProgress
 ) {
 }
