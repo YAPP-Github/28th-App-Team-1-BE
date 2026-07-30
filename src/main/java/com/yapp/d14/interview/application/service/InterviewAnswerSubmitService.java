@@ -78,8 +78,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
         String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text(); // STT 변환
-        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}\n  Q: {}\n  A: {}",
-                session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(), summaryQuestion.getContent(), sttText);
+        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, Q={}, A={}",
+                session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(),
+                singleLine(summaryQuestion.getContent()), singleLine(sttText));
         LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
         logLiveTurnResult(session.getId(), null, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
@@ -169,8 +170,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
         TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
-        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, axis={}\n  Q: {}\n  A: {}",
-                session.getId(), question.getId(), question.getTurnLevel(), question.getTestType(), question.getContent(), transcription.text());
+        log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, axis={}, Q={}, A={}",
+                session.getId(), question.getId(), question.getTurnLevel(), question.getTestType(),
+                singleLine(question.getContent()), singleLine(transcription.text()));
         session.recordSttSegments(transcription.failedSegmentCount(), transcription.totalSegmentCount()); // 실패율 갱신
         if (session.isSttFailureRateExceeded()) {
             log.warn("[STT RESET] sessionId={}, questionId={}, 누적 STT 인식 실패율 초과로 세션을 리셋해요.",
@@ -263,6 +265,11 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
+    // 세션 로그 수집 스크립트(collect-interview-log.ps1)가 Select-String으로 한 줄씩만 추출하므로 QA 로그는 줄바꿈 없이 한 줄로 남긴다.
+    private String singleLine(String text) {
+        return text == null ? null : text.replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ');
+    }
+
     private Float sttFailureRatio(TranscriptionResult transcription) {
         if (transcription.totalSegmentCount() == 0) {
             return null;
@@ -307,8 +314,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             return null;
         }
         String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text();
-        log.debug("[TURN QA] sessionId={}, questionId={} (termination)\n  Q: {}\n  A: {}",
-                session.getId(), question.getId(), question.getContent(), sttText);
+        log.debug("[TURN QA] sessionId={}, questionId={} (termination), Q={}, A={}",
+                session.getId(), question.getId(), singleLine(question.getContent()), singleLine(sttText));
         try {
             return Answer.create(
                     session.getId(), question.getId(), sttText,
