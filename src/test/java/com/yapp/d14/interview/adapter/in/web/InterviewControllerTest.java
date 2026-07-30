@@ -77,8 +77,6 @@ class InterviewControllerTest {
     private String requestBody(Map<String, Object> overrides) throws Exception {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("portfolioId", portfolioId.toString());
-        body.put("jobRole", "BACKEND");
-        body.put("careerYears", 3);
         overrides.forEach((key, value) -> {
             if (value == null) {
                 body.remove(key);
@@ -112,22 +110,6 @@ class InterviewControllerTest {
         mockMvc.perform(post("/api/v1/interview/sessions")
                         .contentType("application/json")
                         .content(requestBody(new LinkedHashMap<>() {{ put("portfolioId", null); }})))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void jobRole이_blank면_400() throws Exception {
-        mockMvc.perform(post("/api/v1/interview/sessions")
-                        .contentType("application/json")
-                        .content(requestBody(Map.of("jobRole", ""))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void careerYears가_없으면_400() throws Exception {
-        mockMvc.perform(post("/api/v1/interview/sessions")
-                        .contentType("application/json")
-                        .content(requestBody(new LinkedHashMap<>() {{ put("careerYears", null); }})))
                 .andExpect(status().isBadRequest());
     }
 

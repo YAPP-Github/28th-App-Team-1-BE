@@ -25,17 +25,17 @@ class InterviewSessionPersister {
     @Transactional
     InterviewSession persist(
             InterviewSessionCreateCommand command,
+            InterviewSessionCreateContext context,
             String jdText,
-            String portfolioFileName,
             Map<TestType, Integer> weights,
             Map<TestType, AxisAssignment> assignments
     ) {
         InterviewSession session = InterviewSession.create(
                 command.userId(),
                 command.portfolioId(),
-                portfolioFileName,
-                command.jobRole(),
-                command.careerYears(),
+                context.portfolioFileName(),
+                context.jobRole(),
+                context.careerYears(),
                 command.jdUrl(),
                 jdText,
                 command.freeText()

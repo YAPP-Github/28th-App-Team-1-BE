@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.application.service;
 
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
+import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
 import com.yapp.d14.jd.application.port.in.JdValidationCheckUseCase;
@@ -9,9 +10,13 @@ import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
+import com.yapp.d14.user.application.port.in.FindUserUseCase;
+import com.yapp.d14.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -26,12 +31,22 @@ class InterviewSessionCreateValidator {
     private final PortfolioStatusUseCase portfolioStatusUseCase;
     private final JdValidationCheckUseCase jdValidationCheckUseCase;
     private final PortfolioSimilarityCheckUseCase portfolioSimilarityCheckUseCase;
+    private final FindUserUseCase findUserUseCase;
 
-    String validate(InterviewSessionCreateCommand command) {
+    InterviewSessionCreateContext validate(InterviewSessionCreateCommand command) {
         String portfolioFileName = validatePortfolio(command);
         validateJd(command);
         validateFreeText(command);
-        return portfolioFileName;
+        User user = requireRegisteredProfile(command.userId());
+        return new InterviewSessionCreateContext(portfolioFileName, JobType.valueOf(user.getJobRole().name()), user.getCareerYears());
+    }
+
+    private User requireRegisteredProfile(UUID userId) {
+        User user = findUserUseCase.findById(userId);
+        if (user.getJobRole() == null || user.getCareerYears() == null) {
+            throw new InterviewException(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
+        }
+        return user;
     }
 
     private String validatePortfolio(InterviewSessionCreateCommand command) {

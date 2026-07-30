@@ -28,11 +28,13 @@ public interface InterviewControllerDocs {
 
     @Operation(
             summary = "면접 세션 생성",
-            description = "직군·연차·포트폴리오(및 선택적으로 JD·집중 프로젝트 설명)를 받아 면접 세션을 생성합니다.\n\n" +
+            description = "포트폴리오(및 선택적으로 JD·집중 프로젝트 설명)를 받아 면접 세션을 생성합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 이용권 확인 → 입력 검증 → 항목별 가중치·질문 예산 계산까지 동기로 처리한 뒤, `PROCESSING` 상태로 202를 즉시 반환합니다.\n" +
                     "- 질문 후보 풀 생성(Preload) 등 이후 단계는 비동기로 처리되며, `statusUrl`로 상태를 폴링합니다.\n" +
                     "- `portfolioId`로 지정한 포트폴리오는 반드시 `READY` 상태여야 합니다.\n" +
+                    "- 직군·연차는 요청으로 받지 않고, `PATCH /api/v1/users/me/profile`로 등록한 회원 프로필 값을 생성 시점 스냅샷으로 사용합니다. " +
+                    "직군 또는 연차가 아직 등록되어 있지 않으면 `USER_PROFILE_NOT_REGISTERED`로 거부됩니다.\n" +
                     "- `jdUrl`과 `jdText`는 상호 배타적입니다. `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱)돼 있어야 합니다.\n" +
                     "- `freeText`(집중 프로젝트 설명)를 입력하면 포트폴리오와의 연관성을 임베딩 유사도로 검사합니다.\n" +
                     "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다."
@@ -56,18 +58,11 @@ public interface InterviewControllerDocs {
                                               "message": "portfolioId: 널이어서는 안됩니다"
                                             }
                                             """),
-                                    @ExampleObject(name = "지원하지 않는 직군", value = """
+                                    @ExampleObject(name = "직무·연차 미등록", value = """
                                             {
                                               "success": false,
-                                              "code": "INVALID_JOB_ROLE",
-                                              "message": "지원하지 않는 직군이에요."
-                                            }
-                                            """),
-                                    @ExampleObject(name = "잘못된 연차", value = """
-                                            {
-                                              "success": false,
-                                              "code": "INVALID_CAREER_YEARS",
-                                              "message": "연차를 다시 확인해 주세요."
+                                              "code": "USER_PROFILE_NOT_REGISTERED",
+                                              "message": "면접을 시작하려면 먼저 직무와 연차를 등록해 주세요."
                                             }
                                             """),
                                     @ExampleObject(name = "JD 미검증", value = """
