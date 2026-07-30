@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,17 +40,18 @@ class UserProfileUpdateServiceTest {
     }
 
     @Test
-    void 이름없이_직군과_연차만_수정하면_이름은_그대로다() {
+    void 이름을_포함해_직군과_연차를_수정한다() {
         User user = existingUser();
         user.registerName("기존이름");
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(userRepository.existsByNameAndIdNot("기존이름", userId)).willReturn(false);
 
-        service.update(new UserProfileUpdateCommand(userId, null, JobRole.BACKEND, 3));
+        service.update(new UserProfileUpdateCommand(userId, "기존이름", JobRole.BACKEND, 3));
 
         assertThat(user.getName()).isEqualTo("기존이름");
         assertThat(user.getJobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(user.getCareerYears()).isEqualTo(3);
-        verify(userRepository, never()).existsByNameAndIdNot(any(), any());
+        verify(userRepository).existsByNameAndIdNot("기존이름", userId);
         verify(userRepository).save(user);
     }
 
@@ -95,8 +95,9 @@ class UserProfileUpdateServiceTest {
         User user = existingUser();
         user.updateProfile(JobRole.FRONTEND, 5);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(userRepository.existsByNameAndIdNot("새이름", userId)).willReturn(false);
 
-        service.update(new UserProfileUpdateCommand(userId, null, JobRole.BACKEND, 1));
+        service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 1));
 
         assertThat(user.getJobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(user.getCareerYears()).isEqualTo(1);
@@ -106,7 +107,7 @@ class UserProfileUpdateServiceTest {
     void 존재하지_않는_유저면_USER_NOT_FOUND() {
         given(userRepository.findById(userId)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.update(new UserProfileUpdateCommand(userId, null, JobRole.BACKEND, 1)))
+        assertThatThrownBy(() -> service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 1)))
                 .isInstanceOf(UserException.class)
                 .extracting(e -> ((UserException) e).getErrorCode())
                 .isEqualTo(UserErrorCode.USER_NOT_FOUND);
