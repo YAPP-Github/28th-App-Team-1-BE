@@ -104,7 +104,8 @@ public interface InterviewReportControllerDocs {
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "근본 원인 진단 방법",
-                                                    "questionIntent": "근본 원인을 어떤 체계적인 방법으로 찾아냈는지 확인하는 질문입니다."
+                                                    "questionIntent": "근본 원인을 어떤 체계적인 방법으로 찾아냈는지 확인하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   },
                                                   {
                                                     "axisOrder": 2,
@@ -117,7 +118,8 @@ public interface InterviewReportControllerDocs {
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "트래픽 확장 대응 전략",
-                                                    "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다."
+                                                    "questionIntent": "트래픽이 증가했을 때 발생할 병목 지점과 시스템의 한계, 그리고 이를 어떻게 판단할지 설명하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   },
                                                   {
                                                     "axisOrder": 3,
