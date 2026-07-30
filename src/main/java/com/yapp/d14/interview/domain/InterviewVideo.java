@@ -4,10 +4,18 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Getter
 public class InterviewVideo {
+
+    /**
+     * 지인(공유 링크) 접근의 최대 보유기간. {@link VideoRetentionTrigger#GUEST_FIRST_SUBMITTED}(소유자 쪽
+     * 단계형 expiresAt 연장 폭)와 현재 값이 같지만 별개 개념이므로 상수를 공유하지 않는다 — 한쪽만 바뀌어도
+     * 다른 쪽에 영향을 주지 않아야 한다.
+     */
+    private static final Duration GUEST_MAX_RETENTION = Duration.ofDays(30);
 
     private final Long id;
     private final Long sessionId;
@@ -82,5 +90,15 @@ public class InterviewVideo {
 
     public boolean isExpired() {
         return deleted || LocalDateTime.now().isAfter(expiresAt);
+    }
+
+    /** 지인(공유 링크) 접근 전용 판정. 소유자 쪽 단계형 expiresAt과 무관하게 baseAt+30일(영상 최대보유기간) 하드캡으로만 판정한다. */
+    public boolean isExpiredForGuest() {
+        return deleted || LocalDateTime.now().isAfter(getGuestExpiresAt());
+    }
+
+    /** 지인 접근 하드캡 시각(baseAt+30일, 영상 최대보유기간). 소유자 쪽 단계형 expiresAt과는 다른 값이다. */
+    public LocalDateTime getGuestExpiresAt() {
+        return baseAt.plus(GUEST_MAX_RETENTION);
     }
 }
