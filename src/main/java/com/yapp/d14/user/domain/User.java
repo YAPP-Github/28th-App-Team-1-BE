@@ -90,13 +90,18 @@ public class User {
 
     public void registerName(String name) {
         this.name = name;
+        refreshProfileRegistered();
         this.updatedAt = LocalDateTime.now();
     }
 
     public void updateProfile(JobRole jobRole, Integer careerYears) {
         this.jobRole = jobRole;
         this.careerYears = careerYears;
-        this.profileRegistered = true;
+        refreshProfileRegistered();
         this.updatedAt = LocalDateTime.now();
+    }
+
+    private void refreshProfileRegistered() {
+        this.profileRegistered = name != null && jobRole != null && careerYears != null;
     }
 }

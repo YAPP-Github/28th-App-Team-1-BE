@@ -43,7 +43,7 @@ class InterviewSessionCreateValidator {
 
     private User requireRegisteredProfile(UUID userId) {
         User user = findUserUseCase.findById(userId);
-        if (user.getJobRole() == null || user.getCareerYears() == null) {
+        if (user.getName() == null || user.getJobRole() == null || user.getCareerYears() == null) {
             throw new InterviewException(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
         }
         return user;

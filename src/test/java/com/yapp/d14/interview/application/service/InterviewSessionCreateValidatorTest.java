@@ -60,8 +60,12 @@ class InterviewSessionCreateValidatorTest {
     }
 
     private void givenRegisteredProfile(JobRole jobRole, Integer careerYears) {
+        givenRegisteredProfile("이름", jobRole, careerYears);
+    }
+
+    private void givenRegisteredProfile(String name, JobRole jobRole, Integer careerYears) {
         given(findUserUseCase.findById(userId)).willReturn(
-                User.of(userId, "a@a.com", "이름", true, Provider.KAKAO, "pid", jobRole, careerYears, null, null)
+                User.of(userId, "a@a.com", name, true, Provider.KAKAO, "pid", jobRole, careerYears, null, null)
         );
     }
 
@@ -126,6 +130,17 @@ class InterviewSessionCreateValidatorTest {
         assertThat(context.portfolioFileName()).isEqualTo("resume.pdf");
         assertThat(context.jobRole()).isEqualTo(JobType.BACKEND);
         assertThat(context.careerYears()).isEqualTo(3);
+    }
+
+    @Test
+    void 이름이_등록되어_있지_않으면_USER_PROFILE_NOT_REGISTERED() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(null, JobRole.BACKEND, 3);
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
     }
 
     @Test
