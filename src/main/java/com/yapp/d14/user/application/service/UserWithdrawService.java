@@ -12,7 +12,6 @@ import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -24,8 +23,10 @@ class UserWithdrawService implements UserWithdrawUseCase {
     private final LogoutUseCase logoutUseCase;
     private final SocialUnlinkUseCase socialUnlinkUseCase;
 
+    // 소셜 unlink/revoke는 외부 HTTP 호출이라 DB 트랜잭션으로 감싸지 않는다.
+    // deleteById 자체는 Spring Data 리포지토리 구현체가 자체 트랜잭션으로 처리하므로
+    // 여기서 별도로 @Transactional을 걸지 않아도 원자성이 깨지지 않는다.
     @Override
-    @Transactional
     public void withdraw(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
@@ -34,9 +35,13 @@ class UserWithdrawService implements UserWithdrawUseCase {
                 new SocialUnlinkCommand(user.getProvider(), user.getProviderId(), user.getAppleRefreshToken())
         );
 
+        deleteAndLogout(userId);
+    }
+
+    private void deleteAndLogout(UUID userId) {
         userRepository.deleteById(userId);
 
-        // DB 삭제가 롤백되면 Redis 토큰은 무효화하지 않아야 하므로 커밋 이후로 미룬다.
+        // 위 deleteById가 이미 커밋된 뒤이므로 활성 트랜잭션이 없어 즉시 실행된다.
         AfterCommitExecutor.runAfterCommit(() -> logoutUseCase.logout(new LogoutCommand(userId)));
     }
 }
