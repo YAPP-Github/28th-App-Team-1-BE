@@ -1,10 +1,13 @@
 package com.yapp.d14.user.application.service;
 
 import com.yapp.d14.auth.application.command.LogoutCommand;
+import com.yapp.d14.auth.application.command.SocialUnlinkCommand;
 import com.yapp.d14.auth.application.port.in.LogoutUseCase;
+import com.yapp.d14.auth.application.port.in.SocialUnlinkUseCase;
 import com.yapp.d14.common.util.AfterCommitExecutor;
 import com.yapp.d14.user.application.port.in.UserWithdrawUseCase;
 import com.yapp.d14.user.application.port.out.UserRepository;
+import com.yapp.d14.user.domain.User;
 import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
@@ -19,12 +22,17 @@ class UserWithdrawService implements UserWithdrawUseCase {
 
     private final UserRepository userRepository;
     private final LogoutUseCase logoutUseCase;
+    private final SocialUnlinkUseCase socialUnlinkUseCase;
 
     @Override
     @Transactional
     public void withdraw(UUID userId) {
-        userRepository.findById(userId)
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+        socialUnlinkUseCase.unlink(
+                new SocialUnlinkCommand(user.getProvider(), user.getProviderId(), user.getAppleRefreshToken())
+        );
 
         userRepository.deleteById(userId);
 
