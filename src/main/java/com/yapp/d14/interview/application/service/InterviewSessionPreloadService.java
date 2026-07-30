@@ -160,6 +160,13 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         );
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
+        for (ProbeCandidateDraft draft : drafts) {
+            log.debug(
+                    "[INTERVIEW PRELOAD] 후보: sessionId={}, axis={}, secondaryAxis={}, strength={}, principleUsed={}, probeText={}, echoQuote={}, jdMatch={}",
+                    session.getId(), draft.testType(), draft.secondaryTestType(), draft.strength(), draft.principleUsed(),
+                    draft.probeText(), draft.echoQuote(), draft.jdMatch()
+            );
+        }
 
         return drafts.stream()
                 .limit(MAX_CANDIDATES)
