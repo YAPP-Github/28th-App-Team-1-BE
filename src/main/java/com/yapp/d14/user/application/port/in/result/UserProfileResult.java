@@ -8,7 +8,7 @@ public record UserProfileResult(
         UUID userId,
         String email,
         String name,
-        boolean nameRegistered,
+        boolean profileRegistered,
         JobRole jobRole,
         Integer careerYears,
         int remainingTicketCount

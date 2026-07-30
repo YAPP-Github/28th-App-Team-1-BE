@@ -64,7 +64,7 @@ class UserProfileUpdateServiceTest {
         service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 3));
 
         assertThat(user.getName()).isEqualTo("새이름");
-        assertThat(user.isNameRegistered()).isTrue();
+        assertThat(user.isProfileRegistered()).isTrue();
     }
 
     @Test

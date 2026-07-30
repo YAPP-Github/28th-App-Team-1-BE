@@ -13,7 +13,7 @@ public class User {
     private final UUID id;
     private final String email;
     private String name;
-    private boolean nameRegistered;
+    private boolean profileRegistered;
     private final Provider provider;
     private final String providerId;
     private JobRole jobRole;
@@ -26,7 +26,7 @@ public class User {
             UUID id,
             String email,
             String name,
-            boolean nameRegistered,
+            boolean profileRegistered,
             Provider provider,
             String providerId,
             JobRole jobRole,
@@ -37,7 +37,7 @@ public class User {
         this.id = id;
         this.email = email;
         this.name = name;
-        this.nameRegistered = nameRegistered;
+        this.profileRegistered = profileRegistered;
         this.provider = provider;
         this.providerId = providerId;
         this.jobRole = jobRole;
@@ -52,7 +52,7 @@ public class User {
                 .id(UUID.randomUUID())
                 .email(email)
                 .name(null)
-                .nameRegistered(false)
+                .profileRegistered(false)
                 .provider(provider)
                 .providerId(providerId)
                 .jobRole(null)
@@ -66,7 +66,7 @@ public class User {
             UUID id,
             String email,
             String name,
-            boolean nameRegistered,
+            boolean profileRegistered,
             Provider provider,
             String providerId,
             JobRole jobRole,
@@ -78,7 +78,7 @@ public class User {
                 .id(id)
                 .email(email)
                 .name(name)
-                .nameRegistered(nameRegistered)
+                .profileRegistered(profileRegistered)
                 .provider(provider)
                 .providerId(providerId)
                 .jobRole(jobRole)
@@ -90,13 +90,13 @@ public class User {
 
     public void registerName(String name) {
         this.name = name;
-        this.nameRegistered = true;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void updateProfile(JobRole jobRole, Integer careerYears) {
         this.jobRole = jobRole;
         this.careerYears = careerYears;
+        this.profileRegistered = true;
         this.updatedAt = LocalDateTime.now();
     }
 }

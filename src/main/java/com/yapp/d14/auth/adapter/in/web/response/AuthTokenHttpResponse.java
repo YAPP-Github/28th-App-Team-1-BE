@@ -10,8 +10,8 @@ public record AuthTokenHttpResponse(
         @Schema(description = "리프레시 토큰 (유효 시간: 7일)")
         String refreshToken,
 
-        @Schema(description = "이름 등록 여부", example = "true")
-        boolean nameRegistered,
+        @Schema(description = "회원 정보(직무·연차·이름) 등록 여부", example = "true")
+        boolean profileRegistered,
 
         @Schema(description = "회원 정보")
         UserInfoHttpResponse userInfo
@@ -21,7 +21,7 @@ public record AuthTokenHttpResponse(
         return new AuthTokenHttpResponse(
                 authToken.accessToken(),
                 authToken.refreshToken(),
-                authToken.profile().nameRegistered(),
+                authToken.profile().profileRegistered(),
                 UserInfoHttpResponse.from(authToken.profile())
         );
     }

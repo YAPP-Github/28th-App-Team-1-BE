@@ -46,7 +46,7 @@ class UserProfileQueryServiceTest {
         UserProfileResult result = service.getProfile(userId);
 
         assertThat(result.name()).isEqualTo("홍길동");
-        assertThat(result.nameRegistered()).isTrue();
+        assertThat(result.profileRegistered()).isTrue();
         assertThat(result.jobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(result.careerYears()).isEqualTo(3);
         assertThat(result.remainingTicketCount()).isEqualTo(2);
@@ -62,7 +62,7 @@ class UserProfileQueryServiceTest {
 
         assertThat(result.jobRole()).isNull();
         assertThat(result.careerYears()).isNull();
-        assertThat(result.nameRegistered()).isFalse();
+        assertThat(result.profileRegistered()).isFalse();
     }
 
     @Test
