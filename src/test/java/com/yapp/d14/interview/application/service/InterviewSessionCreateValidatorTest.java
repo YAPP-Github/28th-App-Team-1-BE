@@ -94,6 +94,16 @@ class InterviewSessionCreateValidatorTest {
     }
 
     @Test
+    void 포트폴리오가_CANCELLED이면_PORTFOLIO_UPLOAD_FAILED() {
+        givenPortfolioStatus(PortfolioStatus.CANCELLED);
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.PORTFOLIO_UPLOAD_FAILED);
+    }
+
+    @Test
     void 포트폴리오가_READY이고_JD_freeText_모두_없으면_통과한다() {
         givenPortfolioStatus(PortfolioStatus.READY);
 

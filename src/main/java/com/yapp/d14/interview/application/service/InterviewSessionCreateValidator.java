@@ -40,7 +40,7 @@ class InterviewSessionCreateValidator {
         switch (status.status()) {
             case READY -> { }
             case PROCESSING -> throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_PROCESSING);
-            case FAILED_FILE, FAILED_SYSTEM -> throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_UPLOAD_FAILED);
+            case FAILED_FILE, FAILED_SYSTEM, CANCELLED -> throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_UPLOAD_FAILED);
         }
 
         return status.fileName();

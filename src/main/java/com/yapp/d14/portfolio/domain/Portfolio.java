@@ -139,6 +139,10 @@ public class Portfolio {
     }
 
     public void softDelete() {
+        if (status == PortfolioStatus.PROCESSING) {
+            this.status = PortfolioStatus.CANCELLED;
+            this.message = "사용자 요청으로 취소되었어요.";
+        }
         this.deleted = true;
         this.deletedAt = LocalDateTime.now();
     }

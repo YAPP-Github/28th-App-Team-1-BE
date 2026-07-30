@@ -135,7 +135,7 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
 
     private boolean isStillProcessing(UUID portfolioId) {
         return portfolioRepository.findById(portfolioId)
-                .map(p -> p.getStatus() == PortfolioStatus.PROCESSING)
+                .map(p -> !p.isDeleted() && p.getStatus() == PortfolioStatus.PROCESSING)
                 .orElse(false);
     }
 }

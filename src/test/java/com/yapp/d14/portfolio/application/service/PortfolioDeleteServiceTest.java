@@ -5,6 +5,7 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
+import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import com.yapp.d14.portfolio.exception.PortfolioException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,6 +71,7 @@ class PortfolioDeleteServiceTest {
 
         assertThat(result.portfolioId()).isEqualTo(portfolio.getId());
         assertThat(portfolio.isDeleted()).isTrue();
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.CANCELLED);
         verify(portfolioRepository).save(portfolio);
         verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
         verify(portfolioFileUploader).delete(portfolio.getS3Key());
