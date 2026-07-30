@@ -74,6 +74,9 @@ apple:
 kakao:
   admin-key: ${KAKAO_ADMIN_KEY}
 
+encryption:
+  token-key: ${TOKEN_ENCRYPTION_KEY}
+
 aws:
   s3:
     access-key: ${AWS_ACCESS_KEY_ID}
