@@ -220,6 +220,8 @@ public interface InterviewControllerDocs {
                     "  - `endType=HARD_CAP`: 12:00 경과 강제 종료 — audio 유무와 무관하게 즉시 종료합니다.\n" +
                     "  - 직전에 받은 질문이 마무리(wrap-up) 질문이었던 경우, endType 없이도 자연 종료됩니다.\n" +
                     "  - 위 종료 경로에서는 `nextQuestion`이 `null`, `sessionEnded`가 `true`이며, 이용권이 확정(commit)되고 리포트 생성이 비동기로 트리거됩니다.\n" +
+                    "  - 세션 전체 누적 STT 인식 실패율이 30%를 초과하면 `endType`과 무관하게 즉시 세션이 무효화되어 종료됩니다(`sessionEnded=true`, `endType=STT_RESET`, `wrapUpMessage=null`, 리포트 생성 없음). 이때는 이용권이 차감되지 않고 환불(release)됩니다.\n" +
+                    "  - `endType` 응답 필드로 종료 사유를 구분할 수 있습니다: `NORMAL_END`/`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`/`STT_RESET`. 세션이 끝나지 않았으면 `null`입니다.\n" +
                     "  - 그 외에는 매 턴 루프로 이어집니다(현재 구현 중), `sessionEnded`는 `false`입니다.\n" +
                     "- `wrapUpMessage.ttsAudio`는 마무리 멘트 음성을 base64로 인코딩한 mp3입니다(EARLY_EXIT은 `wrapUpMessage` 자체가 `null`). " +
                     "고정 문구 3종(MANUAL_END/HARD_CAP/자연종료)은 최초 요청 시 TTS로 합성해 S3에 캐시하고 이후에는 캐시를 재사용합니다.\n" +
@@ -250,7 +252,7 @@ public interface InterviewControllerDocs {
                                                 },
                                                 "sessionEnded": false,
                                                 "wrapUpMessage": null,
-                                                "reportId": null
+                                                "endType": null
                                               }
                                             }
                                             """),
@@ -264,7 +266,7 @@ public interface InterviewControllerDocs {
                                                 "wrapUpMessage": {
                                                   "ttsAudio": "base64로 인코딩된 mp3"
                                                 },
-                                                "reportId": null
+                                                "endType": "MANUAL_END"
                                               }
                                             }
                                             """)

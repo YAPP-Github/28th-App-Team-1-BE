@@ -237,7 +237,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
 
-        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, null);
+        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, InterviewEndType.STT_RESET);
     }
 
     // 합성용 답변 음성 보관은 부가 기능이라, 아카이브 큐가 가득 차(RejectedExecutionException) 등 어떤 이유로도
@@ -305,7 +305,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         triggerReportGeneration(session.getId());
 
-        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessage, null);
+        return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessage, endType);
     }
 
     private Answer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {

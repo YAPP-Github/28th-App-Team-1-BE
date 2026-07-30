@@ -16,8 +16,10 @@ public record InterviewAnswerSubmitHttpResponse(
         @Schema(description = "마무리 멘트 음성. 세션 종료 응답에서만 값 존재(EARLY_EXIT은 null)")
         WrapUpMessageHttpResponse wrapUpMessage,
 
-        @Schema(description = "세션 종료 시 발급되는 리포트 ID")
-        Long reportId
+        @Schema(description = "세션 종료 사유. 세션이 끝나지 않았으면 null. " +
+                "NORMAL_END(정상 종료)/MANUAL_END(수동 종료)/HARD_CAP(최대 한도 도달)/EARLY_EXIT(중도 이탈)/STT_RESET(STT 인식 실패로 무효화) 중 하나",
+                example = "STT_RESET")
+        String endType
 ) {
 
     public record NextQuestionHttpResponse(Long questionId, boolean isLast, Turn turn) {
@@ -40,7 +42,8 @@ public record InterviewAnswerSubmitHttpResponse(
         InterviewAnswerSubmitResult.WrapUpMessage wm = result.wrapUpMessage();
         WrapUpMessageHttpResponse wrapUpMessage = wm == null ? null : new WrapUpMessageHttpResponse(wm.ttsAudio());
         return new InterviewAnswerSubmitHttpResponse(
-                result.answerId(), nextQuestion, result.sessionEnded(), wrapUpMessage, result.reportId()
+                result.answerId(), nextQuestion, result.sessionEnded(), wrapUpMessage,
+                result.endType() == null ? null : result.endType().name()
         );
     }
 }

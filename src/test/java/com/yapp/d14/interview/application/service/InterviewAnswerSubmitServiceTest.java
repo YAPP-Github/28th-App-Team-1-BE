@@ -197,7 +197,6 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().turnLevel()).isEqualTo(1);
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
         assertThat(result.wrapUpMessage()).isNull();
-        assertThat(result.reportId()).isNull();
         // 답변 음성을 합성용으로 S3에 비동기 보관한다(turnLevel 기반 결정적 키).
         verify(interviewVoiceStorage).uploadAnswerAsync(userId, sessionId, 0, audioContent);
     }
@@ -735,6 +734,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion().isLast()).isFalse();
         assertThat(result.nextQuestion().turnLevel()).isEqualTo(2);
         assertThat(result.nextQuestion().depthLevel()).isEqualTo(1);
+        assertThat(result.endType()).isNull();
         verify(priorQaCache).append(eq(sessionId), eq(TestType.DEPTH), any());
         verifyNoInteractions(interviewSttResetPersister, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
         // axis가 전환되지 않으면 이미 조회해둔 OPEN 후보를 재사용해야 한다 — 같은 axis를 두 번 조회하지 않는다.
@@ -789,6 +789,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.sessionEnded()).isTrue();
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
+        assertThat(result.endType()).isEqualTo(InterviewEndType.STT_RESET);
         verify(priorQaCache).clear(sessionId);
         verify(jdOpenerContextCache).clear(sessionId);
         verifyNoInteractions(liveTurnAnalyzer, interviewAnswerAnalyzePersister, interviewReportGenerateUseCase);
@@ -856,7 +857,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.answerId()).isEqualTo(20L);
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
-        assertThat(result.reportId()).isNull();
+        assertThat(result.endType()).isEqualTo(InterviewEndType.EARLY_EXIT);
         verifyNoInteractions(liveTurnAnalyzer);
 
         ArgumentCaptor<InterviewEndType> endTypeCaptor = ArgumentCaptor.forClass(InterviewEndType.class);
