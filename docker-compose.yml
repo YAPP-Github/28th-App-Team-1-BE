@@ -74,6 +74,8 @@ services:
       APPLE_TEAM_ID: ${APPLE_TEAM_ID}
       APPLE_KEY_ID: ${APPLE_KEY_ID}
       APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
+      KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
     logging:
       driver: awslogs
       options:
