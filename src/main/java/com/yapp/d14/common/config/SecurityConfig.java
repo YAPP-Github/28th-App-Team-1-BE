@@ -1,9 +1,11 @@
 package com.yapp.d14.common.config;
 
 import com.yapp.d14.common.security.JwtAuthenticationFilter;
+import com.yapp.d14.common.web.RequestResponseLoggingFilter;
 import com.yapp.d14.common.web.TraceIdFilter;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,10 +22,12 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final TraceIdFilter traceIdFilter;
+    // 개발 프로파일(local/dev)에서만 존재하는 요청/응답 로깅 필터. 프로덕션에는 빈이 없어 비어 있다.
+    private final ObjectProvider<RequestResponseLoggingFilter> requestResponseLoggingFilterProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -45,8 +49,19 @@ public class SecurityConfig {
                         .requestMatchers("/interview-harness/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class)
-                .build();
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // 필터 실행 순서를 TraceId → (Logging) → Jwt 로 명시한다.
+        // - Logging을 Jwt보다 바깥에 둬야 인증 실패(401)로 체인이 끊기는 요청까지 로깅된다.
+        // - TraceId를 가장 바깥에 둬야 Logging이 로그를 남기는 시점(체인 되감기)에 traceId가 MDC에 살아 있다.
+        RequestResponseLoggingFilter loggingFilter = requestResponseLoggingFilterProvider.getIfAvailable();
+        if (loggingFilter != null) {
+            http.addFilterBefore(loggingFilter, JwtAuthenticationFilter.class)
+                    .addFilterBefore(traceIdFilter, RequestResponseLoggingFilter.class);
+        } else {
+            http.addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class);
+        }
+
+        return http.build();
     }
 }

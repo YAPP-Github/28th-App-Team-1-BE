@@ -19,12 +19,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    # show-sql(System.out 직접 출력)은 JSON 인코더를 안 거쳐 traceId도 안 실리고 CloudWatch에서 구조화되지 않는다.
+    # SQL은 아래 logging.level.org.hibernate.SQL 로거로 남겨 JSON 한 줄 + traceId로 조회한다.
+    show-sql: false
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        # 여러 줄 pretty-print는 CloudWatch에서 이벤트가 쪼개져 보기 불편하므로 한 줄로 출력한다.
+        format_sql: false
         default_batch_fetch_size: 100
 
   ai:
@@ -94,3 +97,6 @@ logging:
   level:
     root: INFO
     com.yapp.d14: DEBUG
+    # SQL 문장과 바인딩 파라미터 값. SLF4J → logback JSON 인코더를 거쳐 한 줄씩, traceId와 함께 남는다.
+    org.hibernate.SQL: debug
+    org.hibernate.orm.jdbc.bind: trace
