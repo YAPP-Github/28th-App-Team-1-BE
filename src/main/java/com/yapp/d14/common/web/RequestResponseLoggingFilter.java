@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
@@ -57,7 +56,9 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        // body를 미리 읽어 두는 래퍼. 인증 실패(401)로 체인이 끊겨 downstream이 body를 안 읽는 경우에도
+        // 요청 body를 로깅할 수 있다. (ContentCachingRequestWrapper는 읽혀야만 캐싱하므로 이 경우 비어 버린다.)
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
         ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
 
         long start = System.currentTimeMillis();
@@ -71,9 +72,9 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
         }
     }
 
-    private void logExchange(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response, long tookMs) {
+    private void logExchange(CachedBodyHttpServletRequest request, ContentCachingResponseWrapper response, long tookMs) {
         String query = request.getQueryString() == null ? "" : "?" + request.getQueryString();
-        String requestBody = readBody(request.getContentAsByteArray(), request.getContentType());
+        String requestBody = readBody(request.getCachedBody(), request.getContentType());
         String responseBody = readBody(response.getContentAsByteArray(), response.getContentType());
 
         log.info("[HTTP] {} {}{} -> {} ({}ms) | request={} | response={}",

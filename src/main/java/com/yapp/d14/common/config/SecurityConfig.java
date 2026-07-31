@@ -45,14 +45,17 @@ public class SecurityConfig {
                         .requestMatchers("/interview-harness/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // TraceIdFilter 바로 뒤(안쪽)에 두어 로깅 시점에 traceId가 MDC에 살아 있도록 한다.
-        // 인증 실패(401) 요청까지 남기기 위해 JwtAuthenticationFilter보다 바깥에 둔다.
+        // 필터 실행 순서를 TraceId → (Logging) → Jwt 로 명시한다.
+        // - Logging을 Jwt보다 바깥에 둬야 인증 실패(401)로 체인이 끊기는 요청까지 로깅된다.
+        // - TraceId를 가장 바깥에 둬야 Logging이 로그를 남기는 시점(체인 되감기)에 traceId가 MDC에 살아 있다.
         RequestResponseLoggingFilter loggingFilter = requestResponseLoggingFilterProvider.getIfAvailable();
         if (loggingFilter != null) {
-            http.addFilterAfter(loggingFilter, TraceIdFilter.class);
+            http.addFilterBefore(loggingFilter, JwtAuthenticationFilter.class)
+                    .addFilterBefore(traceIdFilter, RequestResponseLoggingFilter.class);
+        } else {
+            http.addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class);
         }
 
         return http.build();
