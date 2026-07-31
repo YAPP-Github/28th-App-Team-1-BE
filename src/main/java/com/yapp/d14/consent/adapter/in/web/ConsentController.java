@@ -10,9 +10,6 @@ import com.yapp.d14.consent.application.port.in.ConsentDocumentQueryUseCase;
 import com.yapp.d14.consent.application.port.in.ConsentSubmitUseCase;
 import com.yapp.d14.consent.application.port.in.PendingConsentItemsQueryUseCase;
 import com.yapp.d14.consent.application.port.in.RequiredConsentStatusQueryUseCase;
-import com.yapp.d14.consent.domain.ConsentItem;
-import com.yapp.d14.consent.exception.ConsentErrorCode;
-import com.yapp.d14.consent.exception.ConsentException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -69,15 +66,9 @@ class ConsentController implements ConsentControllerDocs {
             @PathVariable int version
     ) {
         return ResponseEntity.ok(
-                ApiResponse.ok(ConsentDocumentHttpResponse.from(consentDocumentQueryUseCase.getDocument(parseItem(item), version)))
+                ApiResponse.ok(ConsentDocumentHttpResponse.from(
+                        consentDocumentQueryUseCase.getDocument(ConsentItemParser.parse(item), version)
+                ))
         );
-    }
-
-    private static ConsentItem parseItem(String rawItem) {
-        try {
-            return ConsentItem.valueOf(rawItem);
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ConsentException(ConsentErrorCode.INVALID_CONSENT_ITEM);
-        }
     }
 }

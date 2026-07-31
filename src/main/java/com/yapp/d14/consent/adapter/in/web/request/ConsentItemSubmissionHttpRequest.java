@@ -1,9 +1,7 @@
 package com.yapp.d14.consent.adapter.in.web.request;
 
+import com.yapp.d14.consent.adapter.in.web.ConsentItemParser;
 import com.yapp.d14.consent.application.command.ConsentItemSubmission;
-import com.yapp.d14.consent.domain.ConsentItem;
-import com.yapp.d14.consent.exception.ConsentErrorCode;
-import com.yapp.d14.consent.exception.ConsentException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -23,14 +21,6 @@ public record ConsentItemSubmissionHttpRequest(
 ) {
 
     public ConsentItemSubmission toSubmission() {
-        return new ConsentItemSubmission(parseItem(item), version, agreed);
-    }
-
-    private static ConsentItem parseItem(String rawItem) {
-        try {
-            return ConsentItem.valueOf(rawItem);
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ConsentException(ConsentErrorCode.INVALID_CONSENT_ITEM);
-        }
+        return new ConsentItemSubmission(ConsentItemParser.parse(item), version, agreed);
     }
 }
