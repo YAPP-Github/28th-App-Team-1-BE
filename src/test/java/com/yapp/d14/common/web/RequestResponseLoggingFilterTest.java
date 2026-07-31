@@ -76,6 +76,33 @@ class RequestResponseLoggingFilterTest {
     }
 
     @Test
+    void query_string의_토큰성_파라미터_값은_마스킹된다() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/something");
+        request.setQueryString("page=1&accessToken=leaked-in-url&sort=desc");
+
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        String message = loggedMessage();
+        assertThat(message).contains("page=1");
+        assertThat(message).contains("accessToken=***");
+        assertThat(message).doesNotContain("leaked-in-url");
+    }
+
+    @Test
+    void form_body의_토큰성_파라미터_값은_마스킹된다() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/something");
+        request.setContentType("application/x-www-form-urlencoded");
+        request.setContent("grantType=refresh&refreshToken=leaked-in-form".getBytes(StandardCharsets.UTF_8));
+
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        String message = loggedMessage();
+        assertThat(message).contains("grantType=refresh");
+        assertThat(message).contains("refreshToken=***");
+        assertThat(message).doesNotContain("leaked-in-form");
+    }
+
+    @Test
     void 마스킹은_대소문자를_구분하지_않는다() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/token/refresh");
         request.setContentType("application/json");

@@ -39,6 +39,11 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
             Pattern.CASE_INSENSITIVE
     );
 
+    // query string / form body의 key=value 형식 토큰성 파라미터 값. (예: ?accessToken=...,  refreshToken=...&...)
+    private static final Pattern SENSITIVE_PARAM = Pattern.compile(
+            "(?i)(refreshToken|accessToken|credential|idToken|appleRefreshToken|authorizationCode|token|password)=([^&\\s]*)"
+    );
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String uri = request.getRequestURI();
@@ -73,7 +78,7 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
     }
 
     private void logExchange(CachedBodyHttpServletRequest request, ContentCachingResponseWrapper response, long tookMs) {
-        String query = request.getQueryString() == null ? "" : "?" + request.getQueryString();
+        String query = request.getQueryString() == null ? "" : "?" + mask(request.getQueryString());
         String requestBody = readBody(request.getCachedBody(), request.getContentType());
         String responseBody = readBody(response.getContentAsByteArray(), response.getContentType());
 
@@ -111,7 +116,9 @@ public class RequestResponseLoggingFilter extends OncePerRequestFilter {
         return ct.contains("json") || ct.contains("text") || ct.contains("xml") || ct.contains("x-www-form-urlencoded");
     }
 
-    private String mask(String body) {
-        return SENSITIVE_FIELD.matcher(body).replaceAll("$1***$3");
+    private String mask(String text) {
+        // JSON("key":"value")과 query/form(key=value) 두 형식의 토큰성 값을 모두 가린다.
+        String masked = SENSITIVE_FIELD.matcher(text).replaceAll("$1***$3");
+        return SENSITIVE_PARAM.matcher(masked).replaceAll("$1=***");
     }
 }
