@@ -18,10 +18,6 @@ class TicketInitializeService implements TicketInitializeUseCase {
     @Override
     @Transactional
     public void initialize(UUID userId) {
-        if (userTicketRepository.findByUserId(userId).isPresent()) {
-            return;
-        }
-
-        userTicketRepository.save(UserTicket.create(userId));
+        userTicketRepository.insertIfAbsent(UserTicket.create(userId));
     }
 }

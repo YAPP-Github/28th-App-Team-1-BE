@@ -21,6 +21,11 @@ class UserTicketPersistenceAdapter implements UserTicketRepository {
     }
 
     @Override
+    public void insertIfAbsent(UserTicket userTicket) {
+        userTicketJpaRepository.insertIfAbsent(userTicket.getUserId(), userTicket.getRemaining(), userTicket.getUpdatedAt());
+    }
+
+    @Override
     public Optional<UserTicket> findByUserId(UUID userId) {
         return userTicketJpaRepository.findById(userId).map(UserTicketJpaEntity::toDomain);
     }
