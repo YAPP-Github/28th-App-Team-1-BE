@@ -8,6 +8,8 @@ import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.application.port.out.TokenRepository;
 import com.yapp.d14.auth.exception.AuthErrorCode;
 import com.yapp.d14.auth.exception.AuthException;
+import com.yapp.d14.consent.application.port.in.RequiredConsentStatusQueryUseCase;
+import com.yapp.d14.consent.domain.RequiredConsentStatus;
 import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
 import com.yapp.d14.user.application.port.in.result.UserProfileResult;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ class TokenReissueService implements TokenReissueUseCase {
     private final JwtProvider jwtProvider;
     private final TokenRepository tokenRepository;
     private final UserProfileQueryUseCase userProfileQueryUseCase;
+    private final RequiredConsentStatusQueryUseCase requiredConsentStatusQueryUseCase;
 
     @Override
     public AuthToken reissue(TokenReissueCommand command) {
@@ -51,7 +54,8 @@ class TokenReissueService implements TokenReissueUseCase {
         tokenRepository.save(claims.userId(), newRefreshToken);
 
         UserProfileResult profile = userProfileQueryUseCase.getProfile(claims.userId());
+        RequiredConsentStatus consentStatus = requiredConsentStatusQueryUseCase.getStatus(claims.userId());
 
-        return new AuthToken(newAccessToken, newRefreshToken, profile);
+        return new AuthToken(newAccessToken, newRefreshToken, false, consentStatus, profile);
     }
 }
