@@ -98,6 +98,22 @@ class ConsentSubmitServiceTest {
     }
 
     @Test
+    void 동일_항목이_중복_제출되면_예외를_던지고_저장하지_않는다() {
+        given(consentRecordRepository.findAllByUserId(userId)).willReturn(List.of());
+        ConsentItemSubmission duplicate = new ConsentItemSubmission(
+                ConsentItem.TERMS_OF_SERVICE, ConsentItem.TERMS_OF_SERVICE.getCurrentVersion(), true
+        );
+
+        assertThatThrownBy(() -> service.submit(new ConsentSubmitCommand(userId, List.of(duplicate, duplicate))))
+                .isInstanceOf(ConsentException.class)
+                .extracting(e -> ((ConsentException) e).getErrorCode())
+                .isEqualTo(ConsentErrorCode.DUPLICATE_CONSENT_ITEM);
+
+        verify(consentRecordRepository, never()).save(any());
+        verify(ticketInitializeUseCase, never()).initialize(any());
+    }
+
+    @Test
     void 이미_동의_이력이_있으면_재동의로_보고_보낸_항목만_갱신하며_이용권_초기화는_멱등하게_호출된다() {
         ConsentRecord existing = ConsentRecord.of(
                 userId, ConsentItem.TERMS_OF_SERVICE, 1, true, LocalDateTime.now()

@@ -52,7 +52,9 @@ class ConsentSubmitService implements ConsentSubmitUseCase {
 
     private void validateRequiredItems(List<ConsentItemSubmission> submissions, boolean firstSubmission) {
         Map<ConsentItem, Boolean> agreedByItem = submissions.stream()
-                .collect(Collectors.toMap(ConsentItemSubmission::item, ConsentItemSubmission::agreed));
+                .collect(Collectors.toMap(ConsentItemSubmission::item, ConsentItemSubmission::agreed, (a, b) -> {
+                    throw new ConsentException(ConsentErrorCode.DUPLICATE_CONSENT_ITEM);
+                }));
 
         boolean anyRequiredDeclined = agreedByItem.entrySet().stream()
                 .anyMatch(entry -> entry.getKey().isRequired() && !entry.getValue());
