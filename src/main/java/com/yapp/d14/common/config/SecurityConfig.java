@@ -1,8 +1,10 @@
 package com.yapp.d14.common.config;
 
 import com.yapp.d14.common.security.JwtAuthenticationFilter;
+import com.yapp.d14.common.web.RequestResponseLoggingFilter;
 import com.yapp.d14.common.web.TraceIdFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,10 +21,12 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final TraceIdFilter traceIdFilter;
+    // 개발 프로파일(local/dev)에서만 존재하는 요청/응답 로깅 필터. 프로덕션에는 빈이 없어 비어 있다.
+    private final ObjectProvider<RequestResponseLoggingFilter> requestResponseLoggingFilterProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+        http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -42,7 +46,15 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class)
-                .build();
+                .addFilterBefore(traceIdFilter, JwtAuthenticationFilter.class);
+
+        // TraceIdFilter 바로 뒤(안쪽)에 두어 로깅 시점에 traceId가 MDC에 살아 있도록 한다.
+        // 인증 실패(401) 요청까지 남기기 위해 JwtAuthenticationFilter보다 바깥에 둔다.
+        RequestResponseLoggingFilter loggingFilter = requestResponseLoggingFilterProvider.getIfAvailable();
+        if (loggingFilter != null) {
+            http.addFilterAfter(loggingFilter, TraceIdFilter.class);
+        }
+
+        return http.build();
     }
 }
