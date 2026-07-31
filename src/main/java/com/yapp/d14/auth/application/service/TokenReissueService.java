@@ -47,14 +47,14 @@ class TokenReissueService implements TokenReissueUseCase {
             throw new AuthException(AuthErrorCode.LOGIN_EXPIRED);
         }
 
+        UserProfileResult profile = userProfileQueryUseCase.getProfile(claims.userId());
+        RequiredConsentStatus consentStatus = requiredConsentStatusQueryUseCase.getStatus(claims.userId());
+
         tokenRepository.delete(claims.userId());
 
         String newAccessToken = jwtProvider.issueAccessToken(claims.userId(), claims.provider());
         String newRefreshToken = jwtProvider.issueRefreshToken(claims.userId(), claims.provider());
         tokenRepository.save(claims.userId(), newRefreshToken);
-
-        UserProfileResult profile = userProfileQueryUseCase.getProfile(claims.userId());
-        RequiredConsentStatus consentStatus = requiredConsentStatusQueryUseCase.getStatus(claims.userId());
 
         return new AuthToken(newAccessToken, newRefreshToken, false, consentStatus, profile);
     }

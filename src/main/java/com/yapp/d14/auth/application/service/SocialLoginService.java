@@ -33,12 +33,12 @@ class SocialLoginService implements SocialLoginUseCase {
         UserProvisionResult provisionResult = socialUserProvisionService.provision(command.provider(), userInfo);
         User user = provisionResult.user();
 
+        UserProfileResult profile = userProfileQueryUseCase.getProfile(user.getId());
+        RequiredConsentStatus consentStatus = requiredConsentStatusQueryUseCase.getStatus(user.getId());
+
         String accessToken = jwtProvider.issueAccessToken(user.getId(), user.getProvider());
         String refreshToken = jwtProvider.issueRefreshToken(user.getId(), user.getProvider());
         tokenRepository.save(user.getId(), refreshToken);
-
-        UserProfileResult profile = userProfileQueryUseCase.getProfile(user.getId());
-        RequiredConsentStatus consentStatus = requiredConsentStatusQueryUseCase.getStatus(user.getId());
 
         return new AuthToken(accessToken, refreshToken, provisionResult.newlyCreated(), consentStatus, profile);
     }
