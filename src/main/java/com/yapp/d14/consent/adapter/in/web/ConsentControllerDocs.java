@@ -153,6 +153,7 @@ public interface ConsentControllerDocs {
             summary = "동의 문서 본문 조회",
             description = "특정 항목의 특정 버전 본문(제목·내용)을 조회합니다. 클라이언트가 항목을 탭했을 때 " +
                     "바텀시트에 전문을 띄우는 용도입니다.\n\n" +
+                    "- `content`는 마크다운 형식의 텍스트로 내려갑니다. 클라이언트에서 마크다운 렌더러로 표시해주세요.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
     )
     @ApiResponses({
