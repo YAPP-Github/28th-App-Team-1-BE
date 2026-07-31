@@ -56,15 +56,29 @@ public interface InterviewControllerDocs {
                     "- `portfolioId`로 지정한 포트폴리오는 반드시 `READY` 상태여야 합니다.\n" +
                     "- 직군·연차는 요청으로 받지 않고, `PATCH /api/v1/users/me/profile`로 등록한 회원 프로필 값을 생성 시점 스냅샷으로 사용합니다. " +
                     "직군 또는 연차가 아직 등록되어 있지 않으면 `USER_PROFILE_NOT_REGISTERED`로 거부됩니다.\n" +
-                    "- `jdUrl`과 `jdText`는 상호 배타적입니다. `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱)돼 있어야 합니다.\n" +
+                    "- `jdUrl`과 `jdText`는 상호 배타적입니다(동시 입력 시 `JD_URL_AND_TEXT_BOTH_PROVIDED`). `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱, 6시간 TTL)돼 있어야 하며, " +
+                    "검증 후 캐시가 만료된 채로 세션을 생성하면 `JD_CONTENT_NOT_FOUND`로 거부됩니다(재검증 필요).\n" +
                     "- `freeText`(집중 프로젝트 설명)를 입력하면 포트폴리오와의 연관성을 임베딩 유사도로 검사합니다.\n" +
                     "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "202",
-                    description = "생성 접수 성공 — PROCESSING 상태로 생성",
-                    content = @Content(schema = @Schema(implementation = InterviewSessionCreateHttpResponse.class))
+                    description = "생성 접수 성공 — JD·freeText 조합(JD URL/JD 텍스트/JD 없음, freeText 유무)과 무관하게 항상 이 모양으로 PROCESSING 상태 반환",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewSessionCreateHttpResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": {
+                                        "sessionId": 101,
+                                        "status": "PROCESSING",
+                                        "statusUrl": "/api/v1/interview/sessions/101/status"
+                                      }
+                                    }
+                                    """)
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -86,11 +100,25 @@ public interface InterviewControllerDocs {
                                               "message": "면접을 시작하려면 먼저 직무와 연차를 등록해 주세요."
                                             }
                                             """),
+                                    @ExampleObject(name = "JD URL과 텍스트 동시 입력", value = """
+                                            {
+                                              "success": false,
+                                              "code": "JD_URL_AND_TEXT_BOTH_PROVIDED",
+                                              "message": "jdUrl과 jdText는 함께 입력할 수 없어요."
+                                            }
+                                            """),
                                     @ExampleObject(name = "JD 미검증", value = """
                                             {
                                               "success": false,
                                               "code": "JD_NOT_VALIDATED",
                                               "message": "JD 링크를 먼저 검증해 주세요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "JD 캐시 만료(검증 이후 시간 경과)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "JD_CONTENT_NOT_FOUND",
+                                              "message": "JD 링크의 캐시가 만료됐어요. 다시 검증해 주세요."
                                             }
                                             """),
                                     @ExampleObject(name = "JD 길이 위반", value = """
