@@ -23,12 +23,10 @@ class UserProfileUpdateService implements UserProfileUpdateUseCase {
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        if (command.name() != null) {
-            if (userRepository.existsByNameAndIdNot(command.name(), command.userId())) {
-                throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
-            }
-            user.registerName(command.name());
+        if (userRepository.existsByNameAndIdNot(command.name(), command.userId())) {
+            throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
         }
+        user.registerName(command.name());
 
         user.updateProfile(command.jobRole(), command.careerYears());
 

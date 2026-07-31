@@ -139,9 +139,10 @@ public class InterviewSession {
     }
 
     // 5-2/6-2장: 세션 누적 STT 인식 실패율이 30%를 초과해 세션을 완전 리셋(무효화)할 때 호출
-    public void markInvalid() {
+    public void markInvalid(InterviewEndType endType) {
         this.status = InterviewSessionStatus.INVALID;
         this.endedAt = LocalDateTime.now();
+        this.endType = endType;
     }
 
     // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).

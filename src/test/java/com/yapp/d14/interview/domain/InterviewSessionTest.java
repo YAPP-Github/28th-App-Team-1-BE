@@ -53,12 +53,13 @@ class InterviewSessionTest {
     }
 
     @Test
-    void markInvalid_호출_시_상태가_invalid로_바뀌고_종료시각이_기록된다() {
+    void markInvalid_호출_시_상태가_invalid로_바뀌고_종료시각과_종료사유가_기록된다() {
         InterviewSession session = create();
 
-        session.markInvalid();
+        session.markInvalid(InterviewEndType.STT_RESET);
 
         assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.INVALID);
         assertThat(session.getEndedAt()).isNotNull();
+        assertThat(session.getEndType()).isEqualTo(InterviewEndType.STT_RESET);
     }
 }

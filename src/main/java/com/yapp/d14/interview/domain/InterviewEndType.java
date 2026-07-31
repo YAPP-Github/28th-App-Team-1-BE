@@ -12,7 +12,8 @@ public enum InterviewEndType {
     QUESTION_EXHAUSTED("질문 소진"),
     HARD_CAP("최대 한도 도달"),
     EARLY_EXIT("중도 이탈"),
-    SKIP("답변 건너뜀");
+    SKIP("답변 건너뜀"),
+    STT_RESET("STT 인식 실패");
 
     private final String label;
 }

@@ -29,6 +29,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public void acquirePortfolioLock(UUID portfolioId) {
+        portfolioJpaRepository.acquirePortfolioLock("portfolio:" + portfolioId);
+    }
+
+    @Override
     public boolean existsActiveByUserId(UUID userId) {
         return portfolioJpaRepository.existsByUserIdAndDeletedFalse(userId);
     }
@@ -43,6 +48,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
         return portfolioJpaRepository.existsByUserIdAndReplacementTrueAndStatusAndUploadedAtGreaterThanEqual(
                 userId, PortfolioStatus.READY, since
         );
+    }
+
+    @Override
+    public boolean existsDeletionSince(UUID userId, LocalDateTime since) {
+        return portfolioJpaRepository.existsByUserIdAndDeletedTrueAndDeletedAtGreaterThanEqual(userId, since);
     }
 
     @Override

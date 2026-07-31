@@ -38,7 +38,7 @@ class UserNameRegisterServiceTest {
     }
 
     @Test
-    void 정상_등록하면_이름이_설정되고_등록여부가_true가_된다() {
+    void 정상_등록하면_이름이_설정된다() {
         User user = newUser();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
         given(userRepository.existsByNameAndIdNot("홍길동", userId)).willReturn(false);
@@ -46,7 +46,7 @@ class UserNameRegisterServiceTest {
         service.register(userId, "홍길동");
 
         assertThat(user.getName()).isEqualTo("홍길동");
-        assertThat(user.isNameRegistered()).isTrue();
+        assertThat(user.isProfileRegistered()).isFalse();
         verify(userRepository).save(user);
     }
 

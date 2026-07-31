@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -232,12 +233,37 @@ class PortfolioProcessServiceTest {
         verify(portfolioFileUploader).delete(portfolio.getS3Key());
     }
 
+    @Test
+    void 완료_저장_직전_사용자가_삭제했으면_READY로_덮어쓰지_않고_S3와_임베딩을_정리한다() {
+        Portfolio deleted = deletedCopyOf(portfolio);
+        given(portfolioRepository.findById(portfolio.getId()))
+                .willReturn(Optional.of(portfolio))
+                .willReturn(Optional.of(deleted));
+        given(pdfTextExtractor.extractText(fileContent)).willReturn(VALID_EXTRACTED_TEXT);
+
+        portfolioProcessService.process(userId, portfolio.getId(), fileContent);
+
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.PROCESSING);
+        verify(portfolioRepository, never()).save(any());
+        verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
+        verify(portfolioFileUploader).delete(portfolio.getS3Key());
+    }
+
     private Portfolio failedSystemCopyOf(Portfolio original) {
         return Portfolio.of(
                 original.getId(), original.getUserId(), original.getFileName(), original.getFileSize(),
                 original.getPageCount(), original.getS3Key(), PortfolioStatus.FAILED_SYSTEM,
                 "처리 시간이 초과되었어요. 다시 시도해 주세요.", original.getCreatedAt(), null,
                 original.isReplacement(), false, null
+        );
+    }
+
+    private Portfolio deletedCopyOf(Portfolio original) {
+        return Portfolio.of(
+                original.getId(), original.getUserId(), original.getFileName(), original.getFileSize(),
+                original.getPageCount(), original.getS3Key(), PortfolioStatus.PROCESSING,
+                null, original.getCreatedAt(), null,
+                original.isReplacement(), true, LocalDateTime.now()
         );
     }
 }

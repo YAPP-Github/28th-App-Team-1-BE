@@ -31,7 +31,7 @@ class UserProfileQueryService implements UserProfileQueryUseCase {
                 user.getEmail(),
                 user.getProvider(),
                 user.getName(),
-                user.isNameRegistered(),
+                user.isProfileRegistered(),
                 user.getJobRole(),
                 user.getCareerYears(),
                 remainingTicketCount

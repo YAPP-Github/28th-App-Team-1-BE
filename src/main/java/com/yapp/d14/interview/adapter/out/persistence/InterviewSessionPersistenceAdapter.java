@@ -3,6 +3,7 @@ package com.yapp.d14.interview.adapter.out.persistence;
 import com.yapp.d14.interview.adapter.out.persistence.entity.InterviewSessionJpaEntity;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
+import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -36,5 +37,10 @@ class InterviewSessionPersistenceAdapter implements InterviewSessionRepository {
         return interviewSessionJpaRepository.findAllByUserId(userId).stream()
                 .map(InterviewSessionJpaEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public boolean existsByPortfolioIdAndStatus(UUID portfolioId, InterviewSessionStatus status) {
+        return interviewSessionJpaRepository.existsByPortfolioIdAndStatus(portfolioId, status);
     }
 }

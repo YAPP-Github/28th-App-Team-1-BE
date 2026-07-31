@@ -7,8 +7,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum InterviewErrorCode implements ErrorCode {
 
-    INVALID_JOB_ROLE(HttpStatus.BAD_REQUEST, "INVALID_JOB_ROLE", "지원하지 않는 직군이에요."),
-    INVALID_CAREER_YEARS(HttpStatus.BAD_REQUEST, "INVALID_CAREER_YEARS", "연차를 다시 확인해 주세요."),
+    USER_PROFILE_NOT_REGISTERED(HttpStatus.BAD_REQUEST, "USER_PROFILE_NOT_REGISTERED", "면접을 시작하려면 먼저 직무와 연차를 등록해 주세요."),
     JD_NOT_VALIDATED(HttpStatus.BAD_REQUEST, "JD_NOT_VALIDATED", "JD 링크를 먼저 검증해 주세요."),
     JD_URL_AND_TEXT_BOTH_PROVIDED(HttpStatus.BAD_REQUEST, "JD_URL_AND_TEXT_BOTH_PROVIDED", "jdUrl과 jdText는 함께 입력할 수 없어요."),
     JD_CONTENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "JD_CONTENT_NOT_FOUND", "JD 링크의 캐시가 만료됐어요. 다시 검증해 주세요."),

@@ -11,7 +11,8 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public record UserProfileUpdateHttpRequest(
-        @Schema(description = "이름(선택 — 변경할 때만 입력)", example = "홍길동")
+        @Schema(description = "이름", example = "홍길동")
+        @NotBlank(message = "이름을 입력해주세요.")
         @Size(min = 1, max = 20, message = "이름은 1자 이상 20자 이하로 입력해주세요.")
         String name,
 

@@ -4,5 +4,6 @@ public enum PortfolioStatus {
     PROCESSING,
     READY,
     FAILED_FILE,
-    FAILED_SYSTEM
+    FAILED_SYSTEM,
+    CANCELLED
 }

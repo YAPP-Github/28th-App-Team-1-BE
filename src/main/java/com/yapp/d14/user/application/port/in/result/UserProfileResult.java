@@ -10,7 +10,7 @@ public record UserProfileResult(
         String email,
         Provider provider,
         String name,
-        boolean nameRegistered,
+        boolean profileRegistered,
         JobRole jobRole,
         Integer careerYears,
         int remainingTicketCount

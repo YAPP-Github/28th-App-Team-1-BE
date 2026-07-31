@@ -54,6 +54,27 @@ class PortfolioTest {
     }
 
     @Test
+    void PROCESSING_중에_softDelete하면_CANCELLED로_전환된다() {
+        portfolio.softDelete();
+
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.CANCELLED);
+    }
+
+    @Test
+    void 이미_종료된_상태에서_softDelete해도_상태는_유지된다() {
+        Portfolio ready = Portfolio.of(
+                UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.READY, "완료", LocalDateTime.now(), LocalDateTime.now(),
+                false, false, null
+        );
+
+        ready.softDelete();
+
+        assertThat(ready.getStatus()).isEqualTo(PortfolioStatus.READY);
+        assertThat(ready.isDeleted()).isTrue();
+    }
+
+    @Test
     void PROCESSING_상태로_생성된지_15초가_지나면_FAILED_SYSTEM으로_전환한다() {
         Portfolio staleProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
 

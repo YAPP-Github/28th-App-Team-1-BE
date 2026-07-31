@@ -38,7 +38,7 @@ public class UserJpaEntity {
     private String name;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
-    private boolean nameRegistered;
+    private boolean profileRegistered;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -67,7 +67,7 @@ public class UserJpaEntity {
         entity.id = user.getId();
         entity.email = user.getEmail();
         entity.name = user.getName();
-        entity.nameRegistered = user.isNameRegistered();
+        entity.profileRegistered = user.isProfileRegistered();
         entity.provider = user.getProvider();
         entity.providerId = user.getProviderId();
         entity.jobRole = user.getJobRole();
@@ -80,7 +80,7 @@ public class UserJpaEntity {
 
     public User toDomain() {
         return User.of(
-                id, email, name, nameRegistered, provider, providerId, jobRole, careerYears,
+                id, email, name, profileRegistered, provider, providerId, jobRole, careerYears,
                 appleRefreshToken, createdAt, updatedAt
         );
     }

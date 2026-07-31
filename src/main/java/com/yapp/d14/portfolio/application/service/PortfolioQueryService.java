@@ -1,5 +1,6 @@
 package com.yapp.d14.portfolio.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioActiveCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ import java.util.UUID;
 class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseCase, PortfolioActiveCheckUseCase {
 
     private final PortfolioRepository portfolioRepository;
+    private final InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
 
     @Override
     public boolean isActive(UUID portfolioId) {
@@ -55,9 +58,9 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {
-        boolean blocked = portfolioRepository.existsReplacementSince(
-                portfolio.getUserId(), PortfolioReplacementPolicy.currentMonthStart()
-        );
+        LocalDateTime monthStart = PortfolioReplacementPolicy.currentMonthStart();
+        boolean replaceBlocked = portfolioRepository.existsReplacementSince(portfolio.getUserId(), monthStart);
+        boolean deleteBlocked = portfolioRepository.existsDeletionSince(portfolio.getUserId(), monthStart);
 
         return new PortfolioSummary(
                 portfolio.getId(),
@@ -66,8 +69,11 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
                 portfolio.getPageCount(),
                 portfolio.getStatus(),
                 portfolio.getUploadedAt(),
-                !blocked,
-                blocked ? PortfolioReplacementPolicy.nextMonthStart() : null
+                !replaceBlocked,
+                replaceBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
+                !deleteBlocked,
+                deleteBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
+                interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())
         );
     }
 }
