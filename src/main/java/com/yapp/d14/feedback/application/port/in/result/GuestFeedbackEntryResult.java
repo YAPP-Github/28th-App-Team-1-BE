@@ -9,14 +9,6 @@ public record GuestFeedbackEntryResult(
         GuestGate gate,
         String requesterName,
         List<AttitudeAxis> axes,
-        String videoUrl,
-        List<QuestionBoundary> questionBoundaries
+        String videoUrl
 ) {
-
-    public record QuestionBoundary(
-            int turnLevel,
-            float startAt,
-            String questionText
-    ) {
-    }
 }

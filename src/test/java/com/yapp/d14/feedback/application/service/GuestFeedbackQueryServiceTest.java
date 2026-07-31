@@ -10,9 +10,7 @@ import com.yapp.d14.feedback.domain.GuestGate;
 import com.yapp.d14.interview.application.port.in.InterviewSessionOwnerQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewVideoRetentionExtendUseCase;
-import com.yapp.d14.interview.application.port.in.QuestionBoundaryQueryUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewVideoPlaybackResult;
-import com.yapp.d14.interview.application.port.in.result.QuestionBoundaryResult;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
@@ -50,9 +48,6 @@ class GuestFeedbackQueryServiceTest {
 
     @Mock
     private InterviewVideoRetentionExtendUseCase interviewVideoRetentionExtendUseCase;
-
-    @Mock
-    private QuestionBoundaryQueryUseCase questionBoundaryQueryUseCase;
 
     @Mock
     private FindUserUseCase findUserUseCase;
@@ -106,7 +101,6 @@ class GuestFeedbackQueryServiceTest {
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(true);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, null, LocalDateTime.now(), LocalDateTime.now()));
-        given(questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId)).willReturn(List.of());
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
@@ -123,7 +117,6 @@ class GuestFeedbackQueryServiceTest {
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(4L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, null, LocalDateTime.now(), LocalDateTime.now()));
-        given(questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId)).willReturn(List.of());
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
@@ -133,15 +126,13 @@ class GuestFeedbackQueryServiceTest {
     }
 
     @Test
-    void 정상이면_OPEN_게이트와_함께_요청자_이름과_질문_경계를_돌려주고_영상_보관을_연장한다() {
+    void 정상이면_OPEN_게이트와_함께_요청자_이름과_영상을_돌려주고_영상_보관을_연장한다() {
         given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
         given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
         given(guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, DEVICE_ID)).willReturn(false);
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(1L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, null, LocalDateTime.now(), LocalDateTime.now()));
-        given(questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId))
-                .willReturn(List.of(new QuestionBoundaryResult(1, 12.5f, "질문 내용")));
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, DEVICE_ID);
 
@@ -149,8 +140,6 @@ class GuestFeedbackQueryServiceTest {
         assertThat(result.requesterName()).isEqualTo("재원");
         assertThat(result.axes()).containsExactly(AttitudeAxis.GAZE);
         assertThat(result.videoUrl()).isEqualTo("https://s3/final.mp4");
-        assertThat(result.questionBoundaries()).hasSize(1);
-        assertThat(result.questionBoundaries().get(0).questionText()).isEqualTo("질문 내용");
         verify(interviewVideoRetentionExtendUseCase).extendForGuestFirstViewed(sessionId);
     }
 
@@ -161,7 +150,6 @@ class GuestFeedbackQueryServiceTest {
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(0L);
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
         given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, null, LocalDateTime.now(), LocalDateTime.now()));
-        given(questionBoundaryQueryUseCase.getQuestionBoundaries(sessionId)).willReturn(List.of());
 
         GuestFeedbackEntryResult result = service.enter(TOKEN, null);
 
