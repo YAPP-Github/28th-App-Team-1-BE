@@ -14,6 +14,8 @@ public record PortfolioSummary(
         LocalDateTime uploadedAt,
         boolean replaceAvailable,
         LocalDateTime nextAvailableAt,
+        boolean deleteAvailable,
+        LocalDateTime nextDeleteAvailableAt,
         boolean interviewInProgress
 ) {
 }

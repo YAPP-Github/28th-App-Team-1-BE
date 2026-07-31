@@ -226,13 +226,16 @@ public interface PortfolioControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
                     "- 소프트 삭제된 포트폴리오는 응답에서 제외됩니다.\n" +
-                    "- `replaceAvailable`: 이번 달 남은 업로드·삭제 기회를 함께 나타내는 값입니다. " +
-                    "`true`면 삭제할 수 있는 기회도 1회, 업로드(재업로드)할 수 있는 기회도 1회 남아있다는 뜻입니다. " +
-                    "`false`면 둘 다 0회로, 이미 이번 달 교체를 마쳐 삭제 API 호출 시 `REPLACEMENT_LIMIT_EXCEEDED`로 거부됩니다. " +
+                    "- `replaceAvailable`: 이번 달 남은 재업로드(교체) 기회입니다. `true`면 1회 업로드 가능, " +
+                    "`false`면 이미 이번 달 재업로드를 마쳐 업로드 시도 시 `REPLACEMENT_LIMIT_EXCEEDED`로 거부됩니다. " +
                     "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
-                    "- `interviewInProgress`: 이 포트폴리오로 진행 중인 면접이 있으면 `true`이며, 이 경우 재업로드 기회와 무관하게 삭제 API 호출 시 " +
-                    "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress`와 `replaceAvailable`을 함께 보면 " +
-                    "삭제 불가 사유(면접 진행 중 vs 이번 달 기회 소진)를 구분해 안내 메시지를 다르게 보여줄 수 있습니다."
+                    "- `deleteAvailable`: 이번 달 남은 삭제 기회입니다. `replaceAvailable`과 독립적으로 집계되므로, " +
+                    "재업로드 기회를 이미 썼어도 삭제 기회가 남아있으면 `true`이고, 반대로 삭제 기회를 이미 썼어도 재업로드 기회는 남아있을 수 있습니다. " +
+                    "`false`면 삭제 시도 시 `DELETE_LIMIT_EXCEEDED`로 거부됩니다. " +
+                    "`nextDeleteAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
+                    "- `interviewInProgress`: 이 포트폴리오로 진행 중인 면접이 있으면 `true`이며, 이 경우 `deleteAvailable`과 무관하게 삭제 API 호출 시 " +
+                    "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress`와 `deleteAvailable`을 함께 보면 " +
+                    "삭제 불가 사유(면접 진행 중 vs 이번 달 삭제 기회 소진)를 구분해 안내 메시지를 다르게 보여줄 수 있습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -260,12 +263,14 @@ public interface PortfolioControllerDocs {
                                                   "uploadedAt": null,
                                                   "replaceAvailable": true,
                                                   "nextAvailableAt": null,
+                                                  "deleteAvailable": true,
+                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "완료(READY) — 삭제·재업로드 기회 있음", value = """
+                                    @ExampleObject(name = "완료(READY) — 삭제·재업로드 기회 모두 있음", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -278,12 +283,14 @@ public interface PortfolioControllerDocs {
                                                   "uploadedAt": "2026-07-01T10:00:00",
                                                   "replaceAvailable": true,
                                                   "nextAvailableAt": null,
+                                                  "deleteAvailable": true,
+                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "완료(READY) — 이번 달 삭제·재업로드 기회 소진", value = """
+                                    @ExampleObject(name = "완료(READY) — 이번 달 삭제·재업로드 기회 모두 소진", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -296,6 +303,28 @@ public interface PortfolioControllerDocs {
                                                   "uploadedAt": "2026-07-15T10:00:00",
                                                   "replaceAvailable": false,
                                                   "nextAvailableAt": "2026-08-01T00:00:00",
+                                                  "deleteAvailable": false,
+                                                  "nextDeleteAvailableAt": "2026-08-01T00:00:00",
+                                                  "interviewInProgress": false
+                                                }]
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "완료(READY) — 재업로드 기회만 소진(삭제는 아직 가능, 서로 독립)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "portfolios": [{
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000006",
+                                                  "fileName": "portfolio.pdf",
+                                                  "fileSize": 1048576,
+                                                  "pageCount": 12,
+                                                  "status": "READY",
+                                                  "uploadedAt": "2026-07-18T10:00:00",
+                                                  "replaceAvailable": false,
+                                                  "nextAvailableAt": "2026-08-01T00:00:00",
+                                                  "deleteAvailable": true,
+                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
@@ -314,6 +343,8 @@ public interface PortfolioControllerDocs {
                                                   "uploadedAt": "2026-07-20T10:00:00",
                                                   "replaceAvailable": true,
                                                   "nextAvailableAt": null,
+                                                  "deleteAvailable": true,
+                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": true
                                                 }]
                                               }
@@ -332,6 +363,8 @@ public interface PortfolioControllerDocs {
                                                   "uploadedAt": null,
                                                   "replaceAvailable": true,
                                                   "nextAvailableAt": null,
+                                                  "deleteAvailable": true,
+                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
@@ -405,7 +438,8 @@ public interface PortfolioControllerDocs {
             description = "포트폴리오를 삭제합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 진행 중인 면접이 이 포트폴리오를 사용 중이면 삭제할 수 없습니다.\n" +
-                    "- 이번 달 재업로드(교체) 기회를 이미 사용했다면(목록 조회 응답의 `replaceAvailable=false`) 삭제할 수 없습니다."
+                    "- 이번 달 삭제 기회를 이미 사용했다면(목록 조회 응답의 `deleteAvailable=false`) 삭제할 수 없습니다. " +
+                    "재업로드 기회(`replaceAvailable`)와는 독립적으로 집계되므로, 재업로드 기회 소진 여부와 무관하게 삭제 기회만으로 판단합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -428,7 +462,7 @@ public interface PortfolioControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "진행 중인 면접이 사용 중이거나, 이번 달 재업로드 횟수를 이미 사용해 삭제할 수 없음",
+                    description = "진행 중인 면접이 사용 중이거나, 이번 달 삭제 횟수를 이미 사용해 삭제할 수 없음",
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
@@ -439,11 +473,11 @@ public interface PortfolioControllerDocs {
                                               "message": "진행 중인 면접이 있어 포트폴리오를 삭제할 수 없어요. 면접 종료 후 다시 시도해 주세요."
                                             }
                                             """),
-                                    @ExampleObject(name = "이번 달 재업로드 횟수 소진", value = """
+                                    @ExampleObject(name = "이번 달 삭제 횟수 소진", value = """
                                             {
                                               "success": false,
-                                              "code": "REPLACEMENT_LIMIT_EXCEEDED",
-                                              "message": "포트폴리오 재업로드는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."
+                                              "code": "DELETE_LIMIT_EXCEEDED",
+                                              "message": "포트폴리오 삭제는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."
                                             }
                                             """)
                             }

@@ -37,8 +37,8 @@ class PortfolioDeleteService implements PortfolioDeleteUseCase {
         if (interviewSessionInProgressCheckUseCase.existsInProgress(portfolioId)) {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW);
         }
-        if (portfolioRepository.existsReplacementSince(userId, PortfolioReplacementPolicy.currentMonthStart())) {
-            throw new PortfolioException(PortfolioErrorCode.REPLACEMENT_LIMIT_EXCEEDED);
+        if (portfolioRepository.existsDeletionSince(userId, PortfolioReplacementPolicy.currentMonthStart())) {
+            throw new PortfolioException(PortfolioErrorCode.DELETE_LIMIT_EXCEEDED);
         }
 
         // pgvector는 같은 PostgreSQL 데이터소스를 쓰므로 소프트 삭제(save)와 같은 트랜잭션 안에서 처리한다.

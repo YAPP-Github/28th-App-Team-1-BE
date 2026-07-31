@@ -51,6 +51,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public boolean existsDeletionSince(UUID userId, LocalDateTime since) {
+        return portfolioJpaRepository.existsByUserIdAndDeletedTrueAndDeletedAtGreaterThanEqual(userId, since);
+    }
+
+    @Override
     public Optional<Portfolio> findById(UUID id) {
         return portfolioJpaRepository.findById(id).map(PortfolioJpaEntity::toDomain);
     }

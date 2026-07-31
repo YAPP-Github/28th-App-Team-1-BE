@@ -27,4 +27,6 @@ interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID>
     boolean existsByUserIdAndReplacementTrueAndStatusAndUploadedAtGreaterThanEqual(
             UUID userId, PortfolioStatus status, LocalDateTime since
     );
+
+    boolean existsByUserIdAndDeletedTrueAndDeletedAtGreaterThanEqual(UUID userId, LocalDateTime since);
 }

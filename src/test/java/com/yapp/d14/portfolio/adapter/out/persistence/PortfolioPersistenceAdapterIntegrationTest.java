@@ -60,4 +60,29 @@ class PortfolioPersistenceAdapterIntegrationTest {
 
         assertThat(result).isTrue();
     }
+
+    @Test
+    void 삭제는_월_경계_이후에_삭제된_건만_해당_달_이력으로_잡힌다() {
+        userId = UUID.randomUUID();
+        LocalDateTime monthStart = LocalDateTime.of(2024, 2, 1, 0, 0);
+        Portfolio deletedBeforeMonth = Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 100L, 5, "s3-key",
+                PortfolioStatus.READY, "완료",
+                monthStart.minusDays(10), monthStart.minusDays(10),
+                false, true, monthStart.minusHours(1)
+        );
+        portfolioRepository.save(deletedBeforeMonth);
+
+        assertThat(portfolioRepository.existsDeletionSince(userId, monthStart)).isFalse();
+
+        Portfolio deletedInMonth = Portfolio.of(
+                UUID.randomUUID(), userId, "resume2.pdf", 100L, 5, "s3-key-2",
+                PortfolioStatus.READY, "완료",
+                monthStart.plusDays(1), monthStart.plusDays(1),
+                false, true, monthStart.plusDays(2)
+        );
+        portfolioRepository.save(deletedInMonth);
+
+        assertThat(portfolioRepository.existsDeletionSince(userId, monthStart)).isTrue();
+    }
 }

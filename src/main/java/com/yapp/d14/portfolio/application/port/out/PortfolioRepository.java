@@ -27,6 +27,8 @@ public interface PortfolioRepository {
 
     boolean existsReplacementSince(UUID userId, LocalDateTime since);
 
+    boolean existsDeletionSince(UUID userId, LocalDateTime since);
+
     Optional<Portfolio> findById(UUID id);
 
     List<Portfolio> findAllActiveByUserId(UUID userId);
