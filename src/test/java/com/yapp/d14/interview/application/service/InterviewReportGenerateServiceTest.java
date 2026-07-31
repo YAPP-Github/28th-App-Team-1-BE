@@ -93,6 +93,9 @@ class InterviewReportGenerateServiceTest {
     @Mock
     private InterviewReportFailureHandler interviewReportFailureHandler;
 
+    @Mock
+    private QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
+
     @InjectMocks
     private InterviewReportGenerateService service;
 
@@ -189,8 +192,8 @@ class InterviewReportGenerateServiceTest {
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
         given(reportCardContentGenerator.generate(any())).willReturn(List.of(
-                new ReportCardDraft(1L, 1, TestType.DEPTH, "질문의도", List.of()),
-                new ReportCardDraft(2L, 1, TestType.BOUNDARY, "질문의도2", List.of())
+                new ReportCardDraft(1L, 1, TestType.DEPTH, "제목", "질문의도", List.of()),
+                new ReportCardDraft(2L, 1, TestType.BOUNDARY, "제목2", "질문의도2", List.of())
         ));
         given(reportHeadlineGenerator.generate(any())).willReturn("좋은 답변이었어요");
 
@@ -321,7 +324,7 @@ class InterviewReportGenerateServiceTest {
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거")
         ));
         given(reportCardContentGenerator.generate(any())).willReturn(List.of(
-                new ReportCardDraft(1L, 1, TestType.DEPTH, "질문의도", List.of())
+                new ReportCardDraft(1L, 1, TestType.DEPTH, "제목", "질문의도", List.of())
         ));
 
         service.generate(1L);

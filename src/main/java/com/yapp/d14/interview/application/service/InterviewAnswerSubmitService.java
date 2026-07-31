@@ -30,9 +30,6 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private static final int UNUSUALLY_SPECIFIC_HIGH_PROBE_THRESHOLD = 2;
     private static final int MAX_LLM_RETRIES = 1;
     private static final JdOpenerContext EMPTY_JD_OPENER_CONTEXT = new JdOpenerContext(List.of(), List.of());
-    private static final String MANUAL_END_MESSAGE = "오늘 면접은 여기까지 하겠습니다. 수고하셨습니다.";
-    private static final String HARD_CAP_MESSAGE = "면접 시간이 다 되어 곧 마무리하겠습니다. 잠시 후 종료됩니다.";
-    private static final String NORMAL_END_MESSAGE = "수고하셨습니다. 오늘 면접은 여기까지입니다.";
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final QuestionRepository questionRepository;
@@ -52,6 +49,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
+    private final UtteranceSegmentRepository utteranceSegmentRepository;
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
@@ -83,7 +81,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text(); // STT 변환
+        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        String sttText = transcription.text();
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, Q={}, A={}",
                 session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(),
                 singleLine(summaryQuestion.getContent()), singleLine(sttText));
@@ -121,6 +120,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewAnswerSubmitPersister.PersistResult persisted = interviewAnswerSubmitPersister.persist(
                 answer, summaryQuestion, newProbeCandidates, selectedProbe.orElse(null), nextTurnLevel, nextAxisPlan, nextQuestion
         );
+        persistAnswerSegmentsSafely(session.getId(), summaryQuestion, command, transcription); // 프로젝트 설명 답변 문장 발화 시각 저장
 
         return new InterviewAnswerSubmitResult(
                 persisted.answer().getId(),
@@ -224,6 +224,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         ); // 트랜잭션 반영
         appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text()); // 이력 저장
+        persistAnswerSegmentsSafely(session.getId(), question, command, transcription); // 문장 발화 시각 저장
 
         return buildNextQuestionResult(persisted, plan); // 응답 반환
     }
@@ -258,6 +259,22 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             interviewVoiceStorage.uploadAnswerAsync(userId, sessionId, turnLevel, audioContent);
         } catch (Exception e) {
             log.warn("[ANSWER ARCHIVE] 답변 음성 업로드 요청 실패, 면접 흐름에는 영향 없음: sessionId={}, turnLevel={}", sessionId, turnLevel, e);
+        }
+    }
+
+    // 답변 대본을 문장 단위로 쪼갠 발화 시각을 저장한다(리포트 재생 동기화용, #78). answerStartSec만큼 더해 영상 타임라인으로 보정.
+    // 부가 기능이라 답변 커밋 뒤 별도로, 어떤 실패도 삼키고 로깅만 한다 — 면접 흐름을 막지 않는다(답변 음성 아카이브와 동일 원칙).
+    private void persistAnswerSegmentsSafely(
+            Long sessionId, Question question, InterviewAnswerSubmitCommand command, TranscriptionResult transcription
+    ) {
+        try {
+            float offsetSec = command.answerStartSec() == null ? 0f : command.answerStartSec();
+            List<UtteranceSegment> segments = ScriptSegmentMapper.map(
+                    ScriptRole.INTERVIEWEE, transcription.text(), transcription.segments(), offsetSec);
+            utteranceSegmentRepository.saveAll(sessionId, question.getId(), segments);
+        } catch (Exception e) {
+            log.warn("[ANSWER SEGMENT] 답변 문장 발화 시각 저장 실패, 면접 흐름에는 영향 없음: sessionId={}, questionId={}",
+                    sessionId, question.getId(), e);
         }
     }
 
@@ -309,35 +326,43 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command, InterviewEndType endType
     ) {
         log.info("[INTERVIEW END] sessionId={}, questionId={}, endType={}", session.getId(), question.getId(), endType);
-        Answer answer = buildTerminationAnswer(session, question, command);
+        TerminationAnswer termination = buildTerminationAnswer(session, question, command);
         markQuestionPlayed(question, command);
 
         InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
 
         String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
-                interviewAnswerTerminationPersister.persist(session, question, answer, endType, outcomeReason);
+                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType, outcomeReason);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
+        if (termination.transcription() != null) {
+            persistAnswerSegmentsSafely(session.getId(), question, command, termination.transcription()); // 마지막 면접자 멘트 문장 발화 시각 저장
+        }
 
         triggerReportGeneration(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, wrapUpMessage, null);
     }
 
-    private Answer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
+    // 종료 턴 답변과 그 STT 결과(문장 세그먼트 저장용). 오디오가 없으면 둘 다 null.
+    private record TerminationAnswer(Answer answer, TranscriptionResult transcription) {
+    }
+
+    private TerminationAnswer buildTerminationAnswer(InterviewSession session, Question question, InterviewAnswerSubmitCommand command) {
         if (command.audioContent() == null) {
-            return null;
+            return new TerminationAnswer(null, null);
         }
-        String sttText = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())).text();
+        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent()));
         log.debug("[TURN QA] sessionId={}, questionId={} (termination), Q={}, A={}",
-                session.getId(), question.getId(), singleLine(question.getContent()), singleLine(sttText));
+                session.getId(), question.getId(), singleLine(question.getContent()), singleLine(transcription.text()));
         try {
-            return Answer.create(
-                    session.getId(), question.getId(), sttText,
+            Answer answer = Answer.create(
+                    session.getId(), question.getId(), transcription.text(),
                     command.answerStartSec(), command.answerEndSec(), command.answerDuration(),
                     false, null, null, null, null, false, false, null
             );
+            return new TerminationAnswer(answer, transcription);
         } catch (IllegalArgumentException e) {
             throw new InterviewException(InterviewErrorCode.INVALID_ANSWER_RANGE);
         }
@@ -362,13 +387,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     }
 
     private String wrapUpTextFor(InterviewEndType endType) {
-        return switch (endType) {
-            case EARLY_EXIT -> null;
-            case MANUAL_END -> MANUAL_END_MESSAGE;
-            case HARD_CAP -> HARD_CAP_MESSAGE;
-            case NORMAL_END -> NORMAL_END_MESSAGE;
-            default -> null;
-        };
+        return WrapUpMessage.textFor(endType);
     }
 
     private String resolveWrapUpAudioBase64(InterviewEndType endType, String text) {

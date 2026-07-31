@@ -42,7 +42,7 @@ class InterviewVideoQueryServiceTest {
     // getPlayback/getGuestStatus는 baseAt+30일 하드캡(isExpiredForGuest)으로 판정하므로, baseAt을 조절해 하드캡 이내/초과를 만든다.
     private InterviewVideo video(boolean composited, boolean guestExpired) {
         LocalDateTime baseAt = guestExpired ? NOW.minusDays(31) : NOW.minusDays(1);
-        return InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(24), false, true, composited);
+        return InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(24), false, true, composited, null, null);
     }
 
     @Test
@@ -78,7 +78,7 @@ class InterviewVideoQueryServiceTest {
     void 소유자_단계형_만료_시각은_지났어도_30일_하드캡_이내면_지인용_재생_URL을_준다() {
         LocalDateTime baseAt = NOW.minusDays(10);
         InterviewVideo ownerExpiredButGuestOpen = InterviewVideo.of(
-                1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true
+                1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null
         );
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(ownerExpiredButGuestOpen));
         given(interviewSessionOwnerQueryUseCase.getOwnerUserId(SESSION_ID)).willReturn(OWNER_ID);
@@ -100,7 +100,7 @@ class InterviewVideoQueryServiceTest {
     @Test
     void getOwnerStatus는_단계형_만료_시각_기준으로_판정한다() {
         LocalDateTime baseAt = NOW.minusDays(10);
-        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true);
+        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null);
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video));
 
         var result = service.getOwnerStatus(SESSION_ID);
@@ -112,7 +112,7 @@ class InterviewVideoQueryServiceTest {
     @Test
     void getGuestStatus는_baseAt_30일_하드캡_기준으로_판정하고_하드캡_시각을_반환한다() {
         LocalDateTime baseAt = NOW.minusDays(10);
-        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true);
+        InterviewVideo video = InterviewVideo.of(1L, SESSION_ID, baseAt, baseAt.plusHours(48), false, true, true, null, null);
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(video));
 
         var result = service.getGuestStatus(SESSION_ID);

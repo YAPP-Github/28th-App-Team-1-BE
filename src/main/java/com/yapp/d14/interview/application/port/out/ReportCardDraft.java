@@ -10,6 +10,7 @@ public record ReportCardDraft(
         Long questionId,
         int depthLevel,
         TestType testType,
+        String questionIntentTitle,
         String questionIntentTranslation,
         List<HighlightSpan> highlightSpans
 ) {

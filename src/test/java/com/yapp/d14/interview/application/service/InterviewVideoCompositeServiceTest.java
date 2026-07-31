@@ -45,14 +45,19 @@ class InterviewVideoCompositeServiceTest {
     @InjectMocks
     private InterviewVideoCompositeService service;
 
-    private Question question(long id, int turnLevel, String aiVoiceS3Key, Float startSec) {
+    // aiVoiceS3Key는 요약 질문만 저장돼 있어 합성/세그먼트가 의존하지 않는다 — 키는 turnLevel로 결정적 계산되므로 null로 둔다.
+    private Question question(long id, int turnLevel, Float startSec) {
         return Question.of(id, SESSION_ID, "질문", turnLevel, 1, TestType.DEPTH, "principle",
-                startSec, startSec == null ? null : startSec + 1, aiVoiceS3Key, false, LocalDateTime.now());
+                startSec, startSec == null ? null : startSec + 1, null, false, LocalDateTime.now());
     }
 
     private Answer answer(long questionId, Float startSec, boolean skipped) {
         return Answer.create(SESSION_ID, questionId, "답변", startSec,
                 startSec == null ? null : startSec + 3, 3f, skipped, null, null, null, null, false, false, TestType.DEPTH);
+    }
+
+    private String questionKey(int turnLevel) {
+        return "users/%s/sessions/%s/questions/%s.mp3".formatted(USER_ID, SESSION_ID, turnLevel);
     }
 
     private String answerKey(int turnLevel) {
@@ -62,8 +67,8 @@ class InterviewVideoCompositeServiceTest {
     @Test
     void 질문TTS와_답변음성을_모두_시작초_순으로_합성하고_완료표시한다() {
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                question(1L, 1, "q/1.mp3", 5.0f),
-                question(2L, 2, "q/2.mp3", 12.0f)
+                question(1L, 1, 5.0f),
+                question(2L, 2, 12.0f)
         ));
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 answer(1L, 8.0f, false),   // turnLevel 1 → answers/1.webm
@@ -77,17 +82,16 @@ class InterviewVideoCompositeServiceTest {
         verify(interviewVideoCompositor).compose(eq(USER_ID), eq(SESSION_ID), captor.capture());
         List<AudioTrack> tracks = captor.getValue();
         assertThat(tracks).extracting(AudioTrack::s3Key)
-                .containsExactly("q/1.mp3", answerKey(1), "q/2.mp3", answerKey(2));
+                .containsExactly(questionKey(1), answerKey(1), questionKey(2), answerKey(2));
         assertThat(tracks).extracting(AudioTrack::startSec).containsExactly(5.0f, 8.0f, 12.0f, 15.0f);
         verify(interviewVideoRepository).markComposited(SESSION_ID);
     }
 
     @Test
-    void 음성키_시작초가_없는_질문과_SKIP_시작초없는_답변은_제외한다() {
+    void 시작초가_없는_질문과_SKIP_시작초없는_답변은_제외한다() {
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                question(1L, 1, "q/1.mp3", 5.0f),
-                question(2L, 2, null, 6.0f),   // 음성 없음 → 제외
-                question(3L, 3, "q/3.mp3", null) // 시작초 없음 → 제외
+                question(1L, 1, 5.0f),
+                question(2L, 2, null)   // 재생 시각 없음 → 제외
         ));
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 answer(1L, 8.0f, false),
@@ -99,14 +103,14 @@ class InterviewVideoCompositeServiceTest {
 
         ArgumentCaptor<List<AudioTrack>> captor = ArgumentCaptor.forClass(List.class);
         verify(interviewVideoCompositor).compose(eq(USER_ID), eq(SESSION_ID), captor.capture());
-        assertThat(captor.getValue()).extracting(AudioTrack::s3Key).containsExactly("q/1.mp3", answerKey(1));
+        assertThat(captor.getValue()).extracting(AudioTrack::s3Key).containsExactly(questionKey(1), answerKey(1));
         verify(interviewVideoRepository).markComposited(SESSION_ID);
     }
 
     @Test
     void 합성할_오디오가_없으면_합성도_완료표시도_하지_않는다() {
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                question(1L, 1, null, 5.0f)
+                question(1L, 1, null)   // 재생 시각 없음 → 제외
         ));
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
                 answer(1L, null, false)
@@ -121,7 +125,7 @@ class InterviewVideoCompositeServiceTest {
     @Test
     void 합성이_실패하면_완료표시하지_않고_예외를_삼킨다() {
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                question(1L, 1, "q/1.mp3", 5.0f)
+                question(1L, 1, 5.0f)
         ));
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         doThrow(new IllegalStateException("ffmpeg 실패"))

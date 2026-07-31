@@ -36,7 +36,8 @@ class InterviewVideoPersistenceAdapter implements InterviewVideoRepository {
 
     @Override
     public void upsertUploaded(InterviewVideo v) {
-        interviewVideoJpaRepository.upsertUploaded(v.getSessionId(), v.getBaseAt(), v.getExpiresAt());
+        interviewVideoJpaRepository.upsertUploaded(
+                v.getSessionId(), v.getBaseAt(), v.getExpiresAt(), v.getWrapUpStartSec(), v.getWrapUpEndSec());
     }
 
     @Override
