@@ -2,6 +2,7 @@ package com.yapp.d14.interview.adapter.out.integration.stt;
 
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
+import com.yapp.d14.interview.domain.TranscriptSegment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionProperties;
@@ -27,6 +28,8 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
     @Override
     public TranscriptionResult transcribe(byte[] audioContent) {
         try {
+            // verbose_json은 별도 옵션 없이 발화 세그먼트(start/end/text/no_speech_prob)를 반환한다 —
+            // 실패율 계산(no_speech_prob)과 문장 단위 발화 시각 매핑(#78)에 모두 이 세그먼트를 쓴다.
             OpenAiAudioApi.TranscriptionRequest request = OpenAiAudioApi.TranscriptionRequest.builder()
                     .file(audioContent)
                     .fileName(AUDIO_FILENAME)
@@ -47,7 +50,7 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
                     .filter(this::isFailedSegment)
                     .count();
 
-            return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount);
+            return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount, toSegments(segments));
         } catch (Exception e) {
             log.error("[STT TRANSCRIBE] OpenAI Whisper 호출 실패", e);
             throw new RuntimeException("STT 변환에 실패했어요.", e);
@@ -56,5 +59,15 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
 
     private boolean isFailedSegment(OpenAiAudioApi.StructuredResponse.Segment segment) {
         return segment.noSpeechProb() != null && segment.noSpeechProb() > NO_SPEECH_PROB_THRESHOLD;
+    }
+
+    // Whisper 발화 세그먼트 → 도메인 TranscriptSegment. start/end가 null이면 0으로 보정한다.
+    private List<TranscriptSegment> toSegments(List<OpenAiAudioApi.StructuredResponse.Segment> segments) {
+        return segments.stream()
+                .map(segment -> new TranscriptSegment(
+                        segment.text(),
+                        segment.start() == null ? 0f : segment.start(),
+                        segment.end() == null ? 0f : segment.end()))
+                .toList();
     }
 }

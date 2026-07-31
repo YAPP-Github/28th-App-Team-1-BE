@@ -15,6 +15,8 @@ public class ReportCard {
     private final Long questionId;
     private final int depthLevel;
     private final TestType testType;
+    // 질문 분석의 짧은 제목(명사구, 예: "트래픽 확장 대응 전략"). questionIntentTranslation은 이 제목을 풀어쓴 설명 문장.
+    private final String questionIntentTitle;
     private final String questionIntentTranslation;
     private final List<HighlightSpan> highlightSpans;
     private final LocalDateTime createdAt;
@@ -26,6 +28,7 @@ public class ReportCard {
             Long questionId,
             int depthLevel,
             TestType testType,
+            String questionIntentTitle,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans,
             LocalDateTime createdAt
@@ -35,6 +38,7 @@ public class ReportCard {
         this.questionId = questionId;
         this.depthLevel = depthLevel;
         this.testType = testType;
+        this.questionIntentTitle = questionIntentTitle;
         this.questionIntentTranslation = questionIntentTranslation;
         this.highlightSpans = highlightSpans;
         this.createdAt = createdAt;
@@ -45,6 +49,7 @@ public class ReportCard {
             Long questionId,
             int depthLevel,
             TestType testType,
+            String questionIntentTitle,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans
     ) {
@@ -53,6 +58,7 @@ public class ReportCard {
                 .questionId(questionId)
                 .depthLevel(depthLevel)
                 .testType(testType)
+                .questionIntentTitle(questionIntentTitle)
                 .questionIntentTranslation(questionIntentTranslation)
                 .highlightSpans(highlightSpans)
                 .createdAt(LocalDateTime.now())
@@ -65,6 +71,7 @@ public class ReportCard {
             Long questionId,
             int depthLevel,
             TestType testType,
+            String questionIntentTitle,
             String questionIntentTranslation,
             List<HighlightSpan> highlightSpans,
             LocalDateTime createdAt
@@ -75,6 +82,7 @@ public class ReportCard {
                 .questionId(questionId)
                 .depthLevel(depthLevel)
                 .testType(testType)
+                .questionIntentTitle(questionIntentTitle)
                 .questionIntentTranslation(questionIntentTranslation)
                 .highlightSpans(highlightSpans)
                 .createdAt(createdAt)

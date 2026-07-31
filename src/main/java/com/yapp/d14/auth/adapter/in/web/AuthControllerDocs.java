@@ -82,8 +82,47 @@ public interface AuthControllerDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "재발급 성공 — 새 Access Token + 새 Refresh Token 반환",
-                    content = @Content(schema = @Schema(implementation = AuthTokenHttpResponse.class))
+                    description = "재발급 성공 — 새 Access Token + 새 Refresh Token 반환. `profileRegistered`(및 `userInfo` 내부 필드)는 회원의 프로필 등록 상태에 따라 달라짐",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = AuthTokenHttpResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "프로필 등록 완료", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
+                                                "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
+                                                "profileRegistered": true,
+                                                "userInfo": {
+                                                  "name": "홍길동",
+                                                  "jobRole": "BACKEND",
+                                                  "jobRoleLabel": "백엔드",
+                                                  "careerYears": 1,
+                                                  "remainingTicketCount": 3
+                                                }
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "프로필 미등록(이름·직무·연차 중 하나라도 누락)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
+                                                "refreshToken": "eyJhbGciOiJIUzUxMiJ9...",
+                                                "profileRegistered": false,
+                                                "userInfo": {
+                                                  "name": null,
+                                                  "jobRole": null,
+                                                  "jobRoleLabel": null,
+                                                  "careerYears": null,
+                                                  "remainingTicketCount": 3
+                                                }
+                                              }
+                                            }
+                                            """)
+                            }
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",

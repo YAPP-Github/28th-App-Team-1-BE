@@ -49,20 +49,36 @@ public interface InterviewControllerDocs {
 
     @Operation(
             summary = "면접 세션 생성",
-            description = "직군·연차·포트폴리오(및 선택적으로 JD·집중 프로젝트 설명)를 받아 면접 세션을 생성합니다.\n\n" +
+            description = "포트폴리오(및 선택적으로 JD·집중 프로젝트 설명)를 받아 면접 세션을 생성합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 이용권 확인 → 입력 검증 → 항목별 가중치·질문 예산 계산까지 동기로 처리한 뒤, `PROCESSING` 상태로 202를 즉시 반환합니다.\n" +
                     "- 질문 후보 풀 생성(Preload) 등 이후 단계는 비동기로 처리되며, `statusUrl`로 상태를 폴링합니다.\n" +
                     "- `portfolioId`로 지정한 포트폴리오는 반드시 `READY` 상태여야 합니다.\n" +
-                    "- `jdUrl`과 `jdText`는 상호 배타적입니다. `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱)돼 있어야 합니다.\n" +
+                    "- 직군·연차는 요청으로 받지 않고, `PATCH /api/v1/users/me/profile`로 등록한 회원 프로필 값을 생성 시점 스냅샷으로 사용합니다. " +
+                    "직군 또는 연차가 아직 등록되어 있지 않으면 `USER_PROFILE_NOT_REGISTERED`로 거부됩니다.\n" +
+                    "- `jdUrl`과 `jdText`는 상호 배타적입니다(동시 입력 시 `JD_URL_AND_TEXT_BOTH_PROVIDED`). `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱, 6시간 TTL)돼 있어야 하며, " +
+                    "검증 후 캐시가 만료된 채로 세션을 생성하면 `JD_CONTENT_NOT_FOUND`로 거부됩니다(재검증 필요).\n" +
                     "- `freeText`(집중 프로젝트 설명)를 입력하면 포트폴리오와의 연관성을 임베딩 유사도로 검사합니다.\n" +
                     "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "202",
-                    description = "생성 접수 성공 — PROCESSING 상태로 생성",
-                    content = @Content(schema = @Schema(implementation = InterviewSessionCreateHttpResponse.class))
+                    description = "생성 접수 성공 — JD·freeText 조합(JD URL/JD 텍스트/JD 없음, freeText 유무)과 무관하게 항상 이 모양으로 PROCESSING 상태 반환",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewSessionCreateHttpResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "success": true,
+                                      "data": {
+                                        "sessionId": 101,
+                                        "status": "PROCESSING",
+                                        "statusUrl": "/api/v1/interview/sessions/101/status"
+                                      }
+                                    }
+                                    """)
+                    )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -77,18 +93,18 @@ public interface InterviewControllerDocs {
                                               "message": "portfolioId: 널이어서는 안됩니다"
                                             }
                                             """),
-                                    @ExampleObject(name = "지원하지 않는 직군", value = """
+                                    @ExampleObject(name = "직무·연차 미등록", value = """
                                             {
                                               "success": false,
-                                              "code": "INVALID_JOB_ROLE",
-                                              "message": "지원하지 않는 직군이에요."
+                                              "code": "USER_PROFILE_NOT_REGISTERED",
+                                              "message": "면접을 시작하려면 먼저 직무와 연차를 등록해 주세요."
                                             }
                                             """),
-                                    @ExampleObject(name = "잘못된 연차", value = """
+                                    @ExampleObject(name = "JD URL과 텍스트 동시 입력", value = """
                                             {
                                               "success": false,
-                                              "code": "INVALID_CAREER_YEARS",
-                                              "message": "연차를 다시 확인해 주세요."
+                                              "code": "JD_URL_AND_TEXT_BOTH_PROVIDED",
+                                              "message": "jdUrl과 jdText는 함께 입력할 수 없어요."
                                             }
                                             """),
                                     @ExampleObject(name = "JD 미검증", value = """
@@ -96,6 +112,13 @@ public interface InterviewControllerDocs {
                                               "success": false,
                                               "code": "JD_NOT_VALIDATED",
                                               "message": "JD 링크를 먼저 검증해 주세요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "JD 캐시 만료(검증 이후 시간 경과)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "JD_CONTENT_NOT_FOUND",
+                                              "message": "JD 링크의 캐시가 만료됐어요. 다시 검증해 주세요."
                                             }
                                             """),
                                     @ExampleObject(name = "JD 길이 위반", value = """
@@ -246,6 +269,8 @@ public interface InterviewControllerDocs {
                     "  - `endType=HARD_CAP`: 12:00 경과 강제 종료 — audio 유무와 무관하게 즉시 종료합니다.\n" +
                     "  - 직전에 받은 질문이 마무리(wrap-up) 질문이었던 경우, endType 없이도 자연 종료됩니다.\n" +
                     "  - 위 종료 경로에서는 `nextQuestion`이 `null`, `sessionEnded`가 `true`이며, 이용권이 확정(commit)되고 리포트 생성이 비동기로 트리거됩니다.\n" +
+                    "  - 세션 전체 누적 STT 인식 실패율이 30%를 초과하면 `endType`과 무관하게 즉시 세션이 무효화되어 종료됩니다(`sessionEnded=true`, `endType=STT_RESET`, `wrapUpMessage=null`, 리포트 생성 없음). 이때는 이용권이 차감되지 않고 환불(release)됩니다.\n" +
+                    "  - `endType` 응답 필드로 종료 사유를 구분할 수 있습니다: `NORMAL_END`/`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`/`STT_RESET`. 세션이 끝나지 않았으면 `null`입니다.\n" +
                     "  - 그 외에는 매 턴 루프로 이어집니다(현재 구현 중), `sessionEnded`는 `false`입니다.\n" +
                     "- `wrapUpMessage.ttsAudio`는 마무리 멘트 음성을 base64로 인코딩한 mp3입니다(EARLY_EXIT은 `wrapUpMessage` 자체가 `null`). " +
                     "고정 문구 3종(MANUAL_END/HARD_CAP/자연종료)은 최초 요청 시 TTS로 합성해 S3에 캐시하고 이후에는 캐시를 재사용합니다.\n" +
@@ -276,11 +301,11 @@ public interface InterviewControllerDocs {
                                                 },
                                                 "sessionEnded": false,
                                                 "wrapUpMessage": null,
-                                                "reportId": null
+                                                "endType": null
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "세션 종료(마무리 멘트 음성 포함)", value = """
+                                    @ExampleObject(name = "세션 종료 — NORMAL_END(자연 종료)", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -290,7 +315,59 @@ public interface InterviewControllerDocs {
                                                 "wrapUpMessage": {
                                                   "ttsAudio": "base64로 인코딩된 mp3"
                                                 },
-                                                "reportId": null
+                                                "endType": "NORMAL_END"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — MANUAL_END(수동 종료)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": {
+                                                  "ttsAudio": "base64로 인코딩된 mp3"
+                                                },
+                                                "endType": "MANUAL_END"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — HARD_CAP(최대 한도 도달)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": {
+                                                  "ttsAudio": "base64로 인코딩된 mp3"
+                                                },
+                                                "endType": "HARD_CAP"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — EARLY_EXIT(중도 이탈, 마무리 멘트 없음)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": null,
+                                                "endType": "EARLY_EXIT"
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "세션 종료 — STT_RESET(STT 인식 실패로 무효화)", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "answerId": 12,
+                                                "nextQuestion": null,
+                                                "sessionEnded": true,
+                                                "wrapUpMessage": null,
+                                                "endType": "STT_RESET"
                                               }
                                             }
                                             """)

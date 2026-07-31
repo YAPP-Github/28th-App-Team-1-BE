@@ -48,7 +48,7 @@ class SocialUserProvisionServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getName()).isNull();
-        assertThat(captor.getValue().isNameRegistered()).isFalse();
+        assertThat(captor.getValue().isProfileRegistered()).isFalse();
         assertThat(result.newlyCreated()).isTrue();
     }
 

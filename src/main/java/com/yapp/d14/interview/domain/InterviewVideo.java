@@ -26,6 +26,9 @@ public class InterviewVideo {
     private boolean uploaded;
     // 녹화본에 답변·질문 음성을 합성한 final.mp4가 준비되면 true. 재생 URL(videoUrl)은 composited=true && 만료 전일 때만 발급한다(그 외 null).
     private boolean composited;
+    // 면접관 마무리 멘트(종료 TTS)의 녹화 타임라인 재생 구간(초). 업로드 완료 시 프론트가 보고한다. 마무리 멘트가 없으면 null.
+    private Float wrapUpStartSec;
+    private Float wrapUpEndSec;
 
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewVideo(
@@ -35,7 +38,9 @@ public class InterviewVideo {
             LocalDateTime expiresAt,
             boolean deleted,
             boolean uploaded,
-            boolean composited
+            boolean composited,
+            Float wrapUpStartSec,
+            Float wrapUpEndSec
     ) {
         this.id = id;
         this.sessionId = sessionId;
@@ -44,10 +49,17 @@ public class InterviewVideo {
         this.deleted = deleted;
         this.uploaded = uploaded;
         this.composited = composited;
+        this.wrapUpStartSec = wrapUpStartSec;
+        this.wrapUpEndSec = wrapUpEndSec;
     }
 
     /** 1차 레포트 생성 성공(Step1) 시점에 생성한다. baseAt은 이후 재계산하지 않는다. */
     public static InterviewVideo create(Long sessionId, LocalDateTime baseAt) {
+        return create(sessionId, baseAt, null, null);
+    }
+
+    /** 업로드 완료 시점에 마무리 멘트 재생 구간과 함께 생성한다(upsert 후보). 마무리 멘트가 없으면 두 값 null. */
+    public static InterviewVideo create(Long sessionId, LocalDateTime baseAt, Float wrapUpStartSec, Float wrapUpEndSec) {
         InterviewVideo video = InterviewVideo.builder()
                 .sessionId(sessionId)
                 .baseAt(baseAt)
@@ -55,6 +67,8 @@ public class InterviewVideo {
                 .deleted(false)
                 .uploaded(false)
                 .composited(false)
+                .wrapUpStartSec(wrapUpStartSec)
+                .wrapUpEndSec(wrapUpEndSec)
                 .build();
         video.extend(VideoRetentionTrigger.REPORT_GENERATED);
         return video;
@@ -67,7 +81,9 @@ public class InterviewVideo {
             LocalDateTime expiresAt,
             boolean deleted,
             boolean uploaded,
-            boolean composited
+            boolean composited,
+            Float wrapUpStartSec,
+            Float wrapUpEndSec
     ) {
         return InterviewVideo.builder()
                 .id(id)
@@ -77,6 +93,8 @@ public class InterviewVideo {
                 .deleted(deleted)
                 .uploaded(uploaded)
                 .composited(composited)
+                .wrapUpStartSec(wrapUpStartSec)
+                .wrapUpEndSec(wrapUpEndSec)
                 .build();
     }
 

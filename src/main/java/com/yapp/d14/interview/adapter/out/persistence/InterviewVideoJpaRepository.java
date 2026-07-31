@@ -34,15 +34,21 @@ interface InterviewVideoJpaRepository extends JpaRepository<InterviewVideoJpaEnt
 
     // 업로드 완료를 표시한다. 레코드가 없으면 보관 타이머와 함께 생성(uploaded=true)하고,
     // 있으면 uploaded만 true로 올린다. expires_at은 건드리지 않아 보관기간 연장과 충돌(Lost Update)하지 않는다.
+    // 마무리 멘트 재생 구간(wrap_up_*)도 함께 쓴다. 멱등 재호출이 값을 지우지 않도록 COALESCE(신규값 우선, 없으면 기존값 유지).
     @Modifying
     @Query(value = """
-            INSERT INTO interview_video (session_id, base_at, expires_at, deleted, uploaded)
-            VALUES (:sessionId, :baseAt, :expiresAt, false, true)
-            ON CONFLICT (session_id) DO UPDATE SET uploaded = true
+            INSERT INTO interview_video (session_id, base_at, expires_at, deleted, uploaded, wrap_up_start_sec, wrap_up_end_sec)
+            VALUES (:sessionId, :baseAt, :expiresAt, false, true, :wrapUpStartSec, :wrapUpEndSec)
+            ON CONFLICT (session_id) DO UPDATE SET
+                uploaded = true,
+                wrap_up_start_sec = COALESCE(EXCLUDED.wrap_up_start_sec, interview_video.wrap_up_start_sec),
+                wrap_up_end_sec = COALESCE(EXCLUDED.wrap_up_end_sec, interview_video.wrap_up_end_sec)
             """, nativeQuery = true)
     void upsertUploaded(@Param("sessionId") Long sessionId,
                         @Param("baseAt") LocalDateTime baseAt,
-                        @Param("expiresAt") LocalDateTime expiresAt);
+                        @Param("expiresAt") LocalDateTime expiresAt,
+                        @Param("wrapUpStartSec") Float wrapUpStartSec,
+                        @Param("wrapUpEndSec") Float wrapUpEndSec);
 
     // 합성 완료 표시. composited 한 컬럼만 갱신해 보관기간 연장·업로드 완료와 충돌(Lost Update)하지 않는다.
     // 합성(ffmpeg)은 트랜잭션 밖 비동기로 돌기 때문에, 이 단건 UPDATE는 자체 트랜잭션으로 커밋한다.

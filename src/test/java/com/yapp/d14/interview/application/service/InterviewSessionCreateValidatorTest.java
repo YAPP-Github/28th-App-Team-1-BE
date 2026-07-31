@@ -11,6 +11,10 @@ import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
+import com.yapp.d14.user.application.port.in.FindUserUseCase;
+import com.yapp.d14.user.domain.JobRole;
+import com.yapp.d14.user.domain.Provider;
+import com.yapp.d14.user.domain.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -37,6 +41,9 @@ class InterviewSessionCreateValidatorTest {
     @Mock
     private PortfolioSimilarityCheckUseCase portfolioSimilarityCheckUseCase;
 
+    @Mock
+    private FindUserUseCase findUserUseCase;
+
     @InjectMocks
     private InterviewSessionCreateValidator validator;
 
@@ -44,12 +51,22 @@ class InterviewSessionCreateValidatorTest {
     private final UUID portfolioId = UUID.randomUUID();
 
     private InterviewSessionCreateCommand command(String jdUrl, String jdText, String freeText) {
-        return new InterviewSessionCreateCommand(userId, portfolioId, JobType.BACKEND, 3, jdUrl, jdText, freeText);
+        return new InterviewSessionCreateCommand(userId, portfolioId, jdUrl, jdText, freeText);
     }
 
     private void givenPortfolioStatus(PortfolioStatus status) {
         given(portfolioStatusUseCase.getStatus(userId, portfolioId))
                 .willReturn(new PortfolioStatusResult(portfolioId, status, "메시지", "resume.pdf"));
+    }
+
+    private void givenRegisteredProfile(JobRole jobRole, Integer careerYears) {
+        givenRegisteredProfile("이름", jobRole, careerYears);
+    }
+
+    private void givenRegisteredProfile(String name, JobRole jobRole, Integer careerYears) {
+        given(findUserUseCase.findById(userId)).willReturn(
+                User.of(userId, "a@a.com", name, true, Provider.KAKAO, "pid", jobRole, careerYears, null, null, null)
+        );
     }
 
     @Test
@@ -94,19 +111,69 @@ class InterviewSessionCreateValidatorTest {
     }
 
     @Test
-    void 포트폴리오가_READY이고_JD_freeText_모두_없으면_통과한다() {
-        givenPortfolioStatus(PortfolioStatus.READY);
+    void 포트폴리오가_CANCELLED이면_PORTFOLIO_UPLOAD_FAILED() {
+        givenPortfolioStatus(PortfolioStatus.CANCELLED);
 
-        assertThatCode(() -> validator.validate(command(null, null, null))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(PortfolioException.class)
+                .extracting(e -> ((PortfolioException) e).getErrorCode())
+                .isEqualTo(PortfolioErrorCode.PORTFOLIO_UPLOAD_FAILED);
+    }
+
+    @Test
+    void 포트폴리오가_READY이고_JD_freeText_모두_없으면_직무_연차_스냅샷을_담아_통과한다() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(JobRole.BACKEND, 3);
+
+        InterviewSessionCreateContext context = validator.validate(command(null, null, null));
+
+        assertThat(context.portfolioFileName()).isEqualTo("resume.pdf");
+        assertThat(context.jobRole()).isEqualTo(JobType.BACKEND);
+        assertThat(context.careerYears()).isEqualTo(3);
+    }
+
+    @Test
+    void 이름이_등록되어_있지_않으면_USER_PROFILE_NOT_REGISTERED() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(null, JobRole.BACKEND, 3);
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
+    }
+
+    @Test
+    void 직무가_등록되어_있지_않으면_USER_PROFILE_NOT_REGISTERED() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(null, 3);
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
+    }
+
+    @Test
+    void 연차가_등록되어_있지_않으면_USER_PROFILE_NOT_REGISTERED() {
+        givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(JobRole.BACKEND, null);
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.USER_PROFILE_NOT_REGISTERED);
     }
 
     @Test
     void jdUrl이_있고_캐시가_존재하면_통과한다() {
         givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(JobRole.BACKEND, 3);
         given(jdValidationCheckUseCase.isValidated("https://example.com/jd")).willReturn(true);
 
-        assertThatCode(() -> validator.validate(command("https://example.com/jd", null, null)))
-                .doesNotThrowAnyException();
+        InterviewSessionCreateContext context = validator.validate(command("https://example.com/jd", null, null));
+
+        assertThat(context.jobRole()).isEqualTo(JobType.BACKEND);
     }
 
     @Test
@@ -153,9 +220,10 @@ class InterviewSessionCreateValidatorTest {
     @Test
     void jdText가_200_3000자_경계값이면_통과한다() {
         givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(JobRole.BACKEND, 3);
 
-        assertThatCode(() -> validator.validate(command(null, "가".repeat(200), null))).doesNotThrowAnyException();
-        assertThatCode(() -> validator.validate(command(null, "가".repeat(3000), null))).doesNotThrowAnyException();
+        assertThat(validator.validate(command(null, "가".repeat(200), null))).isNotNull();
+        assertThat(validator.validate(command(null, "가".repeat(3000), null))).isNotNull();
     }
 
     @Test
@@ -203,9 +271,10 @@ class InterviewSessionCreateValidatorTest {
     @Test
     void freeText가_유효길이이고_연관성이_0_4이상이면_통과한다() {
         givenPortfolioStatus(PortfolioStatus.READY);
+        givenRegisteredProfile(JobRole.BACKEND, 3);
         given(portfolioSimilarityCheckUseCase.checkSimilarity(any(), any())).willReturn(Optional.of(0.4));
 
-        assertThatCode(() -> validator.validate(command(null, null, "가".repeat(20)))).doesNotThrowAnyException();
+        assertThat(validator.validate(command(null, null, "가".repeat(20)))).isNotNull();
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.Answer;
+import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
@@ -18,8 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 class InterviewSttResetPersister {
-
-    private static final String OUTCOME_STT_RESET = "STT_RESET";
 
     private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
@@ -39,11 +38,11 @@ class InterviewSttResetPersister {
         }
         questionRepository.save(question);
 
-        session.markInvalid();
+        session.markInvalid(InterviewEndType.STT_RESET);
         interviewSessionRepository.save(session);
 
         // status=invalid 전환과 같은 트랜잭션에서 처리 — release 실패 시 트랜잭션 전체를 롤백한다(try/catch로 삼키지 않음).
-        ticketReleaseUseCase.release(session.getId(), OUTCOME_STT_RESET);
+        ticketReleaseUseCase.release(session.getId(), InterviewEndType.STT_RESET.name());
 
         return new PersistResult(answerId);
     }

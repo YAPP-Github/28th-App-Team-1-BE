@@ -7,8 +7,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum InterviewErrorCode implements ErrorCode {
 
-    INVALID_JOB_ROLE(HttpStatus.BAD_REQUEST, "INVALID_JOB_ROLE", "지원하지 않는 직군이에요."),
-    INVALID_CAREER_YEARS(HttpStatus.BAD_REQUEST, "INVALID_CAREER_YEARS", "연차를 다시 확인해 주세요."),
+    USER_PROFILE_NOT_REGISTERED(HttpStatus.BAD_REQUEST, "USER_PROFILE_NOT_REGISTERED", "면접을 시작하려면 먼저 직무와 연차를 등록해 주세요."),
     JD_NOT_VALIDATED(HttpStatus.BAD_REQUEST, "JD_NOT_VALIDATED", "JD 링크를 먼저 검증해 주세요."),
     JD_URL_AND_TEXT_BOTH_PROVIDED(HttpStatus.BAD_REQUEST, "JD_URL_AND_TEXT_BOTH_PROVIDED", "jdUrl과 jdText는 함께 입력할 수 없어요."),
     JD_CONTENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "JD_CONTENT_NOT_FOUND", "JD 링크의 캐시가 만료됐어요. 다시 검증해 주세요."),
@@ -24,6 +23,7 @@ public enum InterviewErrorCode implements ErrorCode {
     INVALID_END_TYPE(HttpStatus.BAD_REQUEST, "INVALID_END_TYPE", "지원하지 않는 endType이에요."),
     INVALID_AUDIO_PRESENCE(HttpStatus.BAD_REQUEST, "INVALID_AUDIO_PRESENCE", "endType과 답변 음성 유무가 맞지 않아요."),
     INTERVIEW_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_VIDEO_NOT_FOUND", "면접 영상 정보를 찾을 수 없어요."),
+    INVALID_WRAP_UP_RANGE(HttpStatus.BAD_REQUEST, "INVALID_WRAP_UP_RANGE", "마무리 멘트 재생 구간 값이 올바르지 않아요."),
     AI_TEMPORARILY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI_TEMPORARILY_UNAVAILABLE", "일시적인 오류예요. 같은 답변을 다시 제출해 주세요.");
 
     private final HttpStatus httpStatus;

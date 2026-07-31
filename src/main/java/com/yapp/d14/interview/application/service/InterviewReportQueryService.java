@@ -7,14 +7,18 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionOwnershipCheck
 import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryResult;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.AxisEvaluationRepository;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.RedFlagRepository;
 import com.yapp.d14.interview.application.port.out.ReportCardRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
+import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
+import com.yapp.d14.interview.domain.InterviewEndType;
+import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.RedFlag;
 import com.yapp.d14.interview.domain.RedFlagType;
@@ -23,7 +27,11 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.ResolutionLowReason;
+import com.yapp.d14.interview.domain.HighlightReason;
+import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.interview.domain.UtteranceSegment;
+import com.yapp.d14.interview.domain.WrapUpMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +69,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     private static final int MAX_TOP_LEVEL_NOTICES = 2;
 
     private final InterviewSessionOwnershipCheckUseCase interviewSessionOwnershipCheckUseCase;
+    private final InterviewSessionRepository interviewSessionRepository;
     private final ReportRepository reportRepository;
     private final ReportCardRepository reportCardRepository;
     private final RedFlagRepository redFlagRepository;
@@ -69,6 +78,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     private final AnswerRepository answerRepository;
     private final InterviewVideoRepository interviewVideoRepository;
     private final InterviewVideoStorage interviewVideoStorage;
+    private final UtteranceSegmentRepository utteranceSegmentRepository;
     private final GuestFeedbackReportQueryUseCase guestFeedbackReportQueryUseCase;
 
     @Override
@@ -99,38 +109,66 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<TestType, Integer> axisOrderByType = computeAxisOrder(cards);
         Map<TestType, ResolutionLowReason> lowReasonByAxis = lowResolutionByAxis(sessionId);
         Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis = cardNoticesByAxis(redFlags);
+        // 문장 단위 발화 시각(면접관/면접자)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(면접관 → 면접자).
+        Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
+        InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
+        // 카드(채점 대상 턴) 유무와 무관하게, 세션의 모든 발화를 startSec 순으로 이어붙인 전체 대본 타임라인(영상 싱크용).
+        List<InterviewReportQueryResult.ScriptLine> script = new ArrayList<>(segmentsByQuestionId.values().stream()
+                .flatMap(List::stream)
+                .sorted(Comparator.comparing(UtteranceSegment::startSec))
+                .map(segment -> new InterviewReportQueryResult.ScriptLine(
+                        segment.role(), segment.text(), segment.startSec(), segment.endSec()))
+                .toList());
+        // 면접관 마무리 멘트는 질문(Question)이 아니라 세그먼트로 저장되지 않으므로, 종료 유형별 고정 문구를
+        // 프론트가 보고한 재생 구간(video.wrapUp*)에 얹어 대본 맨 끝에 이어붙인다. 마무리 멘트가 없으면 생략.
+        appendWrapUpLine(script, video, sessionId);
 
         List<InterviewReportQueryResult.Card> cardResults = cards.stream()
                 .sorted(Comparator
                         .comparingInt((ReportCard c) -> axisOrderByType.getOrDefault(c.getTestType(), Integer.MAX_VALUE))
                         .thenComparingInt(ReportCard::getDepthLevel)
                         .thenComparing(ReportCard::getQuestionId))
-                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId))
+                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId, segmentsByQuestionId))
                 .toList();
 
-        InterviewReportQueryResult.Video video = interviewVideoRepository.findBySessionId(sessionId)
-                .map(v -> {
-                    // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
-                    // 합성 전/실패 시에는 null (원본 raw.mp4 폴백은 하지 않는다).
-                    String url = v.isComposited() && !v.isExpired()
-                            ? interviewVideoStorage.presignComposite(userId, sessionId)
-                            : null;
-                    return new InterviewReportQueryResult.Video(url, v.isExpired(), v.getExpiresAt());
-                })
-                .orElse(null);
+        // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
+        // 합성 전/실패 시에는 null (원본 raw.mp4 폴백은 하지 않는다).
+        InterviewReportQueryResult.Video videoResult = video == null ? null : new InterviewReportQueryResult.Video(
+                video.isComposited() && !video.isExpired() ? interviewVideoStorage.presignComposite(userId, sessionId) : null,
+                video.isExpired(),
+                video.getExpiresAt());
 
         return new InterviewReportQueryResult(
                 report.getStatus(),
                 report.getHeadline(),
                 topLevelNotices(redFlags),
-                video,
+                videoResult,
                 cardResults,
+                script,
                 toGuestSection(guestFeedbackReportQueryUseCase.getForReport(sessionId))
         );
     }
 
+    // 마무리 멘트를 전체 대본 끝에 이어붙인다. 프론트가 재생 구간(wrapUpStartSec)을 보고했고 종료 유형에 마무리 문구가 있을 때만.
+    // endSec은 보고값이 없으면 startSec으로 대체(재생 위치 강조가 순간으로만 잡힐 뿐 대본 노출엔 영향 없음).
+    private void appendWrapUpLine(List<InterviewReportQueryResult.ScriptLine> script, InterviewVideo video, Long sessionId) {
+        if (video == null || video.getWrapUpStartSec() == null) {
+            return;
+        }
+        InterviewEndType endType = interviewSessionRepository.findById(sessionId)
+                .map(session -> session.getEndType())
+                .orElse(null);
+        String text = WrapUpMessage.textFor(endType);
+        if (text == null) {
+            return;
+        }
+        float startSec = video.getWrapUpStartSec();
+        float endSec = video.getWrapUpEndSec() != null ? video.getWrapUpEndSec() : startSec;
+        script.add(new InterviewReportQueryResult.ScriptLine(ScriptRole.INTERVIEWER, text, startSec, endSec));
+    }
+
     private InterviewReportQueryResult statusOnly(ReportStatus status) {
-        return new InterviewReportQueryResult(status, null, null, null, null, null);
+        return new InterviewReportQueryResult(status, null, null, null, null, null, null);
     }
 
     // 카드를 축(testType)별 최소 questionId 순으로 줄세워, 면접에서 그 축이 다뤄진 순서(1부터)를 매긴다.
@@ -193,14 +231,38 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             Map<TestType, ResolutionLowReason> lowReasonByAxis,
             Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis,
             Map<Long, String> questionContentById,
-            Map<Long, String> transcriptByQuestionId
+            Map<Long, String> transcriptByQuestionId,
+            Map<Long, List<UtteranceSegment>> segmentsByQuestionId
     ) {
         ResolutionLowReason lowReason = lowReasonByAxis.get(card.getTestType());
         String resolutionNotice = lowReason == null ? null : RESOLUTION_NOTICE.get(lowReason);
 
+        List<UtteranceSegment> cardSegments = segmentsByQuestionId.getOrDefault(card.getQuestionId(), List.of());
+        // 하이라이트 startIndex는 answer 대본(transcript) 기준이므로, 같은 좌표계인 INTERVIEWEE 세그먼트만으로
+        // "영상 보러가기" 시각을 찾는다. startIndex 오름차순으로 정렬해 floor 매칭(findHighlightStartSec)에 쓴다.
+        List<UtteranceSegment> answerSegments = cardSegments.stream()
+                .filter(segment -> segment.role() == ScriptRole.INTERVIEWEE)
+                .sorted(Comparator.comparingInt(UtteranceSegment::startIndex))
+                .toList();
+
         List<InterviewReportQueryResult.HighlightSpan> highlightSpans = card.getHighlightSpans().stream()
-                .map(span -> new InterviewReportQueryResult.HighlightSpan(
-                        span.range().startIndex(), span.range().endIndex(), span.tone(), span.analysis(), span.followUpQuestions()))
+                .map(span -> {
+                    // OFF_INTENT(딴 답)일 때만 "질문 의도 ↔ 내 답변" 대비용 3필드를 채운다. 그 외 reason은 null.
+                    boolean offIntent = span.reason() == HighlightReason.OFF_INTENT;
+                    return new InterviewReportQueryResult.HighlightSpan(
+                            span.range().startIndex(), span.range().endIndex(), span.tone(), span.reason(),
+                            span.title(), span.analysis(), span.followUpQuestions(),
+                            findHighlightStartSec(span.range().startIndex(), answerSegments),
+                            offIntent ? span.answerTopicTitle() : null,
+                            offIntent ? card.getQuestionIntentTitle() : null,
+                            offIntent ? card.getQuestionIntentTranslation() : null);
+                })
+                .toList();
+
+        List<InterviewReportQueryResult.ScriptSegment> scriptSegments = cardSegments.stream()
+                .map(segment -> new InterviewReportQueryResult.ScriptSegment(
+                        segment.role(), segment.text(), segment.startIndex(), segment.endIndex(),
+                        segment.startSec(), segment.endSec()))
                 .toList();
 
         return new InterviewReportQueryResult.Card(
@@ -212,13 +274,31 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 resolutionNotice,
                 // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
                 cardNoticesByAxis.get(card.getTestType()),
-                card.getQuestionIntentTranslation()
+                card.getQuestionIntentTitle(),
+                card.getQuestionIntentTranslation(),
+                scriptSegments
         );
     }
 
+    // 하이라이트 시작 인덱스 이하로 시작하는 세그먼트 중 가장 뒤(가장 큰 startIndex)의 startSec을 쓴다(floor 매칭).
+    // 세그먼트 경계에 정확히 포함되지 않아도(근사 배치 등으로 생기는 작은 틈) 항상 가장 가까운 답을 찾는다.
+    // answerSegmentsAscending은 startIndex 오름차순이어야 한다. 세그먼트가 하나도 없으면 null.
+    private Float findHighlightStartSec(int highlightStartIndex, List<UtteranceSegment> answerSegmentsAscending) {
+        Float startSec = null;
+        for (UtteranceSegment segment : answerSegmentsAscending) {
+            if (segment.startIndex() > highlightStartIndex) {
+                break;
+            }
+            startSec = segment.startSec();
+        }
+        return startSec;
+    }
+
     private InterviewReportQueryResult.GuestFeedbackSection toGuestSection(GuestFeedbackReportView view) {
+        // 지인이 한 명도 없어도 섹션은 항상 내려준다(participantCount=0, guests=[]).
+        // 프론트가 null 체크 없이 바로 guests를 순회하고, "아직 참여 없음"을 participantCount==0으로 표현하게 한다.
         if (view.participantCount() == 0) {
-            return null;
+            return new InterviewReportQueryResult.GuestFeedbackSection(0, List.of());
         }
         List<InterviewReportQueryResult.Guest> guests = view.guests().stream()
                 .map(guest -> new InterviewReportQueryResult.Guest(

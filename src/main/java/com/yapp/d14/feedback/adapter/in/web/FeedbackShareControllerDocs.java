@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
-@Tag(name = "Feedback Share", description = "지인 피드백 공유 설정 API — 사용자측(인증 필요)")
+@Tag(name = "Feedback", description = "지인 피드백 API — 공유 설정(사용자측, 인증 필요)·게스트 평가 제출(무인증)")
 public interface FeedbackShareControllerDocs {
 
     @Operation(

@@ -1,5 +1,6 @@
 package com.yapp.d14.portfolio.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
@@ -28,6 +29,9 @@ class PortfolioQueryServiceTest {
 
     @Mock
     private PortfolioRepository portfolioRepository;
+
+    @Mock
+    private InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
 
     @InjectMocks
     private PortfolioQueryService portfolioQueryService;
@@ -65,6 +69,44 @@ class PortfolioQueryServiceTest {
 
         assertThat(summaries.get(0).replaceAvailable()).isFalse();
         assertThat(summaries.get(0).nextAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
+    }
+
+    @Test
+    void 재업로드_이력이_있어도_삭제_이력이_없으면_deleteAvailable은_true다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
+        given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(false);
+
+        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+
+        assertThat(summaries.get(0).replaceAvailable()).isFalse();
+        assertThat(summaries.get(0).deleteAvailable()).isTrue();
+        assertThat(summaries.get(0).nextDeleteAvailableAt()).isNull();
+    }
+
+    @Test
+    void 삭제_이력이_있어도_재업로드_이력이_없으면_replaceAvailable은_true다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+        given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(true);
+
+        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+
+        assertThat(summaries.get(0).deleteAvailable()).isFalse();
+        assertThat(summaries.get(0).nextDeleteAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
+        assertThat(summaries.get(0).replaceAvailable()).isTrue();
+        assertThat(summaries.get(0).nextAvailableAt()).isNull();
+    }
+
+    @Test
+    void 해당_포트폴리오로_진행중인_면접이_있으면_interviewInProgress가_true다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+        given(interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())).willReturn(true);
+
+        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+
+        assertThat(summaries.get(0).interviewInProgress()).isTrue();
     }
 
     @Test

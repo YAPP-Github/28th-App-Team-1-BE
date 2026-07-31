@@ -23,7 +23,11 @@ public record InterviewReportHttpResponse(
         @Schema(description = "질문/답변 턴 하나당 카드 하나. GENERATING일 때는 null")
         List<Card> cards,
 
-        @Schema(description = "지인 피드백 섹션. 제출한 지인이 없으면 null")
+        @Schema(description = "면접 전체 대본 타임라인. 카드(채점 대상 턴) 유무와 무관하게 첫 면접관 멘트 → 프로젝트 설명 답변 → … → 마지막 멘트까지 " +
+                "세션의 모든 발화를 startSec 오름차순으로 담는다. 합성 영상 재생 위치로 이 한 배열만 훑어 현재 발화 중인 문장을 강조할 수 있다. GENERATING일 때는 null")
+        List<ScriptLine> script,
+
+        @Schema(description = "지인 피드백 섹션. 지인이 한 명도 제출하지 않아도 participantCount=0, guests=[]. GENERATING일 때만 null")
         GuestFeedbackSection guestFeedback
 ) {
 
@@ -34,6 +38,7 @@ public record InterviewReportHttpResponse(
                 result.redFlagNotices() == null ? null : result.redFlagNotices().stream().map(RedFlagNotice::from).toList(),
                 Video.from(result.video()),
                 result.cards() == null ? null : result.cards().stream().map(Card::from).toList(),
+                result.script() == null ? null : result.script().stream().map(ScriptLine::from).toList(),
                 GuestFeedbackSection.from(result.guestFeedback())
         );
     }
@@ -92,8 +97,15 @@ public record InterviewReportHttpResponse(
             @Schema(description = "이 카드에 걸린 레드플래그 안내 줄")
             List<RedFlagNotice> cardRedFlagNotices,
 
+            @Schema(description = "질문 의도 짧은 제목(명사구, 예: \"트래픽 확장 대응 전략\")")
+            String questionIntentTitle,
+
             @Schema(description = "질문 분석(질문 의도 설명, probe_text 번역)")
-            String questionIntent
+            String questionIntent,
+
+            @Schema(description = "대본을 문장 단위로 쪼갠 발화 구간 목록. startSec 오름차순(실제 발화 순서: 면접관 → 면접자)이라, " +
+                    "영상 재생 위치(currentTime)로 한 배열만 탐색해 현재 발화 중인 문장을 강조할 수 있다. 문장 시각을 못 만든 카드는 빈 배열")
+            List<ScriptSegment> scriptSegments
     ) {
 
         private static Card from(InterviewReportQueryResult.Card card) {
@@ -105,8 +117,56 @@ public record InterviewReportHttpResponse(
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
                     card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
-                    card.questionIntent()
+                    card.questionIntentTitle(),
+                    card.questionIntent(),
+                    card.scriptSegments() == null ? null : card.scriptSegments().stream().map(ScriptSegment::from).toList()
             );
+        }
+    }
+
+    public record ScriptSegment(
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 대본) / INTERVIEWEE(면접자 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다")
+            String role,
+
+            @Schema(description = "문장 텍스트")
+            String text,
+
+            @Schema(description = "role에 해당하는 대본(questionText/transcript) 문자열 기준 문장 시작 인덱스(0부터, 포함)")
+            int startIndex,
+
+            @Schema(description = "role에 해당하는 대본 문자열 기준 문장 종료 인덱스(미포함)")
+            int endIndex,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 시작(초)")
+            float startSec,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 종료(초)")
+            float endSec
+    ) {
+
+        private static ScriptSegment from(InterviewReportQueryResult.ScriptSegment segment) {
+            return new ScriptSegment(
+                    segment.role().name(), segment.text(), segment.startIndex(), segment.endIndex(),
+                    segment.startSec(), segment.endSec());
+        }
+    }
+
+    public record ScriptLine(
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 발화) / INTERVIEWEE(면접자 발화)")
+            String role,
+
+            @Schema(description = "문장 텍스트")
+            String text,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 시작(초)")
+            float startSec,
+
+            @Schema(description = "합성 영상(=녹화) 타임라인 기준 이 문장의 발화 종료(초)")
+            float endSec
+    ) {
+
+        private static ScriptLine from(InterviewReportQueryResult.ScriptLine line) {
+            return new ScriptLine(line.role().name(), line.text(), line.startSec(), line.endSec());
         }
     }
 
@@ -120,15 +180,41 @@ public record InterviewReportHttpResponse(
             @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
             String tone,
 
+            @Schema(description = "개선유형 — PROBE_WORTHY(파고들 여지 있음, 꼬리질문 노출) / OFF_INTENT(딴 답, 질문 의도 리마인드) / " +
+                    "SHALLOW(짧고 얕음) / SUFFICIENT(충분함). 이 값으로 카드 하단 안내(꼬리질문/의도 리마인드/코칭 한 줄)를 결정한다. " +
+                    "followUpQuestions는 PROBE_WORTHY일 때만 채워진다")
+            String reason,
+
+            @Schema(description = "하이라이트 한 줄 제목(명사구). GOOD은 잘한 점, IMPROVE는 핵심 문제/개선점")
+            String title,
+
             @Schema(description = "이 구간이 왜 GOOD인지 또는 왜 IMPROVE인지에 대한 답변 분석")
             String analysis,
 
-            @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(0~3개). 없으면 빈 배열")
-            List<String> followUpQuestions
+            @Schema(description = "이 하이라이트 구간에 대해 면접관이 이어서 던질 법한 추가 질문(1~3개). reason=PROBE_WORTHY가 아니면 빈 배열")
+            List<String> followUpQuestions,
+
+            @Schema(description = "이 하이라이트가 시작하는 지점의 합성 영상 재생 시각(초) — \"영상 보러가기\" 버튼에서 이 시각으로 seek. " +
+                    "문장 발화 시각을 못 만들었으면 null")
+            Float startSec,
+
+            @Schema(description = "딴 답(reason=OFF_INTENT)일 때 답변이 실제로 다룬 주제 명사구(예: \"팀 내 신뢰와 성향\"). " +
+                    "\"질문 의도 ↔ 내 답변\" 대비 UI의 '내 답변' 자리. OFF_INTENT가 아니면 null")
+            String answerTopicTitle,
+
+            @Schema(description = "reason=OFF_INTENT일 때, 이 카드의 questionIntentTitle을 그대로 복사한 값(프론트가 하이라이트만 보고도 대비를 그릴 수 있게). OFF_INTENT가 아니면 null")
+            String questionIntentTitle,
+
+            @Schema(description = "reason=OFF_INTENT일 때, 이 카드의 questionIntent를 그대로 복사한 값. OFF_INTENT가 아니면 null")
+            String questionIntent
     ) {
 
         private static HighlightSpan from(InterviewReportQueryResult.HighlightSpan span) {
-            return new HighlightSpan(span.startIndex(), span.endIndex(), span.tone().name(), span.analysis(), span.followUpQuestions());
+            return new HighlightSpan(
+                    span.startIndex(), span.endIndex(), span.tone().name(),
+                    span.reason() == null ? null : span.reason().name(),
+                    span.title(), span.analysis(), span.followUpQuestions(), span.startSec(),
+                    span.answerTopicTitle(), span.questionIntentTitle(), span.questionIntent());
         }
     }
 
