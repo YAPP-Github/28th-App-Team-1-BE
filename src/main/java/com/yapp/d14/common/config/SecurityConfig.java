@@ -39,6 +39,8 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.FORWARD, DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/v1/auth/social/login", "/api/v1/auth/token/refresh").permitAll()
                         .requestMatchers("/api/v1/feedback/guest/**").permitAll()
+                        // 로그인 전 스플래시에서 호출하는 앱 버전 정책 조회
+                        .requestMatchers("/api/v1/app-versions/check").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // 로컬 수동 테스트용 정적 하네스 페이지. dev 프로파일에서만 컨트롤러가 등록되어(DevInterviewTestPageController)
