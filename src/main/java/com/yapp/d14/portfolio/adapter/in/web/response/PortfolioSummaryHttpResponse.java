@@ -38,7 +38,7 @@ public record PortfolioSummaryHttpResponse(
         @Schema(description = "삭제가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
         LocalDateTime nextDeleteAvailableAt,
 
-        @Schema(description = "이 포트폴리오를 사용 중인 진행 중(IN_PROGRESS) 면접 세션이 있는지 여부. true면 삭제 시도 시 PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW로 거부됨")
+        @Schema(description = "이 포트폴리오를 사용 중인 진행 중(IN_PROGRESS) 면접 세션이 있는지 여부. true면 deleteAvailable 값과 무관하게 삭제 시도 시 PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW로 거부됨 — deleteAvailable보다 우선 확인해야 함")
         boolean interviewInProgress
 ) {
 

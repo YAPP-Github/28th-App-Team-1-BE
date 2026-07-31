@@ -234,7 +234,9 @@ public interface PortfolioControllerDocs {
                     "`false`면 삭제 시도 시 `DELETE_LIMIT_EXCEEDED`로 거부됩니다. " +
                     "`nextDeleteAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
                     "- `interviewInProgress`: 이 포트폴리오로 진행 중인 면접이 있으면 `true`이며, 이 경우 `deleteAvailable`과 무관하게 삭제 API 호출 시 " +
-                    "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress`와 `deleteAvailable`을 함께 보면 " +
+                    "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress=true`면 `deleteAvailable`이 `true`여도 " +
+                    "실제로는 삭제가 불가능하므로, 삭제 버튼 활성화 여부는 반드시 `interviewInProgress`를 먼저 확인한 뒤 `deleteAvailable`을 봐야 합니다. " +
+                    "`interviewInProgress`와 `deleteAvailable`을 함께 보면 " +
                     "삭제 불가 사유(면접 진행 중 vs 이번 달 삭제 기회 소진)를 구분해 안내 메시지를 다르게 보여줄 수 있습니다."
     )
     @ApiResponses({
@@ -330,7 +332,7 @@ public interface PortfolioControllerDocs {
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "완료(READY) — 진행 중인 면접이 사용 중이라 삭제 불가", value = """
+                                    @ExampleObject(name = "완료(READY) — deleteAvailable=true지만 진행 중인 면접이 있어 삭제 불가(interviewInProgress 우선 확인)", value = """
                                             {
                                               "success": true,
                                               "data": {
