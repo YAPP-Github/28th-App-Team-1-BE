@@ -5,17 +5,9 @@ import com.yapp.d14.appversion.exception.AppVersionException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
-/**
- * 마케팅 버전(SemVer, {@code x.x.x})을 자리별 정수로 비교하는 값 객체.
- *
- * <p>버전 형식이 항상 3자리로 보장되지 않으므로({@code 1.2}, {@code 1.2.0.3} 등) 문자열 단순 비교는 금지하고
- * 자리별 정수 비교만 수행한다. 비교 시 부족한 자리는 0으로 간주한다({@code 1.2} == {@code 1.2.0}).
- */
+// 자리수가 3자리로 보장되지 않으므로(1.2, 1.2.0.3 등) 문자열 비교 대신 자리별 정수로 비교한다(1.2 == 1.2.0).
 public final class AppVersion implements Comparable<AppVersion> {
-
-    private static final Pattern NUMERIC = Pattern.compile("\\d+");
 
     private final String raw;
     private final List<Integer> segments;
@@ -25,10 +17,6 @@ public final class AppVersion implements Comparable<AppVersion> {
         this.segments = segments;
     }
 
-    /**
-     * 클라이언트/DB가 전달한 버전 문자열을 방어적으로 파싱한다.
-     * 비어 있거나 숫자가 아닌 자리가 있으면 {@link AppVersionErrorCode#INVALID_VERSION_FORMAT} 예외를 던진다.
-     */
     public static AppVersion parse(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new AppVersionException(AppVersionErrorCode.INVALID_VERSION_FORMAT);
@@ -37,16 +25,31 @@ public final class AppVersion implements Comparable<AppVersion> {
         String[] parts = trimmed.split("\\.");
         List<Integer> segments = new ArrayList<>(parts.length);
         for (String part : parts) {
-            if (!NUMERIC.matcher(part).matches()) {
+            // ASCII 숫자만 허용해 부호(+/-)·유니코드 숫자를 걸러낸다(parseInt는 둘 다 통과시킴).
+            if (!isAsciiDigits(part)) {
                 throw new AppVersionException(AppVersionErrorCode.INVALID_VERSION_FORMAT);
             }
             try {
                 segments.add(Integer.parseInt(part));
             } catch (NumberFormatException e) {
+                // 자리값이 int 범위를 넘는 경우
                 throw new AppVersionException(AppVersionErrorCode.INVALID_VERSION_FORMAT);
             }
         }
         return new AppVersion(trimmed, segments);
+    }
+
+    private static boolean isAsciiDigits(String part) {
+        if (part.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < part.length(); i++) {
+            char c = part.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

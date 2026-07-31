@@ -6,9 +6,6 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-/**
- * 플랫폼별 앱 버전 정책. 최소 지원 버전·최신 버전을 기준으로 클라이언트 버전의 업데이트 유형을 판정한다.
- */
 @Getter
 public class AppVersionPolicy {
 
@@ -39,14 +36,6 @@ public class AppVersionPolicy {
                 .build();
     }
 
-    /**
-     * 판정 규칙:
-     * <ul>
-     *     <li>현재 버전 &lt; minSupportedVersion → {@link UpdateType#FORCE}</li>
-     *     <li>minSupportedVersion ≤ 현재 버전 &lt; latestVersion → {@link UpdateType#OPTIONAL}</li>
-     *     <li>현재 버전 ≥ latestVersion → {@link UpdateType#NONE}</li>
-     * </ul>
-     */
     public UpdateType determineUpdateType(AppVersion current) {
         if (current.isLowerThan(minSupportedVersion)) {
             return UpdateType.FORCE;
