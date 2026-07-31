@@ -29,6 +29,7 @@ class UserProfileQueryService implements UserProfileQueryUseCase {
         return new UserProfileResult(
                 user.getId(),
                 user.getEmail(),
+                user.getProvider(),
                 user.getName(),
                 user.isProfileRegistered(),
                 user.getJobRole(),

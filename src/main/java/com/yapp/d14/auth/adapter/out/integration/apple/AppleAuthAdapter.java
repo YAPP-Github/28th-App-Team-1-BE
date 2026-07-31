@@ -38,7 +38,30 @@ class AppleAuthAdapter implements AppleSocialClient {
         String providerId = claims.getSubject();
         String email = claims.get("email", String.class);
 
-        return new SocialUserInfo(providerId, email, null);
+        return new SocialUserInfo(providerId, email, null, tokenResponse.getRefreshToken());
+    }
+
+    @Override
+    public void revoke(String refreshToken) {
+        try {
+            RestClient.builder()
+                    .baseUrl(APPLE_BASE_URL)
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded;charset=utf-8")
+                    .build()
+                    .post()
+                    .uri(uriBuilder -> uriBuilder.path("/auth/revoke")
+                            .queryParam("client_id", appleProperties.getClientId())
+                            .queryParam("client_secret", makeClientSecret())
+                            .queryParam("token", refreshToken)
+                            .queryParam("token_type_hint", "refresh_token")
+                            .build()
+                    )
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("[APPLE REVOKE] 애플 토큰 폐기 실패", e);
+            throw new AuthException(AuthErrorCode.SOCIAL_UNLINK_FAILED);
+        }
     }
 
     private AppleTokenResponse exchangeAuthorizationCode(String authorizationCode) {

@@ -65,7 +65,7 @@ class InterviewSessionCreateValidatorTest {
 
     private void givenRegisteredProfile(String name, JobRole jobRole, Integer careerYears) {
         given(findUserUseCase.findById(userId)).willReturn(
-                User.of(userId, "a@a.com", name, true, Provider.KAKAO, "pid", jobRole, careerYears, null, null)
+                User.of(userId, "a@a.com", name, true, Provider.KAKAO, "pid", jobRole, careerYears, null, null, null)
         );
     }
 

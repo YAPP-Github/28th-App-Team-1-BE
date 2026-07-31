@@ -32,7 +32,7 @@ class FeedbackShareQueryService implements FeedbackShareQueryUseCase {
                 .orElseThrow(() -> new FeedbackException(FeedbackErrorCode.FEEDBACK_SHARE_NOT_FOUND));
 
         int submittedCount = (int) guestFeedbackRepository.countBySessionId(sessionId);
-        InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getStatus(sessionId);
+        InterviewVideoStatusResult videoStatus = interviewVideoQueryUseCase.getOwnerStatus(sessionId);
 
         return new FeedbackShareStatusResult(
                 share.getToken(),

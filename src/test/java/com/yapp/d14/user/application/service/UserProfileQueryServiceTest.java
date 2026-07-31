@@ -46,6 +46,8 @@ class UserProfileQueryServiceTest {
         UserProfileResult result = service.getProfile(userId);
 
         assertThat(result.name()).isEqualTo("홍길동");
+        assertThat(result.email()).isEqualTo("a@a.com");
+        assertThat(result.provider()).isEqualTo(Provider.KAKAO);
         assertThat(result.profileRegistered()).isTrue();
         assertThat(result.jobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(result.careerYears()).isEqualTo(3);

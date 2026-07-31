@@ -36,7 +36,7 @@ class SocialUserProvisionServiceTest {
         User existing = User.create("a@a.com", Provider.KAKAO, "pid");
         given(userRepository.findByProviderAndProviderId(Provider.KAKAO, "pid")).willReturn(Optional.of(existing));
 
-        User result = service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임"));
+        User result = service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임", null));
 
         assertThat(result).isEqualTo(existing);
         verify(userRepository, never()).save(org.mockito.ArgumentMatchers.any());
@@ -48,12 +48,37 @@ class SocialUserProvisionServiceTest {
         given(userRepository.findByProviderAndProviderId(Provider.KAKAO, "pid")).willReturn(Optional.empty());
         given(userRepository.save(org.mockito.ArgumentMatchers.any())).willAnswer(invocation -> invocation.getArgument(0));
 
-        User result = service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임"));
+        User result = service.provision(Provider.KAKAO, new SocialUserInfo("pid", "a@a.com", "카카오닉네임", null));
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getName()).isNull();
         assertThat(captor.getValue().isProfileRegistered()).isFalse();
         verify(ticketInitializeUseCase).initialize(result.getId());
+    }
+
+    @Test
+    void 애플_신규_유저는_refresh_token을_저장한_뒤_반환한다() {
+        given(userRepository.findByProviderAndProviderId(Provider.APPLE, "pid")).willReturn(Optional.empty());
+        given(userRepository.save(org.mockito.ArgumentMatchers.any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        User result = service.provision(Provider.APPLE, new SocialUserInfo("pid", "a@a.com", null, "apple-refresh-token"));
+
+        assertThat(result.getAppleRefreshToken()).isEqualTo("apple-refresh-token");
+        verify(userRepository, org.mockito.Mockito.times(2)).save(org.mockito.ArgumentMatchers.any());
+        verify(ticketInitializeUseCase).initialize(result.getId());
+    }
+
+    @Test
+    void 애플_기존_유저도_재로그인하면_refresh_token이_갱신된다() {
+        User existing = User.create("a@a.com", Provider.APPLE, "pid");
+        given(userRepository.findByProviderAndProviderId(Provider.APPLE, "pid")).willReturn(Optional.of(existing));
+        given(userRepository.save(org.mockito.ArgumentMatchers.any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        User result = service.provision(Provider.APPLE, new SocialUserInfo("pid", "a@a.com", null, "new-refresh-token"));
+
+        assertThat(result.getAppleRefreshToken()).isEqualTo("new-refresh-token");
+        verify(userRepository).save(existing);
+        verify(ticketInitializeUseCase, never()).initialize(org.mockito.ArgumentMatchers.any());
     }
 }

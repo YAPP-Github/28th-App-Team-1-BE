@@ -57,7 +57,7 @@ class FeedbackShareQueryServiceTest {
         );
         given(feedbackShareRepository.findBySessionId(sessionId)).willReturn(Optional.of(share));
         given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(2L);
-        given(interviewVideoQueryUseCase.getStatus(sessionId)).willReturn(new InterviewVideoStatusResult(expiresAt, false));
+        given(interviewVideoQueryUseCase.getOwnerStatus(sessionId)).willReturn(new InterviewVideoStatusResult(expiresAt, false));
 
         FeedbackShareStatusResult result = service.get(userId, sessionId);
 

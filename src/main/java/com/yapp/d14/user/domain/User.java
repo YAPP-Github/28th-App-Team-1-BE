@@ -18,6 +18,7 @@ public class User {
     private final String providerId;
     private JobRole jobRole;
     private Integer careerYears;
+    private String appleRefreshToken;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -31,6 +32,7 @@ public class User {
             String providerId,
             JobRole jobRole,
             Integer careerYears,
+            String appleRefreshToken,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -42,6 +44,7 @@ public class User {
         this.providerId = providerId;
         this.jobRole = jobRole;
         this.careerYears = careerYears;
+        this.appleRefreshToken = appleRefreshToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -57,6 +60,7 @@ public class User {
                 .providerId(providerId)
                 .jobRole(null)
                 .careerYears(null)
+                .appleRefreshToken(null)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -71,6 +75,7 @@ public class User {
             String providerId,
             JobRole jobRole,
             Integer careerYears,
+            String appleRefreshToken,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -83,6 +88,7 @@ public class User {
                 .providerId(providerId)
                 .jobRole(jobRole)
                 .careerYears(careerYears)
+                .appleRefreshToken(appleRefreshToken)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
@@ -98,6 +104,11 @@ public class User {
         this.jobRole = jobRole;
         this.careerYears = careerYears;
         refreshProfileRegistered();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateAppleRefreshToken(String appleRefreshToken) {
+        this.appleRefreshToken = appleRefreshToken;
         this.updatedAt = LocalDateTime.now();
     }
 

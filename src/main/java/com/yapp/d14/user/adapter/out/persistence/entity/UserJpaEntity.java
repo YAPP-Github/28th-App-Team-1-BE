@@ -1,9 +1,11 @@
 package com.yapp.d14.user.adapter.out.persistence.entity;
 
+import com.yapp.d14.common.crypto.EncryptedStringConverter;
 import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -50,6 +52,10 @@ public class UserJpaEntity {
 
     private Integer careerYears;
 
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(columnDefinition = "text")
+    private String appleRefreshToken;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -66,12 +72,16 @@ public class UserJpaEntity {
         entity.providerId = user.getProviderId();
         entity.jobRole = user.getJobRole();
         entity.careerYears = user.getCareerYears();
+        entity.appleRefreshToken = user.getAppleRefreshToken();
         entity.createdAt = user.getCreatedAt();
         entity.updatedAt = user.getUpdatedAt();
         return entity;
     }
 
     public User toDomain() {
-        return User.of(id, email, name, profileRegistered, provider, providerId, jobRole, careerYears, createdAt, updatedAt);
+        return User.of(
+                id, email, name, profileRegistered, provider, providerId, jobRole, careerYears,
+                appleRefreshToken, createdAt, updatedAt
+        );
     }
 }
