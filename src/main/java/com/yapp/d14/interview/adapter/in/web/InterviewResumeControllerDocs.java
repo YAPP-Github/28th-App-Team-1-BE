@@ -33,9 +33,9 @@ public interface InterviewResumeControllerDocs {
                     "클라이언트는 이때 **Home_DuringInterview** 화면(재접속 화면 — 이어서 진행하기 / 중단하기)을 띄웁니다. " +
                     "**`POST /{sessionId}/resume`(면접 재개 확정 API)은 이 경우에만 호출할 수 있습니다.**\n" +
                     "- `resumeState=ENDED`: 이미 종료된 세션이거나, 또는 예약이 더 이상 `HELD`가 아니거나 `heldAt`이 20분을 초과한 경우입니다. " +
-                    "이때는 `status`(`COMPLETED`/`ABANDONED`/`INVALID`)만 채워지고 `startedAt`/`elapsedSeconds`는 `null`입니다.\n" +
+                    "이때는 `status`(`COMPLETED`/`ABANDONED`/`INVALID`/`PRELOAD_FAILED`)만 채워지고 `startedAt`/`elapsedSeconds`는 `null`입니다.\n" +
                     "  - `status=INVALID`(STT 인식 실패율 초과로 무효화)이면 클라이언트는 **[2] Interview_SttFailure** 화면을 띄웁니다.\n" +
-                    "  - `status=COMPLETED`/`ABANDONED`는 별도 안내 없이 홈으로 라우팅합니다.\n" +
+                    "  - `status=COMPLETED`/`ABANDONED`/`PRELOAD_FAILED`는 별도 안내 없이 홈으로 라우팅합니다(`PRELOAD_FAILED`는 이용권이 이미 자동 환불된 상태).\n" +
                     "- hold 만료가 원인인 `ENDED`(예약 만료·미보유)라면, 이 호출 안에서 서버가 그 자리에서 세션을 `ABANDONED`(중단사유 `HOLD_EXPIRED`)로 전환하고 " +
                     "이용권도 즉시 환불 처리합니다 — 클라이언트가 별도로 처리할 것은 없습니다.\n" +
                     "- 이 API는 어떤 질문을 이어서 답할지는 알려주지 않습니다. `resumeState=RESUMABLE`이고 사용자가 실제로 \"이어서 진행하기\"를 누르면 " +
