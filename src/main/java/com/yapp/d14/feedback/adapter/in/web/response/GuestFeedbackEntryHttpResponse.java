@@ -21,9 +21,6 @@ public record GuestFeedbackEntryHttpResponse(
         @Schema(description = "면접 영상 파일 URL(S3 presigned). 만료 전까지 유효하며, 영상 파이프라인 연결 전까지 null.")
         String videoUrl,
 
-        @Schema(description = "질문 경계(각 턴 시작 시각). 어떤 질문 구간인지 맥락 제공.")
-        List<QuestionBoundary> questionBoundaries,
-
         @Schema(description = "제출 가능 여부. FULL/ALREADY_SUBMITTED/EXPIRED/PRIVATE면 false.", example = "true")
         boolean submissionOpen
 ) {
@@ -37,32 +34,15 @@ public record GuestFeedbackEntryHttpResponse(
     ) {
     }
 
-    public record QuestionBoundary(
-            @Schema(description = "세션 전체 기준 순번", example = "1")
-            int turnLevel,
-
-            @Schema(description = "영상 내 질문 시작 시각(초)", example = "42.5")
-            float startAt,
-
-            @Schema(description = "질문 원문(AI 피드백 아님)")
-            String questionText
-    ) {
-    }
-
     public static GuestFeedbackEntryHttpResponse from(GuestFeedbackEntryResult result) {
         List<Axis> axes = result.axes() == null ? List.of() : result.axes().stream()
                 .map(axis -> new Axis(axis.name(), axis.getLabel()))
-                .toList();
-        List<QuestionBoundary> boundaries = result.questionBoundaries() == null ? List.of()
-                : result.questionBoundaries().stream()
-                .map(b -> new QuestionBoundary(b.turnLevel(), b.startAt(), b.questionText()))
                 .toList();
         return new GuestFeedbackEntryHttpResponse(
                 result.gate().name(),
                 result.requesterName(),
                 axes,
                 result.videoUrl(),
-                boundaries,
                 result.gate().isSubmissionOpen()
         );
     }
