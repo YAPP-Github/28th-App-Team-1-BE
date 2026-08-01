@@ -56,7 +56,8 @@ class InterviewAbandonPersisterTest {
     }
 
     @Test
-    void USER_EXIT면_이용권을_차감하고_리포트_생성을_트리거한다() {
+    void USER_EXIT면_이용권_커밋_없이_리포트_생성만_트리거한다() {
+        // TODO: 이용권 커밋을 보고서 생성 성공/실패에 연동하기 전까지는 여기서 커밋을 호출하지 않는다.
         InterviewSession session = session();
 
         InterviewAbandonPersister.PersistResult result = persister.persist(session, AbandonCause.USER_EXIT);
@@ -66,7 +67,7 @@ class InterviewAbandonPersisterTest {
         assertThat(result.ticketOutcome()).isEqualTo("COMMITTED");
         assertThat(result.reportGenerating()).isTrue();
         verify(interviewSessionRepository).save(session);
-        verify(ticketCommitUseCase).commit(sessionId, "USER_EXIT");
+        verify(ticketCommitUseCase, never()).commit(any(), any());
         verify(ticketReleaseUseCase, never()).release(any(), any());
         verify(interviewReportGenerateUseCase).generate(sessionId);
     }

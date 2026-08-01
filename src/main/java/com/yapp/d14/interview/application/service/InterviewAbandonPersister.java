@@ -33,7 +33,7 @@ class InterviewAbandonPersister {
 
         // 이용권 처리 실패 시 트랜잭션 전체를 롤백한다(try/catch로 삼키지 않음) — InterviewSttResetPersister와 동일 원칙.
         if (cause == AbandonCause.USER_EXIT) {
-            ticketCommitUseCase.commit(session.getId(), cause.name());
+            // TODO: 이용권 커밋을 여기서 바로 하지 않는다 — 나중에 보고서 생성 성공 시 이용권 커밋, 실패 시 이용권 환불하는 방향으로 미룰 예정.
             triggerReportGeneration(session.getId());
             return new PersistResult(session.getEndedAt(), "COMMITTED", true);
         }
