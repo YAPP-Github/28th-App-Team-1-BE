@@ -39,19 +39,6 @@ public record InterviewReportHttpResponse(
         );
     }
 
-    public record RedFlagNotice(
-            @Schema(description = "레드플래그 유형 — CONTRADICTION(모순) / FABRICATION(지어냄) / PERFECT_NARRATIVE(무결점 서사)")
-            String type,
-
-            @Schema(description = "중립 안내 문구")
-            String message
-    ) {
-
-        private static RedFlagNotice from(InterviewReportQueryResult.RedFlagNotice notice) {
-            return new RedFlagNotice(notice.type().name(), notice.message());
-        }
-    }
-
     public record Video(
             @Schema(description = "영상 재생 URL. 만료됐으면 null")
             String url,
@@ -90,8 +77,8 @@ public record InterviewReportHttpResponse(
             @Schema(description = "해상도 낮음 안내 문구. 정상 카드는 null")
             String resolutionNotice,
 
-            @Schema(description = "이 카드에 걸린 레드플래그 안내 줄")
-            List<RedFlagNotice> cardRedFlagNotices,
+            @Schema(description = "이 카드에 걸린 레드플래그 안내 문구 목록(중립 문구만). 걸린 게 없으면 null")
+            List<String> cardRedFlagNotices,
 
             @Schema(description = "질문 의도 짧은 제목(명사구, 예: \"트래픽 확장 대응 전략\")")
             String questionIntentTitle,
@@ -112,7 +99,7 @@ public record InterviewReportHttpResponse(
                     card.transcript(),
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
-                    card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
+                    card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(InterviewReportQueryResult.RedFlagNotice::message).toList(),
                     card.questionIntentTitle(),
                     card.questionIntent(),
                     card.scriptSegments() == null ? null : card.scriptSegments().stream().map(ScriptSegment::from).toList()

@@ -242,10 +242,7 @@ public interface InterviewReportControllerDocs {
                                                     "highlightSpans": [],
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": [
-                                                      {
-                                                        "type": "CONTRADICTION",
-                                                        "message": "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
-                                                      }
+                                                      "면접 앞부분과 뒷부분의 답변이 서로 어긋나는 지점이 있었어요."
                                                     ],
                                                     "questionIntentTitle": "의사결정 기여도",
                                                     "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다."

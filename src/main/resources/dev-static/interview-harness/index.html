@@ -801,7 +801,7 @@
           <div><b>A.</b> ${escapeHtml(c.transcript || "")}</div>
           ${c.questionIntent ? `<div class="hint">의도: ${escapeHtml(c.questionIntent)}</div>` : ""}
           ${c.resolutionNotice ? `<div class="hint">${escapeHtml(c.resolutionNotice)}</div>` : ""}
-          ${(c.cardRedFlagNotices || []).map((f) => `<span class="flag">${escapeHtml(f.type)}: ${escapeHtml(f.message)}</span>`).join("")}
+          ${(c.cardRedFlagNotices || []).map((m) => `<span class="flag">${escapeHtml(m)}</span>`).join("")}
         </div>
       `).join("");
     }
