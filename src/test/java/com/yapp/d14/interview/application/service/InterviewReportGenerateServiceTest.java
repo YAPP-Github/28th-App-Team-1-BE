@@ -237,7 +237,7 @@ class InterviewReportGenerateServiceTest {
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
         given(redFlagReconciler.reconcile(any())).willReturn(List.of(
-                new RedFlagVerdict(RedFlagType.BLAME_SHIFTING, TestType.DEPTH, 2, false, List.of(), "남탓 근거")
+                new RedFlagVerdict(RedFlagType.BLAME_SHIFTING, TestType.DEPTH, 2, false, List.of(), List.of(), "남탓 근거")
         ));
         given(reportCardContentGenerator.generate(any())).willReturn(List.of());
         given(reportHeadlineGenerator.generate(any())).willReturn("보통 헤드라인");
@@ -291,7 +291,7 @@ class InterviewReportGenerateServiceTest {
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
         given(redFlagReconciler.reconcile(any())).willReturn(List.of(
-                new RedFlagVerdict(RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(), "날조 근거")
+                new RedFlagVerdict(RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(), List.of(), "날조 근거")
         ));
         given(reportCardContentGenerator.generate(any())).willReturn(List.of());
         given(reportHeadlineGenerator.generate(any())).willReturn("레드플래그 헤드라인");

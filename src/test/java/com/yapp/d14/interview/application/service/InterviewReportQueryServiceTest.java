@@ -494,6 +494,6 @@ class InterviewReportQueryServiceTest {
     }
 
     private RedFlag redFlag(RedFlagType type, TestType affectedTestType) {
-        return RedFlag.of(1L, SESSION_ID, type, affectedTestType, null, false, List.of(), NOW);
+        return RedFlag.of(1L, SESSION_ID, type, affectedTestType, null, false, List.of(), List.of(), NOW);
     }
 }
