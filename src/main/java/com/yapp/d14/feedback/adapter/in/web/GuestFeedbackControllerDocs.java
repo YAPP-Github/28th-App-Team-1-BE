@@ -36,6 +36,16 @@ public interface GuestFeedbackControllerDocs {
                     content = @Content(schema = @Schema(implementation = GuestFeedbackEntryHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "기기 식별 값 누락",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    { "success": false, "code": "CONSTRAINT_VIOLATION", "message": "기기 식별 값이 필요해요." }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "유효하지 않은 토큰",
                     content = @Content(
