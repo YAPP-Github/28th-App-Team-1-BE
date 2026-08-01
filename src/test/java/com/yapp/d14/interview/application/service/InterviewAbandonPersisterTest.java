@@ -1,0 +1,98 @@
+package com.yapp.d14.interview.application.service;
+
+import com.yapp.d14.interview.application.port.in.InterviewReportGenerateUseCase;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.domain.AbandonCause;
+import com.yapp.d14.interview.domain.InterviewSession;
+import com.yapp.d14.interview.domain.InterviewSessionStatus;
+import com.yapp.d14.interview.domain.JobType;
+import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
+import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.concurrent.RejectedExecutionException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+@ExtendWith(MockitoExtension.class)
+class InterviewAbandonPersisterTest {
+
+    @Mock
+    private InterviewSessionRepository interviewSessionRepository;
+
+    @Mock
+    private TicketCommitUseCase ticketCommitUseCase;
+
+    @Mock
+    private TicketReleaseUseCase ticketReleaseUseCase;
+
+    @Mock
+    private InterviewReportGenerateUseCase interviewReportGenerateUseCase;
+
+    @Mock
+    private InterviewReportFailureHandler interviewReportFailureHandler;
+
+    @InjectMocks
+    private InterviewAbandonPersister persister;
+
+    private final Long sessionId = 1L;
+
+    private InterviewSession session() {
+        return InterviewSession.of(
+                sessionId, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                LocalDateTime.now(), InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
+                25, 20, 10, 20, 10, 15, 0, 0, null
+        );
+    }
+
+    @Test
+    void USER_EXIT면_이용권을_차감하고_리포트_생성을_트리거한다() {
+        InterviewSession session = session();
+
+        InterviewAbandonPersister.PersistResult result = persister.persist(session, AbandonCause.USER_EXIT);
+
+        assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.ABANDONED);
+        assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.USER_EXIT);
+        assertThat(result.ticketOutcome()).isEqualTo("COMMITTED");
+        assertThat(result.reportGenerating()).isTrue();
+        verify(interviewSessionRepository).save(session);
+        verify(ticketCommitUseCase).commit(sessionId, "USER_EXIT");
+        verify(ticketReleaseUseCase, never()).release(any(), any());
+        verify(interviewReportGenerateUseCase).generate(sessionId);
+    }
+
+    @Test
+    void NETWORK_DISCONNECT면_이용권을_환급하고_리포트를_생성하지_않는다() {
+        InterviewSession session = session();
+
+        InterviewAbandonPersister.PersistResult result = persister.persist(session, AbandonCause.NETWORK_DISCONNECT);
+
+        assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.NETWORK_DISCONNECT);
+        assertThat(result.ticketOutcome()).isEqualTo("RELEASED");
+        assertThat(result.reportGenerating()).isFalse();
+        verify(ticketReleaseUseCase).release(sessionId, "NETWORK_DISCONNECT");
+        verify(ticketCommitUseCase, never()).commit(any(), any());
+        verify(interviewReportGenerateUseCase, never()).generate(any());
+    }
+
+    @Test
+    void 리포트_생성_큐가_가득_찼으면_실패_처리로_넘어가고_예외를_삼킨다() {
+        InterviewSession session = session();
+        org.mockito.Mockito.doThrow(new RejectedExecutionException())
+                .when(interviewReportGenerateUseCase).generate(sessionId);
+
+        persister.persist(session, AbandonCause.USER_EXIT);
+
+        verify(interviewReportFailureHandler).markFailed(sessionId);
+    }
+}
