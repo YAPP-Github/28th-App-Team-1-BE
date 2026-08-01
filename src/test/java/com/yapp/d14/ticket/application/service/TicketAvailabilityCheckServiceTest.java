@@ -1,5 +1,6 @@
 package com.yapp.d14.ticket.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionAbandonOnHoldExpiryUseCase;
 import com.yapp.d14.ticket.application.port.out.TicketReservationRepository;
 import com.yapp.d14.ticket.application.port.out.UserTicketRepository;
 import com.yapp.d14.ticket.domain.TicketReservation;
@@ -36,6 +37,9 @@ class TicketAvailabilityCheckServiceTest {
 
     @Mock
     private TicketReservationRepository ticketReservationRepository;
+
+    @Mock
+    private InterviewSessionAbandonOnHoldExpiryUseCase interviewSessionAbandonOnHoldExpiryUseCase;
 
     @InjectMocks
     private TicketAvailabilityCheckService service;
@@ -91,10 +95,11 @@ class TicketAvailabilityCheckServiceTest {
 
         verify(ticketReservationRepository).releaseIfHeld(10L, "HOLD_EXPIRED");
         verify(userTicketRepository, times(1)).increment(userId);
+        verify(interviewSessionAbandonOnHoldExpiryUseCase).abandonForHoldExpiry(1L);
     }
 
     @Test
-    void 다른_트랜잭션이_이미_만료_예약을_처리했으면_increment하지_않는다() {
+    void 다른_트랜잭션이_이미_만료_예약을_처리했으면_increment도_세션_정리도_하지_않는다() {
         TicketReservation expired = TicketReservation.of(
                 10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
         );
@@ -106,6 +111,7 @@ class TicketAvailabilityCheckServiceTest {
         service.checkAvailable(userId);
 
         verify(userTicketRepository, never()).increment(any());
+        verify(interviewSessionAbandonOnHoldExpiryUseCase, never()).abandonForHoldExpiry(any());
     }
 
     @Test
