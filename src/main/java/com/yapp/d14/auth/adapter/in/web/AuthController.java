@@ -3,6 +3,7 @@ package com.yapp.d14.auth.adapter.in.web;
 import com.yapp.d14.auth.adapter.in.web.request.SocialLoginHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.request.TokenReissueHttpRequest;
 import com.yapp.d14.auth.adapter.in.web.response.AuthTokenHttpResponse;
+import com.yapp.d14.auth.adapter.in.web.response.TokenReissueHttpResponse;
 import com.yapp.d14.auth.application.command.LogoutCommand;
 import com.yapp.d14.auth.application.port.in.result.AuthToken;
 import com.yapp.d14.auth.application.port.in.LogoutUseCase;
@@ -43,11 +44,11 @@ class AuthController implements AuthControllerDocs {
 
     @Override
     @PostMapping("/token/refresh")
-    public ResponseEntity<ApiResponse<AuthTokenHttpResponse>> reissue(
+    public ResponseEntity<ApiResponse<TokenReissueHttpResponse>> reissue(
             @Valid @RequestBody TokenReissueHttpRequest request
     ) {
         AuthToken authToken = tokenReissueUseCase.reissue(request.toCommand());
-        return ResponseEntity.ok(ApiResponse.ok(AuthTokenHttpResponse.from(authToken)));
+        return ResponseEntity.ok(ApiResponse.ok(TokenReissueHttpResponse.from(authToken)));
     }
 
     @Override

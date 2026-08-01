@@ -10,6 +10,7 @@ import com.yapp.d14.consent.application.port.in.ConsentDocumentQueryUseCase;
 import com.yapp.d14.consent.application.port.in.ConsentSubmitUseCase;
 import com.yapp.d14.consent.application.port.in.PendingConsentItemsQueryUseCase;
 import com.yapp.d14.consent.application.port.in.RequiredConsentStatusQueryUseCase;
+import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ class ConsentController implements ConsentControllerDocs {
     private final PendingConsentItemsQueryUseCase pendingConsentItemsQueryUseCase;
     private final RequiredConsentStatusQueryUseCase requiredConsentStatusQueryUseCase;
     private final ConsentDocumentQueryUseCase consentDocumentQueryUseCase;
+    private final FindUserUseCase findUserUseCase;
 
     @Override
     @PostMapping
@@ -55,7 +57,11 @@ class ConsentController implements ConsentControllerDocs {
                 .toList();
 
         return ResponseEntity.ok(
-                ApiResponse.ok(ConsentPendingItemsHttpResponse.of(requiredConsentStatusQueryUseCase.getStatus(userId), items))
+                ApiResponse.ok(ConsentPendingItemsHttpResponse.of(
+                        requiredConsentStatusQueryUseCase.getStatus(userId),
+                        findUserUseCase.findById(userId).isProfileRegistered(),
+                        items
+                ))
         );
     }
 
