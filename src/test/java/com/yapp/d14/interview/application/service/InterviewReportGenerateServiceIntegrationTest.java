@@ -280,7 +280,7 @@ class InterviewReportGenerateServiceIntegrationTest {
         ));
         given(redFlagReconciler.reconcile(any())).willReturn(List.of(
                 new RedFlagVerdict(
-                        RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(),
+                        RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(), List.of(),
                         "포트폴리오에서는 아키텍처 설계를 리드했다고 주장했지만, "
                                 + "실제 답변에서는 본인이 맡은 부분을 특정하지 못하고 회피성 답변으로 일관함"
                 )

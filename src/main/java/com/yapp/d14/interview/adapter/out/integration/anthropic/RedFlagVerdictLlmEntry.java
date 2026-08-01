@@ -8,6 +8,7 @@ record RedFlagVerdictLlmEntry(
         Integer capValue,
         boolean knockout,
         List<TimeRangeLlmEntry> evidenceTimestamps,
+        List<Integer> relatedTurns,
         String rationale
 ) {
 

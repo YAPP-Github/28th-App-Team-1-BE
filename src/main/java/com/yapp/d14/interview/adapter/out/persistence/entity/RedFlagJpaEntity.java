@@ -54,6 +54,12 @@ public class RedFlagJpaEntity {
     @BatchSize(size = 100)
     private List<TimeRangeEmbeddable> evidenceTimestamps = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "red_flag_related_question", joinColumns = @JoinColumn(name = "red_flag_id"))
+    @Column(name = "question_id")
+    @BatchSize(size = 100)
+    private List<Long> relatedQuestionIds = new ArrayList<>();
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -68,6 +74,7 @@ public class RedFlagJpaEntity {
         entity.evidenceTimestamps = redFlag.getEvidenceTimestamps().stream()
                 .map(TimeRangeEmbeddable::from)
                 .toList();
+        entity.relatedQuestionIds = new ArrayList<>(redFlag.getRelatedQuestionIds());
         entity.createdAt = redFlag.getCreatedAt();
         return entity;
     }
@@ -81,6 +88,7 @@ public class RedFlagJpaEntity {
                 capValue,
                 knockout,
                 evidenceTimestamps.stream().map(TimeRangeEmbeddable::toDomain).toList(),
+                new ArrayList<>(relatedQuestionIds),
                 createdAt
         );
     }

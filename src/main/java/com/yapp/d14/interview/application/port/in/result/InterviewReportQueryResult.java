@@ -12,13 +12,13 @@ import java.util.List;
 public record InterviewReportQueryResult(
         ReportStatus status,
         String headline,
-        List<RedFlagNotice> redFlagNotices,
         Video video,
         List<Card> cards,
         List<ScriptLine> script,
         GuestFeedbackSection guestFeedback
 ) {
 
+    // 카드 단위 노출 레드플래그 안내(Card.cardRedFlagNotices)에서 쓰인다. 전체 보고서 단위 안내는 없다.
     public record RedFlagNotice(
             RedFlagType type,
             String message

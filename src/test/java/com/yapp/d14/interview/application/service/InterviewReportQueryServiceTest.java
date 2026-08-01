@@ -390,7 +390,7 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
-    void 노출_레드플래그는_top_level과_해당_축_카드에_붙고_CONTRADICTION은_카드에_안붙는다() {
+    void 노출_레드플래그는_축_카드와_근거_카드에_붙고_비노출은_제외된다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
@@ -400,9 +400,9 @@ class InterviewReportQueryServiceTest {
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변")));
         given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                redFlag(RedFlagType.FABRICATION, TestType.DEPTH),   // 노출 + DEPTH
-                redFlag(RedFlagType.CONTRADICTION, null),           // 노출 + 축없음 → top-level만
-                redFlag(RedFlagType.BUZZWORD_SALAD, TestType.DEPTH) // 비노출 → 제외
+                redFlag(RedFlagType.FABRICATION, TestType.DEPTH),                       // 노출 + DEPTH축 → 축 카드에
+                redFlag(RedFlagType.CONTRADICTION, null, List.of(10L)),                 // 노출 + 축없음 → 근거 questionId 카드에
+                redFlag(RedFlagType.BUZZWORD_SALAD, TestType.DEPTH)                     // 비노출 → 제외
         ));
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
@@ -410,14 +410,64 @@ class InterviewReportQueryServiceTest {
 
         InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
 
-        assertThat(result.redFlagNotices())
-                .extracting(InterviewReportQueryResult.RedFlagNotice::type)
-                .containsExactly(RedFlagType.FABRICATION, RedFlagType.CONTRADICTION);
-        assertThat(result.video()).isNull();
-
+        // 전체 보고서 단위 안내는 없고, 카드에 축 기반(FABRICATION)과 근거 카드 기반(CONTRADICTION)이 함께 붙는다.
         List<InterviewReportQueryResult.RedFlagNotice> cardNotices = result.cards().get(0).cardRedFlagNotices();
         assertThat(cardNotices).extracting(InterviewReportQueryResult.RedFlagNotice::type)
-                .containsExactly(RedFlagType.FABRICATION);
+                .containsExactlyInAnyOrder(RedFlagType.FABRICATION, RedFlagType.CONTRADICTION);
+    }
+
+    @Test
+    void 축없는_CONTRADICTION은_근거_questionId_카드에만_붙는다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of()),
+                card(2L, 20L, 1, TestType.BOUNDARY, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID))
+                .willReturn(List.of(question(10L, "질문1"), question(20L, "질문2")));
+        given(answerRepository.findAllBySessionId(SESSION_ID))
+                .willReturn(List.of(answer(10L, "답변1"), answer(20L, "답변2")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                redFlag(RedFlagType.CONTRADICTION, null, List.of(20L)) // 근거 턴이 20L 카드 하나뿐
+        ));
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        Map<Long, InterviewReportQueryResult.Card> cardByQuestion = result.cards().stream()
+                .collect(java.util.stream.Collectors.toMap(c -> c.transcript().equals("답변1") ? 10L : 20L, c -> c));
+        assertThat(cardByQuestion.get(10L).cardRedFlagNotices()).isNull();
+        assertThat(cardByQuestion.get(20L).cardRedFlagNotices())
+                .extracting(InterviewReportQueryResult.RedFlagNotice::type)
+                .containsExactly(RedFlagType.CONTRADICTION);
+    }
+
+    @Test
+    void 축없고_근거_questionId도_없는_노출_레드플래그는_카드에_안붙는다_알려진한계() {
+        // 축(affectedTestType)도 없고 relatedQuestionIds도 비면 붙일 카드를 특정할 수 없어 어디에도 노출되지 않는다.
+        // (headline 톤·점수에는 여전히 반영됨). 의도된 한계이므로 회귀 방지용으로 고정한다.
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                redFlag(RedFlagType.CONTRADICTION, null, List.of()) // 축 없음 + 근거 questionId 없음
+        ));
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.cards().get(0).cardRedFlagNotices()).isNull();
     }
 
     @Test
@@ -494,6 +544,10 @@ class InterviewReportQueryServiceTest {
     }
 
     private RedFlag redFlag(RedFlagType type, TestType affectedTestType) {
-        return RedFlag.of(1L, SESSION_ID, type, affectedTestType, null, false, List.of(), NOW);
+        return redFlag(type, affectedTestType, List.of());
+    }
+
+    private RedFlag redFlag(RedFlagType type, TestType affectedTestType, List<Long> relatedQuestionIds) {
+        return RedFlag.of(1L, SESSION_ID, type, affectedTestType, null, false, List.of(), relatedQuestionIds, NOW);
     }
 }

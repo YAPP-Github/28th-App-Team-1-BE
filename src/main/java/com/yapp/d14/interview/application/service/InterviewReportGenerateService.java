@@ -122,7 +122,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
             boolean severeRedFlagPresent = redFlagVerdicts.stream().anyMatch(v -> v.type().isExposed());
 
             Report report = buildReport(sessionId, result, severeRedFlagPresent, cappedAxisEvaluations);
-            List<RedFlag> redFlags = toRedFlags(sessionId, redFlagVerdicts);
+            List<RedFlag> redFlags = toRedFlags(sessionId, redFlagVerdicts, turns);
             List<ReportCard> reportCards = generateReportCards(sessionId, cappedAxisEvaluations, turns);
 
             interviewReportPersister.persist(sessionId, report, cappedAxisEvaluations, redFlags, reportCards);
@@ -324,11 +324,28 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         return headline;
     }
 
-    private List<RedFlag> toRedFlags(Long sessionId, List<RedFlagVerdict> verdicts) {
+    private List<RedFlag> toRedFlags(Long sessionId, List<RedFlagVerdict> verdicts, List<Turn> turns) {
+        // 검증 결과가 참조한 턴 번호(turnLevel)를 그 턴의 questionId로 되짚는다. 조회 시 카드는 questionId로
+        // 매칭되므로 여기서 미리 변환해 저장한다. 알 수 없는(턴 목록에 없는) 번호는 버린다.
+        Map<Integer, Long> questionIdByTurnNumber = turns.stream()
+                .collect(Collectors.toMap(Turn::turnNumber, Turn::questionId, (a, b) -> a));
+
         return verdicts.stream()
                 .map(verdict -> RedFlag.create(
-                        sessionId, verdict.type(), verdict.affectedTestType(), verdict.capValue(), verdict.knockout(), verdict.evidenceTimestamps()
+                        sessionId, verdict.type(), verdict.affectedTestType(), verdict.capValue(), verdict.knockout(),
+                        verdict.evidenceTimestamps(), toRelatedQuestionIds(verdict, questionIdByTurnNumber)
                 ))
+                .toList();
+    }
+
+    private List<Long> toRelatedQuestionIds(RedFlagVerdict verdict, Map<Integer, Long> questionIdByTurnNumber) {
+        if (verdict.relatedTurns() == null) {
+            return List.of();
+        }
+        return verdict.relatedTurns().stream()
+                .map(questionIdByTurnNumber::get)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
                 .toList();
     }
 

@@ -8,14 +8,11 @@ import java.util.List;
 
 public record InterviewReportHttpResponse(
         @Schema(description = "채점 파이프라인 진행 상태 — GENERATING(채점 중) / READY(생성 완료) / INSUFFICIENT_ANALYSIS(분석 부족) / FAILED(생성 실패). " +
-                "심각 레드플래그 여부는 이 필드가 아니라 redFlagNotices로 판단한다(READY이면서 redFlagNotices가 있으면 심각 레드플래그)")
+                "레드플래그는 전체 보고서 단위가 아니라 각 카드의 cardRedFlagNotices로만 노출되며, headline 톤에도 반영된다")
         String status,
 
         @Schema(description = "한 줄 요약(헤드라인). GENERATING일 때는 null")
         String headline,
-
-        @Schema(description = "헤드라인 아래 표기되는 레드플래그 안내 줄(노출 3종만, 최대 2줄)")
-        List<RedFlagNotice> redFlagNotices,
 
         @Schema(description = "면접 영상 플레이어 메타. GENERATING일 때는 null")
         Video video,
@@ -35,25 +32,11 @@ public record InterviewReportHttpResponse(
         return new InterviewReportHttpResponse(
                 result.status().name(),
                 result.headline(),
-                result.redFlagNotices() == null ? null : result.redFlagNotices().stream().map(RedFlagNotice::from).toList(),
                 Video.from(result.video()),
                 result.cards() == null ? null : result.cards().stream().map(Card::from).toList(),
                 result.script() == null ? null : result.script().stream().map(ScriptLine::from).toList(),
                 GuestFeedbackSection.from(result.guestFeedback())
         );
-    }
-
-    public record RedFlagNotice(
-            @Schema(description = "레드플래그 유형 — CONTRADICTION(모순) / FABRICATION(지어냄) / PERFECT_NARRATIVE(무결점 서사)")
-            String type,
-
-            @Schema(description = "중립 안내 문구")
-            String message
-    ) {
-
-        private static RedFlagNotice from(InterviewReportQueryResult.RedFlagNotice notice) {
-            return new RedFlagNotice(notice.type().name(), notice.message());
-        }
     }
 
     public record Video(
@@ -94,8 +77,8 @@ public record InterviewReportHttpResponse(
             @Schema(description = "해상도 낮음 안내 문구. 정상 카드는 null")
             String resolutionNotice,
 
-            @Schema(description = "이 카드에 걸린 레드플래그 안내 줄")
-            List<RedFlagNotice> cardRedFlagNotices,
+            @Schema(description = "이 카드에 걸린 레드플래그 안내 문구 목록(중립 문구만). 걸린 게 없으면 null")
+            List<String> cardRedFlagNotices,
 
             @Schema(description = "질문 의도 짧은 제목(명사구, 예: \"트래픽 확장 대응 전략\")")
             String questionIntentTitle,
@@ -116,7 +99,7 @@ public record InterviewReportHttpResponse(
                     card.transcript(),
                     card.highlightSpans() == null ? null : card.highlightSpans().stream().map(HighlightSpan::from).toList(),
                     card.resolutionNotice(),
-                    card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(RedFlagNotice::from).toList(),
+                    card.cardRedFlagNotices() == null ? null : card.cardRedFlagNotices().stream().map(InterviewReportQueryResult.RedFlagNotice::message).toList(),
                     card.questionIntentTitle(),
                     card.questionIntent(),
                     card.scriptSegments() == null ? null : card.scriptSegments().stream().map(ScriptSegment::from).toList()

@@ -60,6 +60,10 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
             - 확정할 근거가 부족하면 레드플래그를 만들지 마세요. 의심만으로 확정하지 않습니다.
             - evidenceTimestamps는 판단 근거가 된 턴의 시작/종료 초를 인용하세요(모순은 원래
               발언과 뒤집은 발언 두 구간 모두 인용).
+            - relatedTurns는 이 레드플래그의 근거가 된 턴 번호들입니다([턴 원문]에 나온 번호만).
+              CONTRADICTION은 원래 발언 턴과 뒤집은 발언 턴 두 번호를 모두 넣으세요. 특정 축에
+              매이지 않는(affectedTestType=null) 레드플래그일수록 이 값으로 어느 턴 얘기인지
+              드러납니다. 판단 근거 턴이 불명확하면 빈 배열로 두세요.
             - affectedTestType은 red-flags.yaml의 default_affected_axes를 기본으로 삼되,
               실제로 영향을 준 축이 다르면 관찰한 축으로 조정하세요. 특정 축이 아니라 전체
               신뢰도에 영향을 주는 경우(예: CONTRADICTION) null로 두세요.
@@ -70,7 +74,8 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
             type(FABRICATION/CONTRADICTION/PERFECT_NARRATIVE/BLAME_SHIFTING/BUZZWORD_SALAD 중 하나),
             affectedTestType(depth/boundary/connection/tradeoff/conflict/resilience 또는 null),
             capValue(정수 또는 null), knockout(true/false),
-            evidenceTimestamps(startSec/endSec 쌍의 배열, 비어 있을 수 있음), rationale.
+            evidenceTimestamps(startSec/endSec 쌍의 배열, 비어 있을 수 있음),
+            relatedTurns(근거 턴 번호의 배열, 비어 있을 수 있음), rationale.
             """;
 
     private final ChatClient chatClient;
@@ -145,12 +150,17 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
                         .map(t -> new TimeRange(t.startSec(), t.endSec()))
                         .toList();
 
+        List<Integer> relatedTurns = entry.relatedTurns() == null
+                ? List.of()
+                : entry.relatedTurns().stream().filter(java.util.Objects::nonNull).toList();
+
         return new RedFlagVerdict(
                 RedFlagType.valueOf(entry.type().toUpperCase()),
                 StringUtils.hasText(entry.affectedTestType()) ? TestType.valueOf(entry.affectedTestType().toUpperCase()) : null,
                 entry.capValue(),
                 entry.knockout(),
                 evidenceTimestamps,
+                relatedTurns,
                 entry.rationale()
         );
     }
