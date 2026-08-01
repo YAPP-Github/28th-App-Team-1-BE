@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,6 +36,16 @@ public interface GuestFeedbackControllerDocs {
                     content = @Content(schema = @Schema(implementation = GuestFeedbackEntryHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "기기 식별 값 누락",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    { "success": false, "code": "CONSTRAINT_VIOLATION", "message": "기기 식별 값이 필요해요." }
+                                    """)
+                    )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "유효하지 않은 토큰",
                     content = @Content(
@@ -47,7 +58,7 @@ public interface GuestFeedbackControllerDocs {
     })
     ResponseEntity<ApiResponse<GuestFeedbackEntryHttpResponse>> enter(
             @Parameter(description = "공유 토큰") @PathVariable String token,
-            @Parameter(description = "기기 식별 값") @RequestHeader(value = "Device-Id", required = false) String deviceId
+            @Parameter(description = "기기 식별 값") @NotBlank(message = "기기 식별 값이 필요해요.") @RequestHeader(value = "Device-Id", required = false) String deviceId
     );
 
     @Operation(
@@ -78,7 +89,7 @@ public interface GuestFeedbackControllerDocs {
                                             { "success": false, "code": "INVALID_RATING_LEVEL", "message": "척도 값이 올바르지 않아요." }
                                             """),
                                     @ExampleObject(name = "기기 식별 값 누락", value = """
-                                            { "success": false, "code": "MISSING_DEVICE_ID", "message": "기기 식별 값이 필요해요." }
+                                            { "success": false, "code": "CONSTRAINT_VIOLATION", "message": "기기 식별 값이 필요해요." }
                                             """)
                             }
                     )
@@ -114,7 +125,7 @@ public interface GuestFeedbackControllerDocs {
     })
     ResponseEntity<ApiResponse<GuestFeedbackSubmitHttpResponse>> submit(
             @Parameter(description = "공유 토큰") @PathVariable String token,
-            @Parameter(description = "기기 식별 값") @RequestHeader(value = "Device-Id", required = false) String deviceId,
+            @Parameter(description = "기기 식별 값") @NotBlank(message = "기기 식별 값이 필요해요.") @RequestHeader(value = "Device-Id", required = false) String deviceId,
             @Valid @RequestBody GuestFeedbackSubmitHttpRequest request
     );
 }

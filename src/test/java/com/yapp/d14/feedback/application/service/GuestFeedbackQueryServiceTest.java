@@ -143,17 +143,4 @@ class GuestFeedbackQueryServiceTest {
         verify(interviewVideoRetentionExtendUseCase).extendForGuestFirstViewed(sessionId);
     }
 
-    @Test
-    void deviceId가_없으면_중복_제출_검사를_생략한다() {
-        given(feedbackShareRepository.findByToken(TOKEN)).willReturn(Optional.of(activeShare()));
-        given(interviewVideoQueryUseCase.getPlayback(sessionId)).willReturn(playback(false, "https://s3/final.mp4"));
-        given(guestFeedbackRepository.countBySessionId(sessionId)).willReturn(0L);
-        given(interviewSessionOwnerQueryUseCase.getOwnerUserId(sessionId)).willReturn(ownerId);
-        given(findUserUseCase.findById(ownerId)).willReturn(User.of(UUID.randomUUID(), "a@a.com", "재원", true, Provider.KAKAO, "pid", null, null, null, LocalDateTime.now(), LocalDateTime.now()));
-
-        GuestFeedbackEntryResult result = service.enter(TOKEN, null);
-
-        assertThat(result.gate()).isEqualTo(GuestGate.OPEN);
-        verify(guestFeedbackRepository, never()).existsBySessionIdAndDeviceId(any(), any());
-    }
 }
