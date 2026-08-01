@@ -56,7 +56,7 @@ class InterviewSessionStatusQueryServiceTest {
         return InterviewSession.of(
                 1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, createdAt,
                 status, startedAt, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
 

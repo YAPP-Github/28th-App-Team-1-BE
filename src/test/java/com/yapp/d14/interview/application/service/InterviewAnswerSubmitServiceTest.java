@@ -140,7 +140,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
 
@@ -583,7 +583,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession completedSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(completedSession));
 
@@ -600,7 +600,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession invalidSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(invalidSession));
 
@@ -658,7 +658,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 30, 10, 20, 10, 10, 0, 0
+                20, 30, 10, 20, 10, 10, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithBoundaryWeighted));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
@@ -920,7 +920,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 15, 10, 30, 10, 15, 0, 0
+                20, 15, 10, 30, 10, 15, 0, 0, null
         );
     }
 

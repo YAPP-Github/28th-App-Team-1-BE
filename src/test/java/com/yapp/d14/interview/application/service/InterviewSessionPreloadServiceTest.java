@@ -80,7 +80,7 @@ class InterviewSessionPreloadServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, jdUrl, jdText, focusProject, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
 

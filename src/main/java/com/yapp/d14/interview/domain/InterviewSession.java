@@ -29,6 +29,7 @@ public class InterviewSession {
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
     private InterviewEndType endType;
+    private AbandonCause abandonCause;
     private Integer weightDepth;
     private Integer weightBoundary;
     private Integer weightConnection;
@@ -56,6 +57,7 @@ public class InterviewSession {
             LocalDateTime startedAt,
             LocalDateTime endedAt,
             InterviewEndType endType,
+            AbandonCause abandonCause,
             Integer weightDepth,
             Integer weightBoundary,
             Integer weightConnection,
@@ -79,6 +81,7 @@ public class InterviewSession {
         this.startedAt = startedAt;
         this.endedAt = endedAt;
         this.endType = endType;
+        this.abandonCause = abandonCause;
         this.weightDepth = weightDepth;
         this.weightBoundary = weightBoundary;
         this.weightConnection = weightConnection;
@@ -145,6 +148,14 @@ public class InterviewSession {
         this.endType = endType;
     }
 
+    // 재접속 화면의 "중단하기"(API B) 또는 hold 만료 read-repair(API A/A', cleanupExpiredHolds)에서 호출.
+    // endType은 건드리지 않는다 — "왜 끊겼는지"(abandonCause)와 "면접 흐름이 어떻게 종료됐는지"(endType)는 별개 개념.
+    public void markAbandoned(AbandonCause cause) {
+        this.status = InterviewSessionStatus.ABANDONED;
+        this.endedAt = LocalDateTime.now();
+        this.abandonCause = cause;
+    }
+
     // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).
     public void recordSttSegments(int failedSegmentCount, int totalSegmentCount) {
         this.sttFailedSegmentCount = (sttFailedSegmentCount == null ? 0 : sttFailedSegmentCount) + failedSegmentCount;
@@ -202,7 +213,8 @@ public class InterviewSession {
             Integer weightConflict,
             Integer weightResilience,
             Integer sttFailedSegmentCount,
-            Integer sttTotalSegmentCount
+            Integer sttTotalSegmentCount,
+            AbandonCause abandonCause
     ) {
         return InterviewSession.builder()
                 .id(id)
@@ -219,6 +231,7 @@ public class InterviewSession {
                 .startedAt(startedAt)
                 .endedAt(endedAt)
                 .endType(endType)
+                .abandonCause(abandonCause)
                 .weightDepth(weightDepth)
                 .weightBoundary(weightBoundary)
                 .weightConnection(weightConnection)

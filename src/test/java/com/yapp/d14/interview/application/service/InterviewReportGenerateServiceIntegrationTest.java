@@ -140,7 +140,7 @@ class InterviewReportGenerateServiceIntegrationTest {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
                 null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         ));
         return saved.getId();
     }

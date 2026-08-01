@@ -68,7 +68,7 @@ class InterviewSessionCreateServiceTest {
         return InterviewSession.of(
                 sessionId, userId, portfolioId, null, JobType.BACKEND, 8, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
-                0, 0, 0, 0, 0, 0, 0, 0
+                0, 0, 0, 0, 0, 0, 0, 0, null
         );
     }
 
