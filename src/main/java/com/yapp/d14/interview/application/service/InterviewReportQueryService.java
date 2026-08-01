@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -109,6 +110,8 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<TestType, Integer> axisOrderByType = computeAxisOrder(cards);
         Map<TestType, ResolutionLowReason> lowReasonByAxis = lowResolutionByAxis(sessionId);
         Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis = cardNoticesByAxis(redFlags);
+        // 특정 축이 없는(CONTRADICTION 등) 노출 레드플래그는 근거 questionId로 해당 카드에 직접 붙인다.
+        Map<Long, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByQuestionId = cardNoticesByQuestionId(redFlags);
         // 문장 단위 발화 시각(면접관/면접자)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(면접관 → 면접자).
         Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
@@ -128,7 +131,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                         .comparingInt((ReportCard c) -> axisOrderByType.getOrDefault(c.getTestType(), Integer.MAX_VALUE))
                         .thenComparingInt(ReportCard::getDepthLevel)
                         .thenComparing(ReportCard::getQuestionId))
-                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, questionContentById, transcriptByQuestionId, segmentsByQuestionId))
+                .map(card -> toCard(card, axisOrderByType, lowReasonByAxis, cardNoticesByAxis, cardNoticesByQuestionId, questionContentById, transcriptByQuestionId, segmentsByQuestionId))
                 .toList();
 
         // 질문 음성 합성이 끝났고(composited) 아직 만료 전일 때만 재생 URL(final.mp4)을 발급한다.
@@ -212,6 +215,35 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         return byAxis;
     }
 
+    // 특정 축에 매이지 않는(affectedTestType 없는) 노출 레드플래그(예: CONTRADICTION)를 근거 questionId별로
+    // 묶어, 그 카드에 직접 붙인다. 축 기반 레드플래그는 cardNoticesByAxis가 담당하므로 여기서 제외한다.
+    private Map<Long, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByQuestionId(List<RedFlag> redFlags) {
+        Map<Long, List<InterviewReportQueryResult.RedFlagNotice>> byQuestion = new HashMap<>();
+        redFlags.stream()
+                .filter(redFlag -> redFlag.getType().isExposed())
+                .filter(redFlag -> redFlag.getAffectedTestType() == null)
+                .forEach(redFlag -> redFlag.getRelatedQuestionIds().forEach(questionId -> byQuestion
+                        .computeIfAbsent(questionId, k -> new ArrayList<>())
+                        .add(new InterviewReportQueryResult.RedFlagNotice(redFlag.getType(), RED_FLAG_NOTICE.get(redFlag.getType())))));
+        byQuestion.replaceAll((questionId, notices) -> notices.stream().distinct().toList());
+        return byQuestion;
+    }
+
+    // 축 기반 + 질문 기반 노출 레드플래그 안내를 유형 기준으로 합쳐 하나도 없으면 null을 반환한다(빈 배열 아님).
+    private List<InterviewReportQueryResult.RedFlagNotice> mergeCardNotices(
+            List<InterviewReportQueryResult.RedFlagNotice> axisNotices,
+            List<InterviewReportQueryResult.RedFlagNotice> questionNotices
+    ) {
+        Map<RedFlagType, InterviewReportQueryResult.RedFlagNotice> byType = new LinkedHashMap<>();
+        if (axisNotices != null) {
+            axisNotices.forEach(notice -> byType.putIfAbsent(notice.type(), notice));
+        }
+        if (questionNotices != null) {
+            questionNotices.forEach(notice -> byType.putIfAbsent(notice.type(), notice));
+        }
+        return byType.isEmpty() ? null : List.copyOf(byType.values());
+    }
+
     // 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(계약: "비어 있는지"를 null 유무로 판단, GENERATING/FAILED와 동일).
     private List<InterviewReportQueryResult.RedFlagNotice> topLevelNotices(List<RedFlag> redFlags) {
         List<InterviewReportQueryResult.RedFlagNotice> notices = redFlags.stream()
@@ -230,6 +262,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             Map<TestType, Integer> axisOrderByType,
             Map<TestType, ResolutionLowReason> lowReasonByAxis,
             Map<TestType, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByAxis,
+            Map<Long, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByQuestionId,
             Map<Long, String> questionContentById,
             Map<Long, String> transcriptByQuestionId,
             Map<Long, List<UtteranceSegment>> segmentsByQuestionId
@@ -272,8 +305,9 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
                 transcriptByQuestionId.get(card.getQuestionId()),
                 highlightSpans,
                 resolutionNotice,
-                // 이 카드(축)에 걸린 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(top-level과 동일 규약).
-                cardNoticesByAxis.get(card.getTestType()),
+                // 축 기반(cardNoticesByAxis) + 이 질문에 직접 걸린 축 없는 레드플래그(cardNoticesByQuestionId)를 합친다.
+                // 하나도 없으면 빈 배열이 아니라 null로 내린다(계약: null 유무로 비어있음 판단).
+                mergeCardNotices(cardNoticesByAxis.get(card.getTestType()), cardNoticesByQuestionId.get(card.getQuestionId())),
                 card.getQuestionIntentTitle(),
                 card.getQuestionIntentTranslation(),
                 scriptSegments
