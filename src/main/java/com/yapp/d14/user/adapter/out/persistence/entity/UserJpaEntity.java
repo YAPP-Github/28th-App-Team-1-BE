@@ -22,8 +22,7 @@ import java.util.UUID;
 @Table(
         name = "users",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"provider", "provider_id"}),
-                @UniqueConstraint(columnNames = {"name"})
+                @UniqueConstraint(columnNames = {"provider", "provider_id"})
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

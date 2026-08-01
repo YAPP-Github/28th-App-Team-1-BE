@@ -56,20 +56,6 @@ public interface UserControllerDocs {
                                     }
                                     """)
                     )
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "409",
-                    description = "이미 사용 중인 이름",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "NAME_ALREADY_TAKEN",
-                                      "message": "이미 사용 중인 이름이에요."
-                                    }
-                                    """)
-                    )
             )
     })
     ResponseEntity<ApiResponse<Void>> registerName(
@@ -150,20 +136,6 @@ public interface UserControllerDocs {
                                       "success": false,
                                       "code": "USER_NOT_FOUND",
                                       "message": "존재하지 않는 사용자입니다."
-                                    }
-                                    """)
-                    )
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "409",
-                    description = "이미 사용 중인 이름",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "NAME_ALREADY_TAKEN",
-                                      "message": "이미 사용 중인 이름이에요."
                                     }
                                     """)
                     )
