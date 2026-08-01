@@ -72,7 +72,7 @@ public interface InterviewReportControllerDocs {
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
-                                                  "expiresAt": "2026-07-21T13:00:00"
+                                                  "expiresAt": "2026-08-11T13:00:00"
                                                 },
                                                 "cards": [
                                                   {
@@ -165,7 +165,7 @@ public interface InterviewReportControllerDocs {
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
-                                                  "expiresAt": "2026-07-21T13:00:00"
+                                                  "expiresAt": "2026-08-11T13:00:00"
                                                 },
                                                 "cards": [
                                                   {
@@ -177,12 +177,41 @@ public interface InterviewReportControllerDocs {
                                                     "resolutionNotice": "답변이 짧고 얕아 이 항목은 능력 판단을 보류했어요.",
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "장애 원인 좁히기",
-                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다."
+                                                    "questionIntent": "장애가 났을 때 원인을 어떻게 좁혀나가는지 확인하는 질문입니다.",
+                                                    "scriptSegments": []
+                                                  },
+                                                  {
+                                                    "axisOrder": 2,
+                                                    "depthLevel": 1,
+                                                    "questionText": "Q. 트래픽이 몰릴 때 병목이 어디라고 보시나요?",
+                                                    "transcript": "사실 저는 기술보다 팀워크가 더 중요하다고 생각해서 그쪽 이야기를 하고 싶어요.",
+                                                    "highlightSpans": [
+                                                      {
+                                                        "startIndex": 0,
+                                                        "endIndex": 41,
+                                                        "tone": "IMPROVE",
+                                                        "reason": "OFF_INTENT",
+                                                        "title": "질문과 다른 주제로 답변",
+                                                        "analysis": "병목 지점을 묻는 질문에 팀워크 이야기를 해 질문 의도와 어긋납니다.",
+                                                        "followUpQuestions": [],
+                                                        "startSec": 30.0,
+                                                        "answerTopicTitle": "팀워크의 중요성",
+                                                        "questionIntentTitle": "트래픽 병목 판단",
+                                                        "questionIntent": "트래픽이 몰릴 때 어디가 병목이 되는지 판단하는 질문입니다."
+                                                      }
+                                                    ],
+                                                    "resolutionNotice": "질문과 다른 답변이 있어 이 항목은 능력 판단을 보류했어요.",
+                                                    "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "트래픽 병목 판단",
+                                                    "questionIntent": "트래픽이 몰릴 때 어디가 병목이 되는지 판단하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   }
                                                 ],
                                                 "script": [
                                                   { "role": "INTERVIEWER", "text": "Q. 장애가 났을 때 어디부터 확인하시나요?", "startSec": 10.0, "endSec": 13.5 },
-                                                  { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 }
+                                                  { "role": "INTERVIEWEE", "text": "저희 팀에서 진행한 프로젝트는 사용자 피드백을 반영해서...", "startSec": 15.0, "endSec": 20.4 },
+                                                  { "role": "INTERVIEWER", "text": "Q. 트래픽이 몰릴 때 병목이 어디라고 보시나요?", "startSec": 27.0, "endSec": 29.6 },
+                                                  { "role": "INTERVIEWEE", "text": "사실 저는 기술보다 팀워크가 더 중요하다고 생각해서 그쪽 이야기를 하고 싶어요.", "startSec": 30.0, "endSec": 35.1 }
                                                 ],
                                                 "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
@@ -197,7 +226,7 @@ public interface InterviewReportControllerDocs {
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
-                                                  "expiresAt": "2026-07-21T13:00:00"
+                                                  "expiresAt": "2026-08-11T13:00:00"
                                                 },
                                                 "cards": [
                                                   {
@@ -211,7 +240,8 @@ public interface InterviewReportControllerDocs {
                                                     "resolutionNotice": null,
                                                     "cardRedFlagNotices": null,
                                                     "questionIntentTitle": "성능 개선 경험",
-                                                    "questionIntent": "성능 문제를 어떻게 정의하고 개선했는지 확인하는 질문입니다."
+                                                    "questionIntent": "성능 문제를 어떻게 정의하고 개선했는지 확인하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   }
                                                 ],
                                                 "script": [
@@ -231,7 +261,7 @@ public interface InterviewReportControllerDocs {
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
-                                                  "expiresAt": "2026-07-21T13:00:00"
+                                                  "expiresAt": "2026-08-11T13:00:00"
                                                 },
                                                 "cards": [
                                                   {
@@ -245,7 +275,8 @@ public interface InterviewReportControllerDocs {
                                                       "면접 앞부분과 뒷부분의 답변이 서로 어긋나는 지점이 있었어요."
                                                     ],
                                                     "questionIntentTitle": "의사결정 기여도",
-                                                    "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다."
+                                                    "questionIntent": "의사결정 과정에서 본인의 역할과 기여를 확인하는 질문입니다.",
+                                                    "scriptSegments": []
                                                   }
                                                 ],
                                                 "script": [
@@ -290,6 +321,41 @@ public interface InterviewReportControllerDocs {
                                                     }
                                                   ]
                                                 }
+                                              }
+                                            }
+                                            """),
+                                    @ExampleObject(name = "영상 만료", value = """
+                                            {
+                                              "success": true,
+                                              "data": {
+                                                "status": "READY",
+                                                "headline": "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
+                                                "video": {
+                                                  "url": null,
+                                                  "expired": true,
+                                                  "expiresAt": "2026-07-25T13:00:00"
+                                                },
+                                                "cards": [
+                                                  {
+                                                    "axisOrder": 1,
+                                                    "depthLevel": 1,
+                                                    "questionText": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.",
+                                                    "transcript": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.",
+                                                    "highlightSpans": [
+                                                      { "startIndex": 0, "endIndex": 20, "tone": "GOOD", "reason": "SUFFICIENT", "title": "문제 상황 구체적으로 설명", "analysis": "응답 지연 수치와 그 영향을 구체적으로 설명했습니다.", "followUpQuestions": [], "startSec": 18.2 }
+                                                    ],
+                                                    "resolutionNotice": null,
+                                                    "cardRedFlagNotices": null,
+                                                    "questionIntentTitle": "성능 저하 인지 수준",
+                                                    "questionIntent": "성능 문제를 얼마나 구체적으로 인지했는지 확인하는 질문입니다.",
+                                                    "scriptSegments": []
+                                                  }
+                                                ],
+                                                "script": [
+                                                  { "role": "INTERVIEWER", "text": "Q. 결제 응답 속도를 개선하신 경험을 말씀해주세요.", "startSec": 12.0, "endSec": 15.4 },
+                                                  { "role": "INTERVIEWEE", "text": "결제 화면에서 응답이 평균 800ms 정도로 느려서 사용자 이탈이 있었어요.", "startSec": 18.2, "endSec": 22.6 }
+                                                ],
+                                                "guestFeedback": { "participantCount": 0, "guests": [] }
                                               }
                                             }
                                             """)
