@@ -5,7 +5,12 @@ import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.UUID;
+
 public record UserProfileHttpResponse(
+        @Schema(description = "회원 고유 식별자(UUID)", example = "550e8400-e29b-41d4-a716-446655440000")
+        UUID userId,
+
         @Schema(description = "이름", example = "홍길동")
         String name,
 
@@ -32,6 +37,7 @@ public record UserProfileHttpResponse(
         JobRole jobRole = result.jobRole();
         Provider provider = result.provider();
         return new UserProfileHttpResponse(
+                result.userId(),
                 result.name(),
                 result.email(),
                 provider != null ? provider.name() : null,
