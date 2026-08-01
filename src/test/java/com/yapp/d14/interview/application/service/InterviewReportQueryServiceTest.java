@@ -447,6 +447,30 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void 축없고_근거_questionId도_없는_노출_레드플래그는_카드에_안붙는다_알려진한계() {
+        // 축(affectedTestType)도 없고 relatedQuestionIds도 비면 붙일 카드를 특정할 수 없어 어디에도 노출되지 않는다.
+        // (headline 톤·점수에는 여전히 반영됨). 의도된 한계이므로 회귀 방지용으로 고정한다.
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                card(1L, 10L, 1, TestType.DEPTH, "의도", List.of())
+        ));
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question(10L, "질문")));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(answer(10L, "답변")));
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                redFlag(RedFlagType.CONTRADICTION, null, List.of()) // 축 없음 + 근거 questionId 없음
+        ));
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.empty());
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.cards().get(0).cardRedFlagNotices()).isNull();
+    }
+
+    @Test
     void 영상이_업로드됐고_만료전이면_재생url을_발급한다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.READY, "요약")));
