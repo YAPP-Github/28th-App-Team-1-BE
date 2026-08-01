@@ -31,14 +31,14 @@ public interface UserControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 오류 (이름 누락 또는 길이 제한 위반)",
+                    description = "요청 값 오류 (이름 누락·5자 초과·한글/영문 외 문자 포함)",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(value = """
                                     {
                                       "success": false,
                                       "code": "VALIDATION_ERROR",
-                                      "message": "이름은 1자 이상 20자 이하로 입력해주세요."
+                                      "message": "이름은 5자 이하로 입력해주세요."
                                     }
                                     """)
                     )
@@ -105,7 +105,7 @@ public interface UserControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 오류 (이름·직군 누락, 이름 길이·연차 범위 위반) 또는 지원하지 않는 직군 값",
+                    description = "요청 값 오류 (이름·직군 누락, 이름 5자 초과·한글/영문 외 문자 포함, 연차 범위 위반) 또는 지원하지 않는 직군 값",
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
