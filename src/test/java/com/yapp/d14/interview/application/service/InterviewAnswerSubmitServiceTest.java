@@ -22,6 +22,7 @@ import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
 import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.AxisTier;
@@ -603,6 +604,23 @@ class InterviewAnswerSubmitServiceTest {
                 25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(invalidSession));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SESSION_ALREADY_ENDED);
+
+        verifyNoInteractions(questionRepository, speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+    }
+
+    @Test
+    void 중단된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
+        InterviewSession abandonedSession = InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
+                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.USER_EXIT
+        );
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(abandonedSession));
 
         assertThatThrownBy(() -> service.submit(userId, command()))
                 .isInstanceOf(InterviewException.class)
