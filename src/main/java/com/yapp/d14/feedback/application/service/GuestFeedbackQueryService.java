@@ -16,7 +16,6 @@ import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -73,7 +72,7 @@ class GuestFeedbackQueryService implements GuestFeedbackEntryUseCase {
             return GuestGate.EXPIRED;
         }
 
-        if (StringUtils.hasText(deviceId) && guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, deviceId)) {
+        if (guestFeedbackRepository.existsBySessionIdAndDeviceId(sessionId, deviceId)) {
             return GuestGate.ALREADY_SUBMITTED;
         }
 

@@ -24,9 +24,6 @@ public record GuestFeedbackSubmitCommand(
             String nickname,
             List<RawRating> rawRatings
     ) {
-        if (deviceId == null || deviceId.isBlank()) {
-            throw new FeedbackException(FeedbackErrorCode.MISSING_DEVICE_ID);
-        }
         if (rawRatings == null || rawRatings.isEmpty()) {
             throw new FeedbackException(FeedbackErrorCode.INCOMPLETE_RATINGS);
         }

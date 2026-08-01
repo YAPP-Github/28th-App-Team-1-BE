@@ -29,22 +29,6 @@ class GuestFeedbackSubmitCommandTest {
     }
 
     @Test
-    void deviceId가_없으면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, null, "지인1", ratings(2)))
-                .isInstanceOf(FeedbackException.class)
-                .extracting(e -> ((FeedbackException) e).getErrorCode())
-                .isEqualTo(FeedbackErrorCode.MISSING_DEVICE_ID);
-    }
-
-    @Test
-    void deviceId가_공백이면_예외를_던진다() {
-        assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, "  ", "지인1", ratings(2)))
-                .isInstanceOf(FeedbackException.class)
-                .extracting(e -> ((FeedbackException) e).getErrorCode())
-                .isEqualTo(FeedbackErrorCode.MISSING_DEVICE_ID);
-    }
-
-    @Test
     void ratings가_비어있으면_예외를_던진다() {
         assertThatThrownBy(() -> GuestFeedbackSubmitCommand.of(TOKEN, DEVICE_ID, "지인1", List.of()))
                 .isInstanceOf(FeedbackException.class)

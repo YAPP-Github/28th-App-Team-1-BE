@@ -8,10 +8,10 @@ import com.yapp.d14.feedback.application.port.in.GuestFeedbackEntryUseCase;
 import com.yapp.d14.feedback.application.port.in.GuestFeedbackSubmitUseCase;
 import com.yapp.d14.feedback.application.port.in.result.GuestFeedbackEntryResult;
 import com.yapp.d14.feedback.application.port.in.result.GuestFeedbackSubmitResult;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/feedback/guest")
 @RequiredArgsConstructor
+@Validated
 class GuestFeedbackController implements GuestFeedbackControllerDocs {
 
     private final GuestFeedbackEntryUseCase guestFeedbackEntryUseCase;
@@ -43,7 +44,7 @@ class GuestFeedbackController implements GuestFeedbackControllerDocs {
     public ResponseEntity<ApiResponse<GuestFeedbackSubmitHttpResponse>> submit(
             @PathVariable String token,
             @RequestHeader(value = "Device-Id", required = false) String deviceId,
-            @Valid @RequestBody GuestFeedbackSubmitHttpRequest request
+            @RequestBody GuestFeedbackSubmitHttpRequest request
     ) {
         GuestFeedbackSubmitResult result = guestFeedbackSubmitUseCase.submit(request.toCommand(token, deviceId));
         return ResponseEntity.status(HttpStatus.CREATED)
