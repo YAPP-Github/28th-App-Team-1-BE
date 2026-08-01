@@ -7,7 +7,6 @@ import com.yapp.d14.user.domain.User;
 import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,17 +22,8 @@ class UserProfileUpdateService implements UserProfileUpdateUseCase {
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        if (userRepository.existsByNameAndIdNot(command.name(), command.userId())) {
-            throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
-        }
         user.registerName(command.name());
-
         user.updateProfile(command.jobRole(), command.careerYears());
-
-        try {
-            userRepository.save(user);
-        } catch (DataIntegrityViolationException e) {
-            throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
-        }
+        userRepository.save(user);
     }
 }

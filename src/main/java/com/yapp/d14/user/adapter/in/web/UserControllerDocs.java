@@ -3,7 +3,6 @@ package com.yapp.d14.user.adapter.in.web;
 import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.user.adapter.in.web.request.UserNameRegisterHttpRequest;
 import com.yapp.d14.user.adapter.in.web.request.UserProfileUpdateHttpRequest;
-import com.yapp.d14.user.adapter.in.web.response.UserNameCheckHttpResponse;
 import com.yapp.d14.user.adapter.in.web.response.UserProfileHttpResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,7 +12,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 
 import java.util.UUID;
@@ -33,14 +31,14 @@ public interface UserControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 오류 (이름 누락 또는 길이 제한 위반)",
+                    description = "요청 값 오류 (이름 누락·5자 초과·한글/영문 외 문자 포함)",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(value = """
                                     {
                                       "success": false,
                                       "code": "VALIDATION_ERROR",
-                                      "message": "이름은 1자 이상 20자 이하로 입력해주세요."
+                                      "message": "이름은 5자 이하로 입력해주세요."
                                     }
                                     """)
                     )
@@ -58,56 +56,11 @@ public interface UserControllerDocs {
                                     }
                                     """)
                     )
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "409",
-                    description = "이미 사용 중인 이름",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "NAME_ALREADY_TAKEN",
-                                      "message": "이미 사용 중인 이름이에요."
-                                    }
-                                    """)
-                    )
             )
     })
     ResponseEntity<ApiResponse<Void>> registerName(
             @Parameter(hidden = true) UUID userId,
             @Valid UserNameRegisterHttpRequest request
-    );
-
-    @Operation(
-            summary = "이름 중복 확인",
-            description = "이름 사용 가능 여부를 확인합니다. 본인이 이미 등록한 이름은 충돌로 보지 않습니다.\n\n" +
-                    "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "조회 성공",
-                    content = @Content(schema = @Schema(implementation = UserNameCheckHttpResponse.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "name 파라미터 누락",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "CONSTRAINT_VIOLATION",
-                                      "message": "이름을 입력해주세요."
-                                    }
-                                    """)
-                    )
-            )
-    })
-    ResponseEntity<ApiResponse<UserNameCheckHttpResponse>> checkName(
-            @Parameter(hidden = true) UUID userId,
-            @NotBlank(message = "이름을 입력해주세요.") String name
     );
 
     @Operation(
@@ -152,7 +105,7 @@ public interface UserControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "요청 값 오류 (이름·직군 누락, 이름 길이·연차 범위 위반) 또는 지원하지 않는 직군 값",
+                    description = "요청 값 오류 (이름·직군 누락, 이름 5자 초과·한글/영문 외 문자 포함, 연차 범위 위반) 또는 지원하지 않는 직군 값",
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
@@ -183,20 +136,6 @@ public interface UserControllerDocs {
                                       "success": false,
                                       "code": "USER_NOT_FOUND",
                                       "message": "존재하지 않는 사용자입니다."
-                                    }
-                                    """)
-                    )
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "409",
-                    description = "이미 사용 중인 이름",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "NAME_ALREADY_TAKEN",
-                                      "message": "이미 사용 중인 이름이에요."
                                     }
                                     """)
                     )

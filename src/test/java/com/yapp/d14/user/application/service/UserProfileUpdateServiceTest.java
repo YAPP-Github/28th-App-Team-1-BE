@@ -12,16 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,22 +41,19 @@ class UserProfileUpdateServiceTest {
         User user = existingUser();
         user.registerName("기존이름");
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userRepository.existsByNameAndIdNot("기존이름", userId)).willReturn(false);
 
         service.update(new UserProfileUpdateCommand(userId, "기존이름", JobRole.BACKEND, 3));
 
         assertThat(user.getName()).isEqualTo("기존이름");
         assertThat(user.getJobRole()).isEqualTo(JobRole.BACKEND);
         assertThat(user.getCareerYears()).isEqualTo(3);
-        verify(userRepository).existsByNameAndIdNot("기존이름", userId);
         verify(userRepository).save(user);
     }
 
     @Test
-    void 이름도_함께_보내면_중복확인_후_변경된다() {
+    void 이름을_변경하면_반영된다() {
         User user = existingUser();
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userRepository.existsByNameAndIdNot("새이름", userId)).willReturn(false);
 
         service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 3));
 
@@ -68,26 +62,14 @@ class UserProfileUpdateServiceTest {
     }
 
     @Test
-    void 다른_유저가_쓰는_이름으로_변경하면_NAME_ALREADY_TAKEN() {
-        given(userRepository.findById(userId)).willReturn(Optional.of(existingUser()));
-        given(userRepository.existsByNameAndIdNot("새이름", userId)).willReturn(true);
+    void 다른_유저와_같은_이름으로_변경해도_반영된다() {
+        User user = existingUser();
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 3)))
-                .isInstanceOf(UserException.class)
-                .extracting(e -> ((UserException) e).getErrorCode())
-                .isEqualTo(UserErrorCode.NAME_ALREADY_TAKEN);
-    }
+        service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 3));
 
-    @Test
-    void 저장시점_유니크제약_위반도_NAME_ALREADY_TAKEN으로_변환된다() {
-        given(userRepository.findById(userId)).willReturn(Optional.of(existingUser()));
-        given(userRepository.existsByNameAndIdNot("새이름", userId)).willReturn(false);
-        willThrow(new DataIntegrityViolationException("duplicate")).given(userRepository).save(any());
-
-        assertThatThrownBy(() -> service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 3)))
-                .isInstanceOf(UserException.class)
-                .extracting(e -> ((UserException) e).getErrorCode())
-                .isEqualTo(UserErrorCode.NAME_ALREADY_TAKEN);
+        assertThat(user.getName()).isEqualTo("새이름");
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -95,7 +77,6 @@ class UserProfileUpdateServiceTest {
         User user = existingUser();
         user.updateProfile(JobRole.FRONTEND, 5);
         given(userRepository.findById(userId)).willReturn(Optional.of(user));
-        given(userRepository.existsByNameAndIdNot("새이름", userId)).willReturn(false);
 
         service.update(new UserProfileUpdateCommand(userId, "새이름", JobRole.BACKEND, 1));
 

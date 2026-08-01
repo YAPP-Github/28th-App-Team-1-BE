@@ -6,7 +6,6 @@ import com.yapp.d14.user.domain.User;
 import com.yapp.d14.user.exception.UserErrorCode;
 import com.yapp.d14.user.exception.UserException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,16 +23,7 @@ class UserNameRegisterService implements UserNameRegisterUseCase {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
-        if (userRepository.existsByNameAndIdNot(name, userId)) {
-            throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
-        }
-
         user.registerName(name);
-
-        try {
-            userRepository.save(user);
-        } catch (DataIntegrityViolationException e) {
-            throw new UserException(UserErrorCode.NAME_ALREADY_TAKEN);
-        }
+        userRepository.save(user);
     }
 }
