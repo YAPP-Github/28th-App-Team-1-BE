@@ -1068,6 +1068,43 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
+    void 요약_질문_turnLevel_0에서_종료_endType이_오면_STT로_넘기지_않고_바로_종료한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
+        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, new InterviewAnswerSubmitCommand(
+                sessionId, summaryQuestionId, null, 100f, 110f, 0f, 5f, 5f, InterviewEndType.HARD_CAP, false
+        ));
+
+        assertThat(result.answerId()).isNull();
+        assertThat(result.nextQuestion()).isNull();
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer);
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+    }
+
+    @Test
+    void 요약_질문_turnLevel_0에서_SKIP이_오면_400으로_거부한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+
+        InterviewAnswerSubmitCommand command = new InterviewAnswerSubmitCommand(
+                sessionId, summaryQuestionId, null, 100f, 110f, 0f, 5f, 5f, InterviewEndType.SKIP, false
+        );
+
+        assertThatThrownBy(() -> service.submit(userId, command))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SUMMARY_TURN_SKIP_NOT_ALLOWED);
+
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerAnalyzePersister, interviewAnswerTerminationPersister);
+    }
+
+    @Test
     void 직전_질문이_isWrapUp이면_자연종료로_처리하고_COMPLETED로_commit한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(true)));
