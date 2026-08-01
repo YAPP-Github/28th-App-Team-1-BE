@@ -35,9 +35,9 @@ public interface InterviewReportControllerDocs {
                     "- 카드는 질문/답변 턴 하나당 하나입니다. 같은 항목(축)에 속한 카드끼리는 `axisOrder`가 같고, 그 안에서 `depthLevel`로 순서를 구분합니다 " +
                     "(화면 표시는 \"질문 {axisOrder}-{depthLevel}\", 예: 1-1, 1-2, 2-1 ...).\n" +
                     "- `status`는 채점 파이프라인의 진행 상태만 나타냅니다 — `GENERATING`(채점 중) / `READY`(생성 완료) / `INSUFFICIENT_ANALYSIS`(분석 부족) / `FAILED`(생성 실패).\n" +
-                    "- `status=GENERATING`이면 `headline`/`redFlagNotices`/`video`/`cards`/`script`/`guestFeedback`이 모두 `null`입니다.\n" +
+                    "- `status=GENERATING`이면 `headline`/`video`/`cards`/`script`/`guestFeedback`이 모두 `null`입니다.\n" +
                     "- `status=INSUFFICIENT_ANALYSIS`이면 채점된 범위의 카드만 내려옵니다.\n" +
-                    "- 심각한 레드플래그가 있는지는 `status`가 아니라 `redFlagNotices`가 비어 있는지로 판단합니다. `status=READY`이면서 `redFlagNotices`가 있으면 헤드라인이 중립 사실 요약으로 대체됩니다.\n" +
+                    "- 레드플래그는 전체 보고서 단위 안내 줄 없이, 걸린 카드의 `cardRedFlagNotices`로만 노출됩니다. 심각 레드플래그가 있으면 `headline`도 칭찬 없는 중립 사실 요약으로 대체됩니다.\n" +
                     "- `resolutionNotice`가 있으면(해상도 낮음) 그 항목의 능력 판단성 분석을 보류한 상태입니다. 사유가 짧음·얕음이면 `highlightSpans`는 빈 배열이고, 딴 답(OFF_TOPIC)이면 `reason=OFF_INTENT` 하이라이트 1개가 붙습니다.\n" +
                     "- 레드플래그는 저장 5종 중 노출 3종(지어냄·모순·무결점 서사)만 중립 문구로 내려옵니다.\n" +
                     "- `video.url`은 영상이 만료되면 `null`이며, 그때도 카드의 대본·하이라이트는 그대로 유지됩니다.\n" +
@@ -56,7 +56,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "GENERATING",
                                                 "headline": null,
-                                                "redFlagNotices": null,
                                                 "video": null,
                                                 "cards": null,
                                                 "script": null,
@@ -70,7 +69,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "READY",
                                                 "headline": "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
-                                                "redFlagNotices": null,
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
@@ -164,7 +162,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "READY",
                                                 "headline": "이번 면접에서는 결제 응답 속도 개선 경험을 중심으로 이야기를 나눴어요.",
-                                                "redFlagNotices": null,
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
@@ -197,7 +194,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "INSUFFICIENT_ANALYSIS",
                                                 "headline": "이번 면접의 답변이 충분하지 않아요. 다음 면접 연습 때는 조금 더 충분한 답변을 말씀해주세요.",
-                                                "redFlagNotices": null,
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
@@ -232,12 +228,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "READY",
                                                 "headline": "이번 면접에서는 캐시 도입 결정과 장애 대응 경험을 중심으로 이야기를 나눴어요.",
-                                                "redFlagNotices": [
-                                                  {
-                                                    "type": "CONTRADICTION",
-                                                    "message": "답변 사이에 사실관계가 엇갈린 지점이 있었어요. 실제 면접관은 이런 모순에 민감할 수 있습니다."
-                                                  }
-                                                ],
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,
@@ -275,7 +265,6 @@ public interface InterviewReportControllerDocs {
                                               "data": {
                                                 "status": "READY",
                                                 "headline": "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.",
-                                                "redFlagNotices": null,
                                                 "video": {
                                                   "url": "https://cdn.example.com/videos/abc.mp4",
                                                   "expired": false,

@@ -8,14 +8,11 @@ import java.util.List;
 
 public record InterviewReportHttpResponse(
         @Schema(description = "채점 파이프라인 진행 상태 — GENERATING(채점 중) / READY(생성 완료) / INSUFFICIENT_ANALYSIS(분석 부족) / FAILED(생성 실패). " +
-                "심각 레드플래그 여부는 이 필드가 아니라 redFlagNotices로 판단한다(READY이면서 redFlagNotices가 있으면 심각 레드플래그)")
+                "레드플래그는 전체 보고서 단위가 아니라 각 카드의 cardRedFlagNotices로만 노출되며, headline 톤에도 반영된다")
         String status,
 
         @Schema(description = "한 줄 요약(헤드라인). GENERATING일 때는 null")
         String headline,
-
-        @Schema(description = "헤드라인 아래 표기되는 레드플래그 안내 줄(노출 3종만, 최대 2줄)")
-        List<RedFlagNotice> redFlagNotices,
 
         @Schema(description = "면접 영상 플레이어 메타. GENERATING일 때는 null")
         Video video,
@@ -35,7 +32,6 @@ public record InterviewReportHttpResponse(
         return new InterviewReportHttpResponse(
                 result.status().name(),
                 result.headline(),
-                result.redFlagNotices() == null ? null : result.redFlagNotices().stream().map(RedFlagNotice::from).toList(),
                 Video.from(result.video()),
                 result.cards() == null ? null : result.cards().stream().map(Card::from).toList(),
                 result.script() == null ? null : result.script().stream().map(ScriptLine::from).toList(),

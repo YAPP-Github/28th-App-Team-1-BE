@@ -793,9 +793,6 @@
   function renderReport(el, data) {
     let html = "";
     if (data.headline) html += `<h3>${escapeHtml(data.headline)}</h3>`;
-    if (data.redFlagNotices && data.redFlagNotices.length > 0) {
-      html += "<div>" + data.redFlagNotices.map((f) => `<span class="flag">${escapeHtml(f.type)}: ${escapeHtml(f.message)}</span>`).join("") + "</div>";
-    }
     if (data.cards) {
       html += data.cards.map((c) => `
         <div class="card">

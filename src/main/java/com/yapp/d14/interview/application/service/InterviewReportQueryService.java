@@ -66,9 +66,6 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             ResolutionLowReason.OFF_TOPIC, "질문과 다른 답변이 있어 이 항목은 능력 판단을 보류했어요."
     );
 
-    // 헤드라인 아래 안내 줄은 최대 2줄까지만 노출한다.
-    private static final int MAX_TOP_LEVEL_NOTICES = 2;
-
     private final InterviewSessionOwnershipCheckUseCase interviewSessionOwnershipCheckUseCase;
     private final InterviewSessionRepository interviewSessionRepository;
     private final ReportRepository reportRepository;
@@ -144,7 +141,6 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         return new InterviewReportQueryResult(
                 report.getStatus(),
                 report.getHeadline(),
-                topLevelNotices(redFlags),
                 videoResult,
                 cardResults,
                 script,
@@ -171,7 +167,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
     }
 
     private InterviewReportQueryResult statusOnly(ReportStatus status) {
-        return new InterviewReportQueryResult(status, null, null, null, null, null, null);
+        return new InterviewReportQueryResult(status, null, null, null, null, null);
     }
 
     // 카드를 축(testType)별 최소 questionId 순으로 줄세워, 면접에서 그 축이 다뤄진 순서(1부터)를 매긴다.
@@ -242,19 +238,6 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             questionNotices.forEach(notice -> byType.putIfAbsent(notice.type(), notice));
         }
         return byType.isEmpty() ? null : List.copyOf(byType.values());
-    }
-
-    // 노출 레드플래그가 없으면 빈 배열이 아니라 null로 내린다(계약: "비어 있는지"를 null 유무로 판단, GENERATING/FAILED와 동일).
-    private List<InterviewReportQueryResult.RedFlagNotice> topLevelNotices(List<RedFlag> redFlags) {
-        List<InterviewReportQueryResult.RedFlagNotice> notices = redFlags.stream()
-                .map(RedFlag::getType)
-                .filter(RedFlagType::isExposed)
-                .distinct()
-                .sorted(Comparator.comparingInt(Enum::ordinal))
-                .limit(MAX_TOP_LEVEL_NOTICES)
-                .map(type -> new InterviewReportQueryResult.RedFlagNotice(type, RED_FLAG_NOTICE.get(type)))
-                .toList();
-        return notices.isEmpty() ? null : notices;
     }
 
     private InterviewReportQueryResult.Card toCard(
