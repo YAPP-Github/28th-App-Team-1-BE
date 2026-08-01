@@ -8,6 +8,7 @@ import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
+import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketReservationStatusQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.result.TicketReservationHoldStatusResult;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class InterviewSessionResumeQueryServiceTest {
 
     @Mock
     private TicketReservationStatusQueryUseCase ticketReservationStatusQueryUseCase;
+
+    @Mock
+    private TicketReleaseUseCase ticketReleaseUseCase;
 
     @InjectMocks
     private InterviewSessionResumeQueryService service;
@@ -77,6 +81,7 @@ class InterviewSessionResumeQueryServiceTest {
         assertThat(result.startedAt()).isEqualTo(startedAt);
         assertThat(result.elapsedSeconds()).isGreaterThanOrEqualTo(0);
         verify(interviewSessionRepository, never()).save(any());
+        verify(ticketReleaseUseCase, never()).release(any(), any());
     }
 
     @Test
@@ -92,10 +97,11 @@ class InterviewSessionResumeQueryServiceTest {
         assertThat(result.status()).isEqualTo("ABANDONED");
         assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.HOLD_EXPIRED);
         verify(interviewSessionRepository).save(session);
+        verify(ticketReleaseUseCase).release(sessionId, AbandonCause.HOLD_EXPIRED.name());
     }
 
     @Test
-    void 진행중이고_예약은_HELD인데_heldAt이_TTL을_초과했으면_HOLD_EXPIRED로_정리한다() {
+    void 진행중이고_예약은_HELD인데_heldAt이_TTL을_초과했으면_HOLD_EXPIRED로_정리하고_이용권을_환불한다() {
         InterviewSession session = session(InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now().minusMinutes(30));
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session));
         given(ticketReservationStatusQueryUseCase.getHoldStatus(sessionId))
@@ -106,6 +112,7 @@ class InterviewSessionResumeQueryServiceTest {
         assertThat(result.resumeState()).isEqualTo("ENDED");
         assertThat(result.status()).isEqualTo("ABANDONED");
         verify(interviewSessionRepository).save(session);
+        verify(ticketReleaseUseCase).release(sessionId, AbandonCause.HOLD_EXPIRED.name());
     }
 
     @Test

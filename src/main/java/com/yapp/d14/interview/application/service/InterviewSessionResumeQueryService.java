@@ -6,6 +6,7 @@ import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
+import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketReservationStatusQueryUseCase;
 import com.yapp.d14.ticket.application.port.in.result.TicketReservationHoldStatusResult;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ class InterviewSessionResumeQueryService implements InterviewSessionResumeQueryU
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final TicketReservationStatusQueryUseCase ticketReservationStatusQueryUseCase;
+    private final TicketReleaseUseCase ticketReleaseUseCase;
 
     @Override
     @Transactional
@@ -41,9 +43,9 @@ class InterviewSessionResumeQueryService implements InterviewSessionResumeQueryU
             return InterviewSessionResumeResult.resumable(session.getStartedAt(), elapsedSeconds);
         }
 
-        // TODO: 보고서 생성이면 이용권 차감(COMMIT), 보고서 미생성이면 이용권 환불(RELEASE)하는 방향으로 구현 예정 — 아직 미확정.
         session.markAbandoned(AbandonCause.HOLD_EXPIRED);
         interviewSessionRepository.save(session);
+        ticketReleaseUseCase.release(sessionId, AbandonCause.HOLD_EXPIRED.name());
         return InterviewSessionResumeResult.ended(InterviewSessionStatus.ABANDONED.name());
     }
 
