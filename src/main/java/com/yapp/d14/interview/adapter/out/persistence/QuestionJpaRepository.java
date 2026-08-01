@@ -12,5 +12,7 @@ interface QuestionJpaRepository extends JpaRepository<QuestionJpaEntity, Long> {
 
     Optional<QuestionJpaEntity> findBySessionIdAndTurnLevel(Long sessionId, Integer turnLevel);
 
+    Optional<QuestionJpaEntity> findTopBySessionIdOrderByTurnLevelDesc(Long sessionId);
+
     void deleteAllBySessionId(Long sessionId);
 }

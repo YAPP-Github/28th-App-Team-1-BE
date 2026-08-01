@@ -38,6 +38,11 @@ class QuestionPersistenceAdapter implements QuestionRepository {
     }
 
     @Override
+    public Optional<Question> findLatestBySessionId(Long sessionId) {
+        return questionJpaRepository.findTopBySessionIdOrderByTurnLevelDesc(sessionId).map(QuestionJpaEntity::toDomain);
+    }
+
+    @Override
     public void deleteBySessionId(Long sessionId) {
         questionJpaRepository.deleteAllBySessionId(sessionId);
     }
