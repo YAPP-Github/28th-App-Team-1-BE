@@ -4,9 +4,7 @@ import com.yapp.d14.common.response.ApiResponse;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.user.adapter.in.web.request.UserNameRegisterHttpRequest;
 import com.yapp.d14.user.adapter.in.web.request.UserProfileUpdateHttpRequest;
-import com.yapp.d14.user.adapter.in.web.response.UserNameCheckHttpResponse;
 import com.yapp.d14.user.adapter.in.web.response.UserProfileHttpResponse;
-import com.yapp.d14.user.application.port.in.UserNameDuplicateCheckUseCase;
 import com.yapp.d14.user.application.port.in.UserNameRegisterUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileUpdateUseCase;
@@ -20,7 +18,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -32,7 +29,6 @@ import java.util.UUID;
 class UserController implements UserControllerDocs {
 
     private final UserNameRegisterUseCase userNameRegisterUseCase;
-    private final UserNameDuplicateCheckUseCase userNameDuplicateCheckUseCase;
     private final UserProfileQueryUseCase userProfileQueryUseCase;
     private final UserProfileUpdateUseCase userProfileUpdateUseCase;
     private final UserWithdrawUseCase userWithdrawUseCase;
@@ -45,16 +41,6 @@ class UserController implements UserControllerDocs {
     ) {
         userNameRegisterUseCase.register(userId, request.name());
         return ResponseEntity.ok(ApiResponse.ok());
-    }
-
-    @Override
-    @GetMapping("/name/check")
-    public ResponseEntity<ApiResponse<UserNameCheckHttpResponse>> checkName(
-            @CurrentUser UUID userId,
-            @RequestParam String name
-    ) {
-        boolean available = userNameDuplicateCheckUseCase.isAvailable(userId, name);
-        return ResponseEntity.ok(ApiResponse.ok(new UserNameCheckHttpResponse(available)));
     }
 
     @Override
