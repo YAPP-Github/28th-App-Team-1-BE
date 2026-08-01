@@ -272,6 +272,40 @@ class InterviewReportGenerateServiceTest {
     }
 
     @Test
+    void 레드플래그의_relatedTurns가_questionId로_변환되어_저장되고_모르는_턴은_버려진다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session()));
+        given(questionRepository.findAllBySessionId(1L)).willReturn(List.of(
+                question(1L, 1, TestType.DEPTH), question(2L, 2, TestType.BOUNDARY)
+        ));
+        given(answerRepository.findAllBySessionId(1L)).willReturn(List.of(
+                answer(1L, 1L, TestType.DEPTH, "깊이 답변"), answer(2L, 2L, TestType.BOUNDARY, "경계 답변")
+        ));
+        given(questionCandidateRepository.findAllBySessionId(1L)).willReturn(List.of());
+        given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
+                axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.BOUNDARY, AxisTier.SUPPORT)
+        ));
+        given(axisReportScorer.score(any())).willReturn(List.of(
+                new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거"),
+                new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
+        ));
+        given(redFlagReconciler.reconcile(any())).willReturn(List.of(
+                // 턴 1·2는 questionId 1L·2L로 매핑되고, 존재하지 않는 턴 99는 버려진다.
+                new RedFlagVerdict(RedFlagType.CONTRADICTION, null, null, false, List.of(), List.of(1, 2, 99), "모순 근거")
+        ));
+        given(reportCardContentGenerator.generate(any())).willReturn(List.of());
+        given(reportHeadlineGenerator.generate(any())).willReturn("헤드라인");
+
+        service.generate(1L);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RedFlag>> redFlagCaptor = ArgumentCaptor.forClass(List.class);
+        verify(interviewReportPersister).persist(eq(1L), any(), any(), redFlagCaptor.capture(), any());
+
+        RedFlag redFlag = redFlagCaptor.getValue().get(0);
+        assertThat(redFlag.getRelatedQuestionIds()).containsExactly(1L, 2L);
+    }
+
+    @Test
     void 노출_레드플래그가_knockout이면_등급이_NO_이하로_강등되고_SEVERE_RED_FLAG_헤드라인이_생성된다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session()));
         given(questionRepository.findAllBySessionId(1L)).willReturn(List.of(
