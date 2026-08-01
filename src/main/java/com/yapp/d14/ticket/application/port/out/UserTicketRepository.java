@@ -9,6 +9,8 @@ public interface UserTicketRepository {
 
     UserTicket save(UserTicket userTicket);
 
+    void insertIfAbsent(UserTicket userTicket);
+
     Optional<UserTicket> findByUserId(UUID userId);
 
     int decrementIfAvailable(UUID userId);
