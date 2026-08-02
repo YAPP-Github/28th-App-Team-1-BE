@@ -7,16 +7,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 interface TicketReservationJpaRepository extends JpaRepository<TicketReservationJpaEntity, Long> {
 
-    List<TicketReservationJpaEntity> findAllByUserIdAndStatusAndHeldAtBefore(
-            UUID userId, TicketReservationStatus status, LocalDateTime heldAtBefore
-    );
+    List<TicketReservationJpaEntity> findAllByUserIdAndStatus(UUID userId, TicketReservationStatus status);
 
     Optional<TicketReservationJpaEntity> findBySessionId(Long sessionId);
 

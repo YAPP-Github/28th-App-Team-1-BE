@@ -21,13 +21,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class InterviewSessionAbandonOnHoldExpiryServiceTest {
+class InterviewSessionAbandonIfInProgressServiceTest {
 
     @Mock
     private InterviewSessionRepository interviewSessionRepository;
 
     @InjectMocks
-    private InterviewSessionAbandonOnHoldExpiryService service;
+    private InterviewSessionAbandonIfInProgressService service;
 
     private final Long sessionId = 1L;
 
@@ -40,14 +40,26 @@ class InterviewSessionAbandonOnHoldExpiryServiceTest {
     }
 
     @Test
-    void IN_PROGRESS_세션이면_ABANDONED_HOLD_EXPIRED로_전환하고_저장한다() {
+    void IN_PROGRESS_세션이면_전달받은_cause로_ABANDONED로_전환하고_저장한다() {
         InterviewSession session = session(InterviewSessionStatus.IN_PROGRESS);
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session));
 
-        service.abandonForHoldExpiry(sessionId);
+        service.abandon(sessionId, AbandonCause.HOLD_EXPIRED);
 
         assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.ABANDONED);
         assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.HOLD_EXPIRED);
+        verify(interviewSessionRepository).save(session);
+    }
+
+    @Test
+    void SESSION_SUPERSEDED_cause로도_전환된다() {
+        InterviewSession session = session(InterviewSessionStatus.IN_PROGRESS);
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session));
+
+        service.abandon(sessionId, AbandonCause.SESSION_SUPERSEDED);
+
+        assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.ABANDONED);
+        assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.SESSION_SUPERSEDED);
         verify(interviewSessionRepository).save(session);
     }
 
@@ -56,7 +68,7 @@ class InterviewSessionAbandonOnHoldExpiryServiceTest {
         InterviewSession session = session(InterviewSessionStatus.COMPLETED);
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session));
 
-        service.abandonForHoldExpiry(sessionId);
+        service.abandon(sessionId, AbandonCause.HOLD_EXPIRED);
 
         assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.COMPLETED);
         verify(interviewSessionRepository, never()).save(session);
@@ -66,7 +78,7 @@ class InterviewSessionAbandonOnHoldExpiryServiceTest {
     void 세션이_없으면_아무것도_하지_않는다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.empty());
 
-        service.abandonForHoldExpiry(sessionId);
+        service.abandon(sessionId, AbandonCause.HOLD_EXPIRED);
 
         verify(interviewSessionRepository, never()).save(org.mockito.ArgumentMatchers.any());
     }

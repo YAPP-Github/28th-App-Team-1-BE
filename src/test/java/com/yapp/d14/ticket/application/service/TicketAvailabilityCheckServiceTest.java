@@ -1,6 +1,7 @@
 package com.yapp.d14.ticket.application.service;
 
-import com.yapp.d14.interview.application.port.in.InterviewSessionAbandonOnHoldExpiryUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewSessionAbandonIfInProgressUseCase;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.ticket.application.port.out.TicketReservationRepository;
 import com.yapp.d14.ticket.application.port.out.UserTicketRepository;
 import com.yapp.d14.ticket.domain.TicketReservation;
@@ -39,7 +40,7 @@ class TicketAvailabilityCheckServiceTest {
     private TicketReservationRepository ticketReservationRepository;
 
     @Mock
-    private InterviewSessionAbandonOnHoldExpiryUseCase interviewSessionAbandonOnHoldExpiryUseCase;
+    private InterviewSessionAbandonIfInProgressUseCase interviewSessionAbandonIfInProgressUseCase;
 
     @InjectMocks
     private TicketAvailabilityCheckService service;
@@ -48,7 +49,7 @@ class TicketAvailabilityCheckServiceTest {
 
     @Test
     void 신규_유저면_remaining_3으로_생성한_뒤_통과한다() {
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of());
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of());
         given(userTicketRepository.findByUserId(userId)).willReturn(Optional.empty());
         given(userTicketRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -61,7 +62,7 @@ class TicketAvailabilityCheckServiceTest {
 
     @Test
     void 기존_유저이고_remaining이_양수면_통과한다() {
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of());
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of());
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 2, LocalDateTime.now())));
 
@@ -71,7 +72,7 @@ class TicketAvailabilityCheckServiceTest {
 
     @Test
     void remaining이_0이면_NO_REMAINING_TICKET() {
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of());
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of());
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 0, LocalDateTime.now())));
 
@@ -82,41 +83,41 @@ class TicketAvailabilityCheckServiceTest {
     }
 
     @Test
-    void 만료된_HELD_예약이_있으면_원자적으로_RELEASED로_전환하고_remaining을_복구한다() {
-        TicketReservation expired = TicketReservation.of(
+    void HELD된_이전_세션이_있으면_경과_시간과_무관하게_원자적으로_RELEASED로_전환하고_remaining을_복구한다() {
+        TicketReservation held = TicketReservation.of(
                 10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
         );
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of(expired));
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of(held));
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
-        given(ticketReservationRepository.releaseIfHeld(10L, "HOLD_EXPIRED")).willReturn(1);
+        given(ticketReservationRepository.releaseIfHeld(10L, "SESSION_SUPERSEDED")).willReturn(1);
 
         service.checkAvailable(userId);
 
-        verify(ticketReservationRepository).releaseIfHeld(10L, "HOLD_EXPIRED");
+        verify(ticketReservationRepository).releaseIfHeld(10L, "SESSION_SUPERSEDED");
         verify(userTicketRepository, times(1)).increment(userId);
-        verify(interviewSessionAbandonOnHoldExpiryUseCase).abandonForHoldExpiry(1L);
+        verify(interviewSessionAbandonIfInProgressUseCase).abandon(1L, AbandonCause.SESSION_SUPERSEDED);
     }
 
     @Test
-    void 다른_트랜잭션이_이미_만료_예약을_처리했으면_increment도_세션_정리도_하지_않는다() {
-        TicketReservation expired = TicketReservation.of(
+    void 다른_트랜잭션이_이미_HELD_예약을_처리했으면_increment도_세션_정리도_하지_않는다() {
+        TicketReservation held = TicketReservation.of(
                 10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
         );
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of(expired));
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of(held));
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
-        given(ticketReservationRepository.releaseIfHeld(10L, "HOLD_EXPIRED")).willReturn(0);
+        given(ticketReservationRepository.releaseIfHeld(10L, "SESSION_SUPERSEDED")).willReturn(0);
 
         service.checkAvailable(userId);
 
         verify(userTicketRepository, never()).increment(any());
-        verify(interviewSessionAbandonOnHoldExpiryUseCase, never()).abandonForHoldExpiry(any());
+        verify(interviewSessionAbandonIfInProgressUseCase, never()).abandon(any(), any());
     }
 
     @Test
-    void 만료된_예약이_없으면_release나_increment가_일어나지_않는다() {
-        given(ticketReservationRepository.findExpiredHeld(any(), any())).willReturn(List.of());
+    void HELD된_이전_세션이_없으면_release나_increment가_일어나지_않는다() {
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of());
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
 
