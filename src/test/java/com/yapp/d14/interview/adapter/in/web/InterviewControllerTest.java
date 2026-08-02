@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
@@ -250,5 +251,32 @@ class InterviewControllerTest {
                         .param("isWrapUp", "false"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_AUDIO_FORMAT"));
+    }
+
+    @Test
+    void 답변_음성이_video_mp4를_audio_mp4로_위장해도_400() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.m4a", "audio/mp4", Mp4Fixtures.videoTrack());
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_AUDIO_FORMAT"));
+    }
+
+    @Test
+    void 실제_m4a_오디오는_통과한다() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.m4a", "audio/mp4", Mp4Fixtures.validM4aAudio());
+        given(interviewAnswerSubmitUseCase.submit(any(), any()))
+                .willReturn(new InterviewAnswerSubmitResult(1L, null, false, null, null));
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isOk());
     }
 }
