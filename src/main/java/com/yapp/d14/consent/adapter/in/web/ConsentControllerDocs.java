@@ -95,7 +95,8 @@ public interface ConsentControllerDocs {
                     "- 필수 항목 중 아직 한 번도 동의한 적 없는 항목\n" +
                     "- 과거에 동의했지만 현행 버전보다 낮은 버전으로 동의된 항목(선택 항목 포함)\n\n" +
                     "신규 유저는 필수 5종 전체가, 구버전 동의 유저는 바뀐 항목만 반환됩니다. " +
-                    "응답의 `status`로 최초 동의(NOT_SUBMITTED)인지 재동의(STALE)인지 이 API 하나만으로 구분할 수 있고, " +
+                    "응답의 `consentStatus`로 최초 동의(NOT_SUBMITTED)인지 재동의(STALE)인지 최신 상태(UP_TO_DATE)인지 " +
+                    "이 API 하나만으로 구분할 수 있고, `profileRegistered`로 회원 정보(직무·연차·이름) 등록 여부를 함께 확인할 수 있습니다. " +
                     "각 항목에는 필수 여부(`required`)와 제목(`label`)이 함께 내려갑니다. " +
                     "각 항목의 본문은 GET /api/v1/consents/{item}/versions/{version} 으로 별도 조회합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})"
@@ -103,7 +104,8 @@ public interface ConsentControllerDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "조회 성공. `status`와 `items`는 회원의 동의 상태에 따라 달라짐",
+                    description = "조회 성공. `consentStatus`와 `items`는 회원의 동의 상태에 따라 달라짐. " +
+                            "`consentStatus`가 가질 수 있는 값: NOT_SUBMITTED(최초 동의 필요) / STALE(재동의 필요) / UP_TO_DATE(재동의 불필요)",
                     content = @Content(
                             mediaType = "application/json",
                             schema = @Schema(implementation = ConsentPendingItemsHttpResponse.class),
@@ -112,7 +114,8 @@ public interface ConsentControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
-                                                "status": "NOT_SUBMITTED",
+                                                "consentStatus": "NOT_SUBMITTED",
+                                                "profileRegistered": false,
                                                 "items": [
                                                   { "code": "AGE_OVER_14", "label": "만 14세 이상", "required": true, "version": 1, "hasDocument": true },
                                                   { "code": "TERMS_OF_SERVICE", "label": "서비스 이용약관", "required": true, "version": 1, "hasDocument": true },
@@ -127,7 +130,8 @@ public interface ConsentControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
-                                                "status": "STALE",
+                                                "consentStatus": "STALE",
+                                                "profileRegistered": true,
                                                 "items": [
                                                   { "code": "TERMS_OF_SERVICE", "label": "서비스 이용약관", "required": true, "version": 2, "hasDocument": true }
                                                 ]
@@ -138,7 +142,8 @@ public interface ConsentControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
-                                                "status": "UP_TO_DATE",
+                                                "consentStatus": "UP_TO_DATE",
+                                                "profileRegistered": true,
                                                 "items": []
                                               }
                                             }
