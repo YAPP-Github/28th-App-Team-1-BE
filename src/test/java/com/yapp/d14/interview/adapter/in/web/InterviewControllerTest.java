@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +41,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -235,5 +237,18 @@ class InterviewControllerTest {
         mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("INTERVIEW_SESSION_NOT_FOUND"));
+    }
+
+    @Test
+    void 답변_음성이_m4a가_아니면_400() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.mp3", "audio/mpeg", "content".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_AUDIO_FORMAT"));
     }
 }
