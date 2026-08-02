@@ -31,9 +31,9 @@ public record InterviewAnswerSubmitHttpRequest(
                 종료·특수 처리 사유. null/SKIP/MANUAL_END/HARD_CAP/BACK_EXIT 중 하나
                 - null: 정상 진행 (일반 답변 제출)
                 - SKIP: 답변을 건너뜀 (audio 없음)
-                - MANUAL_END: 8:00 경과 후 사용자가 면접 종료 버튼을 눌러 수동 종료
+                - MANUAL_END: 사용자가 면접 종료 버튼을 눌러 수동 종료
                 - HARD_CAP: 12:00 경과로 서버가 강제 종료
-                - BACK_EXIT: 0:00~8:00 사이 사용자가 뒤로가기 버튼을 눌러 이탈
+                - BACK_EXIT: 사용자가 뒤로가기 버튼을 눌러 이탈
                 """)
         String endType,
 

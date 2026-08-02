@@ -264,8 +264,8 @@ public interface InterviewControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- turnLevel=0(요약 질문) 응답은 항상 다음 질문을 생성합니다.\n" +
                     "- turnLevel≥1에서는 `endType`에 따라 즉시 세션이 종료될 수 있습니다.\n" +
-                    "  - `endType=BACK_EXIT`: 0:00~8:00 사이 사용자가 뒤로가기 버튼을 눌러 이탈 — audio가 있으면 STT만 기록하고 즉시 종료(wrapUpMessage 없음).\n" +
-                    "  - `endType=MANUAL_END`: 8:00 이후 사용자가 면접 종료 버튼을 눌러 수동 종료 — 즉시 종료하며 짧은 마무리 멘트를 반환합니다.\n" +
+                    "  - `endType=BACK_EXIT`: 사용자가 뒤로가기 버튼을 눌러 이탈 — audio가 있으면 STT만 기록하고 즉시 종료(wrapUpMessage 없음).\n" +
+                    "  - `endType=MANUAL_END`: 사용자가 면접 종료 버튼을 눌러 수동 종료 — 즉시 종료하며 짧은 마무리 멘트를 반환합니다.\n" +
                     "  - `endType=HARD_CAP`: 12:00 경과 강제 종료 — audio 유무와 무관하게 즉시 종료합니다.\n" +
                     "  - 직전에 받은 질문이 마무리(wrap-up) 질문이었던 경우, endType 없이도 자연 종료됩니다.\n" +
                     "  - 위 종료 경로에서는 `nextQuestion`이 `null`, `sessionEnded`가 `true`이며, 이용권은 보류(HELD) 상태를 유지한 채 리포트 생성이 비동기로 트리거됩니다 — 확정(commit)은 리포트 생성 성공 시점에 이뤄집니다.\n" +
