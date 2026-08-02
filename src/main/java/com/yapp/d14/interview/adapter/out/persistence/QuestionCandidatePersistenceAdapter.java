@@ -38,6 +38,13 @@ class QuestionCandidatePersistenceAdapter implements QuestionCandidateRepository
     }
 
     @Override
+    public List<QuestionCandidate> findAllById(List<Long> ids) {
+        return questionCandidateJpaRepository.findAllById(ids).stream()
+                .map(QuestionCandidateJpaEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<QuestionCandidate> findAllBySessionId(Long sessionId) {
         return questionCandidateJpaRepository.findAllBySessionId(sessionId).stream()
                 .map(QuestionCandidateJpaEntity::toDomain)
