@@ -125,7 +125,8 @@ public interface InterviewResumeControllerDocs {
                     "- 레이스 케이스 — `GET /{sessionId}/resume` 확인과 이 호출 사이에 다른 경로(다른 기기의 세션 생성 등)가 끼어들어 " +
                     "이용권 예약이 더 이상 유효하지 않게 된 경우, `409`가 아니라 `200`으로 `sessionEnded=true`를 반환합니다. " +
                     "이때 세션은 `ABANDONED`(중단사유 `HOLD_EXPIRED`)로 전환되고 이용권도 즉시 환불 처리됩니다.\n" +
-                    "- `409 SESSION_ALREADY_ENDED`는 `GET /{sessionId}/resume`을 거치지 않고 이미 종료된 세션에 바로 호출한 비정상적인 경우에만 발생합니다."
+                    "- `409`는 `GET /{sessionId}/resume`을 거치지 않고 IN_PROGRESS가 아닌 세션에 바로 호출한 비정상적인 경우에만 발생하며, " +
+                            "세션 상태에 따라 `SESSION_ALREADY_ENDED`(COMPLETED/ABANDONED/INVALID) / `SESSION_NOT_STARTED`(PREPARING) / `SESSION_PRELOAD_FAILED`(PRELOAD_FAILED)로 구분됩니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -185,16 +186,32 @@ public interface InterviewResumeControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "GET /{sessionId}/resume을 거치지 않고 이미 종료된 세션에 호출한 경우",
+                    description = "GET /{sessionId}/resume을 거치지 않고 IN_PROGRESS가 아닌 세션에 호출한 경우",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "SESSION_ALREADY_ENDED",
-                                      "message": "이미 종료된 면접 세션이에요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "이미 종료된 세션(COMPLETED/ABANDONED/INVALID)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_ALREADY_ENDED",
+                                              "message": "이미 종료된 면접 세션이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "아직 준비 중인 세션(PREPARING)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_NOT_STARTED",
+                                              "message": "아직 준비 중인 면접 세션이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "질문 준비 실패한 세션(PRELOAD_FAILED)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_PRELOAD_FAILED",
+                                              "message": "질문 준비에 실패한 면접 세션이에요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })

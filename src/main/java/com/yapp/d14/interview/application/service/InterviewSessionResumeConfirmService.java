@@ -39,8 +39,11 @@ class InterviewSessionResumeConfirmService implements InterviewSessionResumeConf
     public InterviewSessionResumeConfirmResult confirmResume(UUID userId, Long sessionId) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, sessionId, userId);
 
-        if (session.getStatus() != InterviewSessionStatus.IN_PROGRESS) {
-            throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
+        switch (session.getStatus()) {
+            case IN_PROGRESS -> { }
+            case PREPARING -> throw new InterviewException(InterviewErrorCode.SESSION_NOT_STARTED);
+            case PRELOAD_FAILED -> throw new InterviewException(InterviewErrorCode.SESSION_PRELOAD_FAILED);
+            default -> throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
         }
 
         TicketReservationHoldStatusResult hold = ticketReservationStatusQueryUseCase.getHoldStatus(sessionId);
