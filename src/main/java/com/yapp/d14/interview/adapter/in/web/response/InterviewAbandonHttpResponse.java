@@ -18,7 +18,7 @@ public record InterviewAbandonHttpResponse(
         @Schema(description = "세션 종료 시각")
         LocalDateTime endedAt,
 
-        @Schema(description = "이용권 처리 결과 — RELEASED(환급) / COMMITTED(차감)")
+        @Schema(description = "이용권 처리 결과 — RELEASED(환급) / COMMITTED(차감예정)")
         String ticketOutcome,
 
         @Schema(description = "리포트 생성 트리거 여부(USER_EXIT이면 항상 true)")
