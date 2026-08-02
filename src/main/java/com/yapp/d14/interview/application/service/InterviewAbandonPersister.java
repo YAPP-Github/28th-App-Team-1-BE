@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.common.util.AfterCommitExecutor;
 import com.yapp.d14.interview.application.port.in.InterviewReportGenerateUseCase;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.domain.AbandonCause;
@@ -42,7 +43,8 @@ class InterviewAbandonPersister {
         // 이용권은 여기서 커밋하지 않는다 — 리포트 생성 트리거만 하고, 실제 커밋/환급은 그 결과에 따라
         // InterviewReportGenerateService(성공 시 커밋)와 InterviewReportFailureHandler(실패 시 환급)가 처리한다.
         if (cause == AbandonCause.USER_EXIT) {
-            triggerReportGeneration(current.getId());
+            Long sessionId = current.getId();
+            AfterCommitExecutor.runAfterCommit(() -> triggerReportGeneration(sessionId));
             return new PersistResult(current.getEndedAt(), "HELD", true);
         }
 
