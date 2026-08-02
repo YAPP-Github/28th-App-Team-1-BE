@@ -25,8 +25,11 @@ class InterviewAbandonService implements InterviewAbandonUseCase {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(
                 interviewSessionRepository, command.sessionId(), userId
         );
-        if (session.getStatus() != InterviewSessionStatus.IN_PROGRESS) {
-            throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
+        switch (session.getStatus()) {
+            case IN_PROGRESS -> { }
+            case PREPARING -> throw new InterviewException(InterviewErrorCode.SESSION_NOT_STARTED);
+            case PRELOAD_FAILED -> throw new InterviewException(InterviewErrorCode.SESSION_PRELOAD_FAILED);
+            default -> throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
         }
 
         InterviewAbandonPersister.PersistResult persisted = interviewAbandonPersister.persist(session, command.cause());

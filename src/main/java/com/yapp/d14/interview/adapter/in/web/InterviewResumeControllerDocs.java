@@ -284,16 +284,33 @@ public interface InterviewResumeControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "이미 COMPLETED/ABANDONED/INVALID인 세션 — 중복 탭이면 이미 중단 완료로 간주하고 넘어가면 됨",
+                    description = "IN_PROGRESS가 아닌 세션 — 이미 COMPLETED/ABANDONED/INVALID면 중복 탭으로 간주하고 넘어가면 되고, " +
+                            "PREPARING/PRELOAD_FAILED면 아직 중단할 대상이 없는 상태이므로 별도 코드로 구분됩니다.",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "SESSION_ALREADY_ENDED",
-                                      "message": "이미 종료된 면접 세션이에요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "이미 종료된 세션(COMPLETED/ABANDONED/INVALID)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_ALREADY_ENDED",
+                                              "message": "이미 종료된 면접 세션이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "아직 준비 중인 세션(PREPARING)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_NOT_STARTED",
+                                              "message": "아직 준비 중인 면접 세션이에요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "질문 준비 실패한 세션(PRELOAD_FAILED)", value = """
+                                            {
+                                              "success": false,
+                                              "code": "SESSION_PRELOAD_FAILED",
+                                              "message": "질문 준비에 실패한 면접 세션이에요."
+                                            }
+                                            """)
+                            }
                     )
             )
     })
