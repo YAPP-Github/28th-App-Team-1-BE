@@ -145,7 +145,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleRegularTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
-        // 종료 판정(MANUAL_END/HARD_CAP/EARLY_EXIT/NORMAL_END)은 submit()에서 turnLevel==0 분기보다 먼저 처리됐으므로 여기 도달하지 않는다.
+        // 종료 판정(MANUAL_END/HARD_CAP/BACK_EXIT/NORMAL_END)은 submit()에서 turnLevel==0 분기보다 먼저 처리됐으므로 여기 도달하지 않는다.
         if (command.endType() == InterviewEndType.SKIP) {
             return handleSkippedTurn(session, question, command);
         }
@@ -317,7 +317,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     }
 
     private InterviewEndType resolveTerminationEndType(Question question, InterviewAnswerSubmitCommand command) {
-        if (command.endType() == InterviewEndType.EARLY_EXIT
+        if (command.endType() == InterviewEndType.BACK_EXIT
                 || command.endType() == InterviewEndType.MANUAL_END
                 || command.endType() == InterviewEndType.HARD_CAP) {
             return command.endType();
@@ -337,9 +337,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
 
-        String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
-                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType, outcomeReason);
+                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
         if (termination.transcription() != null) {

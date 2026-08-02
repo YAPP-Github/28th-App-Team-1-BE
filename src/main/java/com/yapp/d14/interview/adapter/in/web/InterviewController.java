@@ -32,18 +32,14 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Locale;
-import java.util.Set;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/interview/sessions")
 @RequiredArgsConstructor
 class InterviewController implements InterviewControllerDocs {
-
-    // m4a(MP4 컨테이너/AAC) 계열로 허용하는 content-type. 클라·프록시가 붙이는 표기 편차를 흡수한다.
-    private static final Set<String> M4A_CONTENT_TYPES =
-            Set.of("audio/mp4", "audio/x-m4a", "audio/m4a");
 
     private final InterviewSessionCreateUseCase interviewSessionCreateUseCase;
     private final InterviewSessionStatusUseCase interviewSessionStatusUseCase;
@@ -93,24 +89,21 @@ class InterviewController implements InterviewControllerDocs {
     }
 
     // 클라이언트(iOS/Android 네이티브)는 답변 음성을 m4a로 통일 업로드한다. STT(Whisper)는 확장자로 포맷을
-    // 추론하므로, m4a 계약을 어긴 업로드(예: 브라우저 기본 webm)를 여기서 400으로 조기 차단한다.
-    // content-type이 일반값(application/octet-stream 등)일 수 있어 파일명 확장자도 함께 신호로 본다.
+    // 추론하므로, m4a 계약을 어긴 업로드를 여기서 400으로 조기 차단한다. content-type·파일명은 클라이언트가
+    // 임의로 붙일 수 있어 신뢰하지 않고, 바이트 자체가 실제 MP4/AAC 컨테이너인지 검사한다.
     private static void validateAudioFormat(MultipartFile audio) {
         if (audio == null || audio.isEmpty()) {
             return;
         }
-        String contentType = audio.getContentType();
-        if (contentType != null && M4A_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            return;
+        byte[] bytes;
+        try {
+            bytes = audio.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-        String filename = audio.getOriginalFilename();
-        if (filename != null) {
-            String lower = filename.toLowerCase(Locale.ROOT);
-            if (lower.endsWith(".m4a") || lower.endsWith(".mp4")) {
-                return;
-            }
+        if (!M4aAudioFormatValidator.isM4aAudio(bytes)) {
+            throw new InterviewException(InterviewErrorCode.INVALID_AUDIO_FORMAT);
         }
-        throw new InterviewException(InterviewErrorCode.INVALID_AUDIO_FORMAT);
     }
 }
 

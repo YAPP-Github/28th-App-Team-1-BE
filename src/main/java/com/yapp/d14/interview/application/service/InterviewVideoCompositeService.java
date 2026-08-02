@@ -78,7 +78,7 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
 
     // 면접관 마무리 멘트: 프론트가 보고한 재생 시각(wrapUpStartSec)이 있고 종료 유형에 마무리 문구가 있을 때만 얹는다.
     // 음성 키는 종료 유형별 공용 키(system/interview/wrapup-messages/{endType}.mp3). 답변·질문 음성과 달리 세션 무관하게 공유된다.
-    // 객체가 없으면(EARLY_EXIT 등) 컴포지터가 NoSuchKeyException으로 해당 트랙만 건너뛴다.
+    // 마무리 문구가 있는 종료 유형인데도 S3에 해당 객체가 없으면 컴포지터가 NoSuchKeyException으로 그 트랙만 건너뛴다.
     private List<AudioTrack> wrapUpTrack(Long sessionId) {
         Float startSec = interviewVideoRepository.findBySessionId(sessionId)
                 .map(InterviewVideo::getWrapUpStartSec)
