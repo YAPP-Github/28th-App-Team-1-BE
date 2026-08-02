@@ -16,11 +16,13 @@ import com.yapp.d14.interview.application.port.out.ReportCardContentContext;
 import com.yapp.d14.interview.application.port.out.ReportCardContentGenerator;
 import com.yapp.d14.interview.application.port.out.ReportCardDraft;
 import com.yapp.d14.interview.application.port.out.ReportHeadlineGenerator;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.AxisTier;
 import com.yapp.d14.interview.domain.HeadlineBranch;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
+import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.InternalGrade;
@@ -38,6 +40,7 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -96,6 +99,9 @@ class InterviewReportGenerateServiceTest {
     @Mock
     private QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
 
+    @Mock
+    private TicketCommitUseCase ticketCommitUseCase;
+
     @InjectMocks
     private InterviewReportGenerateService service;
 
@@ -106,6 +112,24 @@ class InterviewReportGenerateServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
+                25, 20, 10, 20, 10, 15, 0, 0, null
+        );
+    }
+
+    // 재접속 "중단하기"(USER_EXIT)로 트리거된 리포트 생성 — 세션은 ABANDONED라 endType이 없고 abandonCause로 커밋 사유를 판단한다.
+    private InterviewSession abandonedSession(AbandonCause cause) {
+        return InterviewSession.of(
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
+                25, 20, 10, 20, 10, 15, 0, 0, cause
+        );
+    }
+
+    // 정상 종료 세션 — endType별로 커밋 사유가 갈리는지 검증할 때 쓴다.
+    private InterviewSession completedSession(InterviewEndType endType) {
+        return InterviewSession.of(
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), endType,
                 25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
@@ -172,6 +196,29 @@ class InterviewReportGenerateServiceTest {
         verify(interviewReportPersister).persist(eq(1L), reportCaptor.capture(), eq(List.of()), eq(List.of()), eq(List.of()));
         assertThat(reportCaptor.getValue().getStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
         assertThat(reportCaptor.getValue().getHeadlineBranch()).isEqualTo(HeadlineBranch.INSUFFICIENT_ANALYSIS);
+        verify(ticketCommitUseCase).commit(1L, "COMPLETED");
+    }
+
+    @Test
+    void ABANDONED_USER_EXIT_세션이면_USER_EXIT_사유로_커밋한다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(abandonedSession(AbandonCause.USER_EXIT)));
+        given(questionRepository.findAllBySessionId(1L)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(1L)).willReturn(List.of());
+
+        service.generate(1L);
+
+        verify(ticketCommitUseCase).commit(1L, "USER_EXIT");
+    }
+
+    @Test
+    void COMPLETED_BACK_EXIT_세션이면_BACK_EXIT_사유로_커밋한다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(completedSession(InterviewEndType.BACK_EXIT)));
+        given(questionRepository.findAllBySessionId(1L)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(1L)).willReturn(List.of());
+
+        service.generate(1L);
+
+        verify(ticketCommitUseCase).commit(1L, "BACK_EXIT");
     }
 
     @Test
@@ -215,6 +262,7 @@ class InterviewReportGenerateServiceTest {
         assertThat(report.getCompositeScore()).isEqualTo(3.56);
         assertThat(report.getInternalGrade()).isEqualTo(InternalGrade.STRONG_HIRE);
         assertThat(axisCaptor.getValue()).hasSize(2);
+        verify(ticketCommitUseCase).commit(1L, "COMPLETED");
     }
 
     @Test
@@ -384,5 +432,6 @@ class InterviewReportGenerateServiceTest {
 
         verify(interviewReportFailureHandler).markFailed(1L);
         verify(interviewReportPersister, never()).persist(any(), any(), any(), any(), any());
+        verify(ticketCommitUseCase, never()).commit(any(), any());
     }
 }

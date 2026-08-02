@@ -23,7 +23,9 @@ import com.yapp.d14.interview.domain.AxisTier;
 import com.yapp.d14.interview.domain.CompositeScoreCalculator;
 import com.yapp.d14.interview.domain.HeadlineBranch;
 import com.yapp.d14.interview.domain.InterviewAxisPlan;
+import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
+import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.QuestionCandidateSource;
@@ -34,6 +36,7 @@ import com.yapp.d14.interview.domain.Report;
 import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -70,6 +73,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
     private final InterviewReportPersister interviewReportPersister;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
+    private final TicketCommitUseCase ticketCommitUseCase;
 
     private record Turn(
             int turnNumber,
@@ -103,6 +107,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                         sessionId, null, null, INSUFFICIENT_ANALYSIS_HEADLINE, HeadlineBranch.INSUFFICIENT_ANALYSIS, ReportStatus.INSUFFICIENT_ANALYSIS
                 );
                 interviewReportPersister.persist(sessionId, report, List.of(), List.of(), List.of());
+                ticketCommitUseCase.commit(sessionId, resolveTicketOutcomeReason(session));
                 return;
             }
 
@@ -126,12 +131,22 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
             List<ReportCard> reportCards = generateReportCards(sessionId, cappedAxisEvaluations, turns);
 
             interviewReportPersister.persist(sessionId, report, cappedAxisEvaluations, redFlags, reportCards);
+            ticketCommitUseCase.commit(sessionId, resolveTicketOutcomeReason(session));
             generateQuestionSegmentsSafely(session.getUserId(), sessionId);
             log.info("[INTERVIEW REPORT] 처리 완료: sessionId={}, status={}", sessionId, report.getStatus());
         } catch (Exception e) {
             log.error("[INTERVIEW REPORT] 처리 실패: sessionId={}", sessionId, e);
             interviewReportFailureHandler.markFailed(sessionId);
         }
+    }
+
+    // 이용권 커밋은 리포트 생성 성공 시점에 확정한다(이용권 사이클 정리 문서 4장 B안). USER_EXIT로 중단된 뒤
+    // 트리거된 리포트는 세션이 ABANDONED 상태라 endType이 없으므로 abandonCause를 이유로 쓴다.
+    private String resolveTicketOutcomeReason(InterviewSession session) {
+        if (session.getStatus() == InterviewSessionStatus.ABANDONED) {
+            return session.getAbandonCause() != null ? session.getAbandonCause().name() : "ABANDONED";
+        }
+        return session.getEndType() == InterviewEndType.BACK_EXIT ? "BACK_EXIT" : "COMPLETED";
     }
 
     // 질문 문장 발화 시각 생성(#78)은 리포트 부가 기능이라, 어떤 실패도 이미 저장된 리포트를 FAILED로 되돌리면 안 된다 — 삼키고 로깅만 한다.

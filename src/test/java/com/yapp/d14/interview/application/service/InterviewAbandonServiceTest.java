@@ -55,7 +55,7 @@ class InterviewAbandonServiceTest {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session));
         LocalDateTime endedAt = LocalDateTime.now();
         given(interviewAbandonPersister.persist(session, AbandonCause.USER_EXIT))
-                .willReturn(new InterviewAbandonPersister.PersistResult(endedAt, "COMMITTED", true));
+                .willReturn(new InterviewAbandonPersister.PersistResult(endedAt, "HELD", true));
 
         InterviewAbandonResult result = service.abandon(userId, new InterviewAbandonCommand(sessionId, AbandonCause.USER_EXIT));
 
@@ -63,7 +63,7 @@ class InterviewAbandonServiceTest {
         assertThat(result.status()).isEqualTo("ABANDONED");
         assertThat(result.abandonCause()).isEqualTo(AbandonCause.USER_EXIT);
         assertThat(result.endedAt()).isEqualTo(endedAt);
-        assertThat(result.ticketOutcome()).isEqualTo("COMMITTED");
+        assertThat(result.ticketOutcome()).isEqualTo("HELD");
         assertThat(result.reportGenerating()).isTrue();
     }
 

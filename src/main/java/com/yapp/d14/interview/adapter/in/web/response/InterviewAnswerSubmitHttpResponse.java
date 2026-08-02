@@ -13,11 +13,11 @@ public record InterviewAnswerSubmitHttpResponse(
         @Schema(description = "면접 세션이 완전히 종료됐는지 여부")
         boolean sessionEnded,
 
-        @Schema(description = "마무리 멘트 음성. 세션 종료 응답에서만 값 존재(EARLY_EXIT은 null)")
+        @Schema(description = "마무리 멘트 음성. 세션 종료 응답에서만 값 존재(BACK_EXIT은 null)")
         WrapUpMessageHttpResponse wrapUpMessage,
 
         @Schema(description = "세션 종료 사유. 세션이 끝나지 않았으면 null. " +
-                "NORMAL_END(정상 종료)/MANUAL_END(수동 종료)/HARD_CAP(최대 한도 도달)/EARLY_EXIT(중도 이탈)/STT_RESET(STT 인식 실패로 무효화) 중 하나",
+                "NORMAL_END(정상 종료)/MANUAL_END(수동 종료)/HARD_CAP(최대 한도 도달)/BACK_EXIT(뒤로가기)/STT_RESET(STT 인식 실패로 무효화) 중 하나",
                 example = "STT_RESET")
         String endType
 ) {

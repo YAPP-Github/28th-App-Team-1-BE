@@ -7,7 +7,6 @@ import com.yapp.d14.ticket.domain.TicketReservationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,10 +23,8 @@ class TicketReservationPersistenceAdapter implements TicketReservationRepository
     }
 
     @Override
-    public List<TicketReservation> findExpiredHeld(UUID userId, LocalDateTime heldBefore) {
-        return ticketReservationJpaRepository.findAllByUserIdAndStatusAndHeldAtBefore(
-                        userId, TicketReservationStatus.HELD, heldBefore
-                ).stream()
+    public List<TicketReservation> findHeldByUserId(UUID userId) {
+        return ticketReservationJpaRepository.findAllByUserIdAndStatus(userId, TicketReservationStatus.HELD).stream()
                 .map(TicketReservationJpaEntity::toDomain)
                 .toList();
     }

@@ -55,7 +55,7 @@ public record InterviewAnswerSubmitCommand(
         boolean invalid = switch (endType) {
             case null -> !hasAudio;
             case SKIP -> hasAudio;
-            case MANUAL_END, HARD_CAP, EARLY_EXIT -> false;
+            case MANUAL_END, HARD_CAP, BACK_EXIT -> false;
             default -> false;
         };
         if (invalid) {

@@ -8,7 +8,6 @@ import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
-import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +34,6 @@ class InterviewAbandonPersisterTest {
     private InterviewSessionRepository interviewSessionRepository;
 
     @Mock
-    private TicketCommitUseCase ticketCommitUseCase;
-
-    @Mock
     private TicketReleaseUseCase ticketReleaseUseCase;
 
     @Mock
@@ -60,8 +56,8 @@ class InterviewAbandonPersisterTest {
     }
 
     @Test
-    void USER_EXIT면_이용권_커밋_없이_리포트_생성만_트리거한다() {
-        // TODO: 이용권 커밋을 보고서 생성 성공/실패에 연동하기 전까지는 여기서 커밋을 호출하지 않는다.
+    void USER_EXIT면_이용권_보류를_유지한_채_리포트_생성만_트리거한다() {
+        // 이용권 커밋/환급은 리포트 생성 결과에 따라 InterviewReportGenerateService/InterviewReportFailureHandler가 처리한다.
         InterviewSession session = session();
         given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(session));
 
@@ -69,10 +65,9 @@ class InterviewAbandonPersisterTest {
 
         assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.ABANDONED);
         assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.USER_EXIT);
-        assertThat(result.ticketOutcome()).isEqualTo("COMMITTED");
+        assertThat(result.ticketOutcome()).isEqualTo("HELD");
         assertThat(result.reportGenerating()).isTrue();
         verify(interviewSessionRepository).save(session);
-        verify(ticketCommitUseCase, never()).commit(any(), any());
         verify(ticketReleaseUseCase, never()).release(any(), any());
         verify(interviewReportGenerateUseCase).generate(sessionId);
     }
@@ -88,7 +83,6 @@ class InterviewAbandonPersisterTest {
         assertThat(result.ticketOutcome()).isEqualTo("RELEASED");
         assertThat(result.reportGenerating()).isFalse();
         verify(ticketReleaseUseCase).release(sessionId, "NETWORK_DISCONNECT");
-        verify(ticketCommitUseCase, never()).commit(any(), any());
         verify(interviewReportGenerateUseCase, never()).generate(any());
     }
 
@@ -121,7 +115,6 @@ class InterviewAbandonPersisterTest {
 
         verify(interviewSessionRepository, never()).save(any());
         verify(ticketReleaseUseCase, never()).release(any(), any());
-        verify(ticketCommitUseCase, never()).commit(any(), any());
         verify(interviewReportGenerateUseCase, never()).generate(any());
     }
 }

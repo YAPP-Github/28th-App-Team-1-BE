@@ -14,6 +14,8 @@ public interface QuestionCandidateRepository {
 
     Optional<QuestionCandidate> findById(Long id);
 
+    List<QuestionCandidate> findAllById(List<Long> ids);
+
     List<QuestionCandidate> findAllBySessionId(Long sessionId);
 
     List<QuestionCandidate> findOpenBySessionIdAndTestType(Long sessionId, TestType testType);
