@@ -407,6 +407,13 @@ public interface InterviewControllerDocs {
                                               "code": "INVALID_AUDIO_PRESENCE",
                                               "message": "endType과 답변 음성 유무가 맞지 않아요."
                                             }
+                                            """),
+                                    @ExampleObject(name = "지원하지 않는 답변 음성 형식", value = """
+                                            {
+                                              "success": false,
+                                              "code": "INVALID_AUDIO_FORMAT",
+                                              "message": "답변 음성은 m4a 형식만 업로드할 수 있어요."
+                                            }
                                             """)
                             }
                     )
