@@ -179,14 +179,17 @@ async function apiBlob(path) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function playBase64Mp3(b64) { return playAudioUrl("data:audio/mp3;base64," + b64); }
+// resolve(played): played=true면 실제로 끝까지 재생됨, false면 자동재생 차단/재생 오류로 중단됨.
 function playAudioUrl(url) {
   return new Promise((resolve) => {
     const a = $("qAudio"); a.src = url;
     let done = false;
-    const finish = () => { if (!done) { done = true; resolve(); } };
-    a.onended = finish;
+    const finish = (played) => { if (!done) { done = true; resolve(!!played); } };
+    a.onended = () => finish(true);
+    // play() 성공 후 디코드/소스 오류가 나면 onended가 발생하지 않아 Promise가 멈추므로 별도 처리한다.
+    a.onerror = () => { log("오디오 재생 오류 — 다음 단계로 진행합니다"); finish(false); };
     // 자동재생이 막혀도 흐름을 멈추지 않고 바로 녹음 단계로 넘어간다(질문은 qAudio 재생 버튼으로 직접 들을 수 있음).
-    a.play().catch((e) => { log("자동재생 차단 — qAudio의 ▶로 직접 재생하세요(진행은 계속됩니다)", e.message); finish(); });
+    a.play().catch((e) => { log("자동재생 차단 — qAudio의 ▶로 직접 재생하세요(진행은 계속됩니다)", e.message); finish(false); });
   });
 }
 
@@ -520,10 +523,17 @@ async function finishInterview(r) {
   state.wrapUpStartSec = state.wrapUpEndSec = null;
   if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) {
     log("마무리 멘트 재생");
-    state.wrapUpStartSec = nowSec();
-    await playBase64Mp3(r.wrapUpMessage.ttsAudio);
-    state.wrapUpEndSec = nowSec();
-    log(`마무리 멘트 재생 구간 [${state.wrapUpStartSec.toFixed(2)}, ${state.wrapUpEndSec.toFixed(2)}]s`);
+    const wrapUpStartSec = nowSec();
+    // 자동재생 차단/재생 오류로 즉시 resolve된 경우(played=false) 구간이 0초에 가까워 합성에 못 쓰므로 보고를 생략한다.
+    const played = await playBase64Mp3(r.wrapUpMessage.ttsAudio);
+    const wrapUpEndSec = nowSec();
+    if (played) {
+      state.wrapUpStartSec = wrapUpStartSec;
+      state.wrapUpEndSec = wrapUpEndSec;
+      log(`마무리 멘트 재생 구간 [${wrapUpStartSec.toFixed(2)}, ${wrapUpEndSec.toFixed(2)}]s`);
+    } else {
+      log("마무리 멘트 재생 실패/차단 — 구간 보고 생략");
+    }
   }
   log("면접 종료 — 영상 마무리 중... reportId=" + r.reportId);
 
@@ -661,10 +671,11 @@ function renderHighlightDetail(s) {
 
 // 클릭해 해당 시각으로 재생되는 대본 행(scriptSegments / script 공용).
 function timedRow(role, textStr, startSec, endSec, roleStyle) {
+  const fmt = (v) => (typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "-");
   const row = el("div", "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;");
   row.innerHTML = `<span class="pill" style="${roleStyle || ""}">${esc(role)}</span>`
     + `<span style="flex:1">${esc(textStr)}</span>`
-    + `<span class="muted">${startSec.toFixed(2)}–${endSec.toFixed(2)}s</span>`;
+    + `<span class="muted">${fmt(startSec)}–${fmt(endSec)}s</span>`;
   row.onclick = () => seek(startSec);
   return row;
 }
