@@ -6,6 +6,8 @@ import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.domain.JobType;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
 import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import org.junit.jupiter.api.Test;
@@ -15,10 +17,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -59,6 +63,7 @@ class InterviewAbandonPersisterTest {
     void USER_EXIT면_이용권_커밋_없이_리포트_생성만_트리거한다() {
         // TODO: 이용권 커밋을 보고서 생성 성공/실패에 연동하기 전까지는 여기서 커밋을 호출하지 않는다.
         InterviewSession session = session();
+        given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(session));
 
         InterviewAbandonPersister.PersistResult result = persister.persist(session, AbandonCause.USER_EXIT);
 
@@ -75,6 +80,7 @@ class InterviewAbandonPersisterTest {
     @Test
     void NETWORK_DISCONNECT면_이용권을_환급하고_리포트를_생성하지_않는다() {
         InterviewSession session = session();
+        given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(session));
 
         InterviewAbandonPersister.PersistResult result = persister.persist(session, AbandonCause.NETWORK_DISCONNECT);
 
@@ -89,11 +95,33 @@ class InterviewAbandonPersisterTest {
     @Test
     void 리포트_생성_큐가_가득_찼으면_실패_처리로_넘어가고_예외를_삼킨다() {
         InterviewSession session = session();
+        given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(session));
         org.mockito.Mockito.doThrow(new RejectedExecutionException())
                 .when(interviewReportGenerateUseCase).generate(sessionId);
 
         persister.persist(session, AbandonCause.USER_EXIT);
 
         verify(interviewReportFailureHandler).markFailed(sessionId);
+    }
+
+    @Test
+    void 락_획득_시점에_이미_IN_PROGRESS가_아니면_SESSION_ALREADY_ENDED로_실패하고_아무것도_처리하지_않는다() {
+        // 서비스 레이어의 상태 확인 이후, 이 저장 사이에 다른 요청이 먼저 세션을 종료시킨 경합 상황을 흉내낸다.
+        InterviewSession alreadyAbandoned = InterviewSession.of(
+                sessionId, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
+                LocalDateTime.now(), InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
+                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.NETWORK_DISCONNECT
+        );
+        given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(alreadyAbandoned));
+
+        assertThatThrownBy(() -> persister.persist(session(), AbandonCause.USER_EXIT))
+                .isInstanceOf(InterviewException.class)
+                .extracting(e -> ((InterviewException) e).getErrorCode())
+                .isEqualTo(InterviewErrorCode.SESSION_ALREADY_ENDED);
+
+        verify(interviewSessionRepository, never()).save(any());
+        verify(ticketReleaseUseCase, never()).release(any(), any());
+        verify(ticketCommitUseCase, never()).commit(any(), any());
+        verify(interviewReportGenerateUseCase, never()).generate(any());
     }
 }
