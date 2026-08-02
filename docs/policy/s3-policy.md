@@ -17,8 +17,8 @@
   │     └─ sessions/
   │           └─ {sessionId}/
   │                 │
-  │                 ├─ answers/            ← 사용자 답변 음성 (제출 시 비동기 저장, 리포트 영상 합성용)
-  │                 │     └─ {turnLevel}.webm
+  │                 ├─ answers/            ← 사용자 답변 음성 (제출 시 비동기 저장, 리포트 영상 합성용, 네이티브 iOS/Android 기본 포맷 m4a)
+  │                 │     └─ {turnLevel}.m4a
   │                 │
   │                 ├─ questions/          ← AI 면접관 TTS 음성
   │                 │     └─ {turnLevel}.mp3

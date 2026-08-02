@@ -24,6 +24,7 @@ public enum InterviewErrorCode implements ErrorCode {
     INVALID_ANSWER_RANGE(HttpStatus.BAD_REQUEST, "INVALID_ANSWER_RANGE", "답변 구간 값이 올바르지 않아요."),
     INVALID_END_TYPE(HttpStatus.BAD_REQUEST, "INVALID_END_TYPE", "지원하지 않는 endType이에요."),
     INVALID_AUDIO_PRESENCE(HttpStatus.BAD_REQUEST, "INVALID_AUDIO_PRESENCE", "endType과 답변 음성 유무가 맞지 않아요."),
+    INVALID_AUDIO_FORMAT(HttpStatus.BAD_REQUEST, "INVALID_AUDIO_FORMAT", "답변 음성은 m4a 형식만 업로드할 수 있어요."),
     INVALID_ABANDON_CAUSE(HttpStatus.BAD_REQUEST, "INVALID_ABANDON_CAUSE", "지원하지 않는 중단 사유예요."),
     SUMMARY_TURN_SKIP_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "SUMMARY_TURN_SKIP_NOT_ALLOWED", "요약 질문은 건너뛸 수 없어요."),
     INTERVIEW_VIDEO_NOT_FOUND(HttpStatus.NOT_FOUND, "INTERVIEW_VIDEO_NOT_FOUND", "면접 영상 정보를 찾을 수 없어요."),

@@ -15,6 +15,8 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.UUID;
 
 @RestController
@@ -78,9 +82,28 @@ class InterviewController implements InterviewControllerDocs {
             @RequestPart(value = "audio", required = false) MultipartFile audio,
             @Valid @ModelAttribute InterviewAnswerSubmitHttpRequest request
     ) {
+        validateAudioFormat(audio);
         InterviewAnswerSubmitResult result =
                 interviewAnswerSubmitUseCase.submit(userId, request.toCommand(sessionId, audio));
         return ResponseEntity.ok(ApiResponse.ok(InterviewAnswerSubmitHttpResponse.from(result)));
+    }
+
+    // 클라이언트(iOS/Android 네이티브)는 답변 음성을 m4a로 통일 업로드한다. STT(Whisper)는 확장자로 포맷을
+    // 추론하므로, m4a 계약을 어긴 업로드를 여기서 400으로 조기 차단한다. content-type·파일명은 클라이언트가
+    // 임의로 붙일 수 있어 신뢰하지 않고, 바이트 자체가 실제 MP4/AAC 컨테이너인지 검사한다.
+    private static void validateAudioFormat(MultipartFile audio) {
+        if (audio == null || audio.isEmpty()) {
+            return;
+        }
+        byte[] bytes;
+        try {
+            bytes = audio.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        if (!M4aAudioFormatValidator.isM4aAudio(bytes)) {
+            throw new InterviewException(InterviewErrorCode.INVALID_AUDIO_FORMAT);
+        }
     }
 }
 

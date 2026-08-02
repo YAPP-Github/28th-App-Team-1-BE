@@ -17,7 +17,7 @@ class InterviewAnswerSubmitHttpRequestTest {
 
     @Test
     void audio_파일이_있으면_바이트_배열로_변환한다() {
-        MultipartFile audio = new MockMultipartFile("audio", "answer.mp3", "audio/mpeg", "content".getBytes());
+        MultipartFile audio = new MockMultipartFile("audio", "answer.m4a", "audio/mp4", "content".getBytes());
 
         InterviewAnswerSubmitCommand command = request(null).toCommand(SESSION_ID, audio);
 
@@ -33,7 +33,7 @@ class InterviewAnswerSubmitHttpRequestTest {
 
     @Test
     void audio가_빈_파일이면_audioContent는_null이다() {
-        MultipartFile emptyAudio = new MockMultipartFile("audio", "answer.mp3", "audio/mpeg", new byte[0]);
+        MultipartFile emptyAudio = new MockMultipartFile("audio", "answer.m4a", "audio/mp4", new byte[0]);
 
         InterviewAnswerSubmitCommand command = request("SKIP").toCommand(SESSION_ID, emptyAudio);
 
