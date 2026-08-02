@@ -83,46 +83,66 @@ class TicketAvailabilityCheckServiceTest {
     }
 
     @Test
-    void HELD된_이전_세션이_있으면_경과_시간과_무관하게_원자적으로_RELEASED로_전환하고_remaining을_복구한다() {
+    void 세션이_IN_PROGRESS에서_ABANDONED로_전환됐으면_경과_시간과_무관하게_원자적으로_RELEASED로_전환하고_remaining을_복구한다() {
         TicketReservation held = TicketReservation.of(
                 10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
         );
         given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of(held));
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
+        given(interviewSessionAbandonIfInProgressUseCase.abandon(1L, AbandonCause.SESSION_SUPERSEDED)).willReturn(true);
         given(ticketReservationRepository.releaseIfHeld(10L, "SESSION_SUPERSEDED")).willReturn(1);
 
         service.checkAvailable(userId);
 
+        verify(interviewSessionAbandonIfInProgressUseCase).abandon(1L, AbandonCause.SESSION_SUPERSEDED);
         verify(ticketReservationRepository).releaseIfHeld(10L, "SESSION_SUPERSEDED");
         verify(userTicketRepository, times(1)).increment(userId);
-        verify(interviewSessionAbandonIfInProgressUseCase).abandon(1L, AbandonCause.SESSION_SUPERSEDED);
     }
 
     @Test
-    void 다른_트랜잭션이_이미_HELD_예약을_처리했으면_increment도_세션_정리도_하지_않는다() {
+    void 세션이_이미_IN_PROGRESS가_아니면_release도_increment도_하지_않는다() {
+        // 예: USER_EXIT로 ABANDONED됐지만 이용권은 보고서 생성 결과를 기다리며 여전히 HELD인 세션.
+        // 여기서 먼저 release해버리면 보고서 생성이 끝나도 HELD 조건에 걸려 commit/release가 조용히 무시된다.
         TicketReservation held = TicketReservation.of(
                 10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
         );
         given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of(held));
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
+        given(interviewSessionAbandonIfInProgressUseCase.abandon(1L, AbandonCause.SESSION_SUPERSEDED)).willReturn(false);
+
+        service.checkAvailable(userId);
+
+        verify(ticketReservationRepository, never()).releaseIfHeld(any(), any());
+        verify(userTicketRepository, never()).increment(any());
+    }
+
+    @Test
+    void 세션은_전환됐지만_다른_트랜잭션이_이미_예약을_처리했으면_increment는_하지_않는다() {
+        TicketReservation held = TicketReservation.of(
+                10L, userId, 1L, TicketReservationStatus.HELD, null, LocalDateTime.now(), null
+        );
+        given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of(held));
+        given(userTicketRepository.findByUserId(userId))
+                .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
+        given(interviewSessionAbandonIfInProgressUseCase.abandon(1L, AbandonCause.SESSION_SUPERSEDED)).willReturn(true);
         given(ticketReservationRepository.releaseIfHeld(10L, "SESSION_SUPERSEDED")).willReturn(0);
 
         service.checkAvailable(userId);
 
         verify(userTicketRepository, never()).increment(any());
-        verify(interviewSessionAbandonIfInProgressUseCase, never()).abandon(any(), any());
     }
 
     @Test
-    void HELD된_이전_세션이_없으면_release나_increment가_일어나지_않는다() {
+    void HELD된_이전_세션이_없으면_abandon도_release도_일어나지_않는다() {
         given(ticketReservationRepository.findHeldByUserId(userId)).willReturn(List.of());
         given(userTicketRepository.findByUserId(userId))
                 .willReturn(Optional.of(UserTicket.of(userId, 1, LocalDateTime.now())));
 
         service.checkAvailable(userId);
 
+        verify(interviewSessionAbandonIfInProgressUseCase, never()).abandon(any(), any());
         verify(ticketReservationRepository, never()).releaseIfHeld(any(), any());
         verify(userTicketRepository, never()).increment(any());
     }
