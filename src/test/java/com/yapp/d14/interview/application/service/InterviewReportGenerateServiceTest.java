@@ -16,6 +16,7 @@ import com.yapp.d14.interview.application.port.out.ReportCardContentContext;
 import com.yapp.d14.interview.application.port.out.ReportCardContentGenerator;
 import com.yapp.d14.interview.application.port.out.ReportCardDraft;
 import com.yapp.d14.interview.application.port.out.ReportHeadlineGenerator;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.AxisEvaluation;
 import com.yapp.d14.interview.domain.AxisTier;
@@ -114,6 +115,15 @@ class InterviewReportGenerateServiceTest {
         );
     }
 
+    // 재접속 "중단하기"(USER_EXIT)로 트리거된 리포트 생성 — 세션은 ABANDONED라 endType이 없고 abandonCause로 커밋 사유를 판단한다.
+    private InterviewSession abandonedSession(AbandonCause cause) {
+        return InterviewSession.of(
+                1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
+                25, 20, 10, 20, 10, 15, 0, 0, cause
+        );
+    }
+
     private Question question(long id, int turnLevel, TestType testType) {
         return Question.of(
                 id, 1L, "질문 " + turnLevel, turnLevel, 1, testType, "principle",
@@ -177,6 +187,17 @@ class InterviewReportGenerateServiceTest {
         assertThat(reportCaptor.getValue().getStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
         assertThat(reportCaptor.getValue().getHeadlineBranch()).isEqualTo(HeadlineBranch.INSUFFICIENT_ANALYSIS);
         verify(ticketCommitUseCase).commit(1L, "COMPLETED");
+    }
+
+    @Test
+    void ABANDONED_USER_EXIT_세션이면_USER_EXIT_사유로_커밋한다() {
+        given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(abandonedSession(AbandonCause.USER_EXIT)));
+        given(questionRepository.findAllBySessionId(1L)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(1L)).willReturn(List.of());
+
+        service.generate(1L);
+
+        verify(ticketCommitUseCase).commit(1L, "USER_EXIT");
     }
 
     @Test
