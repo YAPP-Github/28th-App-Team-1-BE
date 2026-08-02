@@ -47,6 +47,8 @@
 
       <label>기존 포트폴리오 ID (있으면 붙여넣기 — 업로드 생략)</label>
       <input id="portfolioId" placeholder="uuid" />
+      <button id="btnLoadPortfolios" class="secondary">내 포트폴리오 조회 (클릭해 선택)</button>
+      <div id="portfolioList" style="margin-top:6px;"></div>
 
       <hr />
       <label>또는 PDF 업로드</label>
@@ -68,8 +70,8 @@
         </div>
         <div><label>연차</label><input id="careerYears" type="number" value="1" min="0" /></div>
       </div>
-      <label>JD 원문(직접 입력)</label>
-      <textarea id="jdText" placeholder="채용 공고 본문...">백엔드 개발자를 모집합니다. Java/Spring 기반 API 개발, 대용량 트래픽 처리, DB 최적화 경험을 중시합니다.</textarea>
+      <label>JD 원문(직접 입력, 선택 — 입력 시 200~3,000자)</label>
+      <textarea id="jdText" placeholder="비워두면 JD 없이 진행. 입력하려면 200자 이상 3,000자 이하."></textarea>
       <label>집중 프로젝트 설명(10~300자, 선택)</label>
       <textarea id="freeText" placeholder="선택"></textarea>
       <button id="btnStart">면접 시작 (카메라·마이크 권한)</button>
@@ -89,6 +91,16 @@
         <button id="btnSkip" class="secondary" disabled>이 턴 스킵</button>
         <button id="btnEnd" class="danger" disabled>면접 종료(수동)</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>4. 리포트 조회 (읽기 전용)</h2>
+      <button id="btnLoadReports" class="secondary">내 리포트 목록</button>
+      <div id="reportList" style="margin-top:6px;"></div>
+      <hr />
+      <label>세션 ID로 직접 조회</label>
+      <input id="lookupSessionId" placeholder="sessionId (예: 1024)" />
+      <button id="btnViewReport" class="secondary">리포트 보기</button>
     </div>
   </div>
 
@@ -198,6 +210,77 @@ $("btnUpload").onclick = async () => {
     throw new Error("포트폴리오 처리 타임아웃");
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 };
+
+// ---------- 조회 (읽기 전용): 내 포트폴리오 · 리포트 ----------
+function pickRow() {
+  const row = document.createElement("div");
+  row.style.cssText = "padding:5px 7px;border-radius:6px;cursor:pointer;border:1px solid rgba(128,128,128,0.3);margin-bottom:4px;font-size:12px;";
+  return row;
+}
+
+$("btnLoadPortfolios").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const data = await api("/api/v1/portfolios");
+    const list = data.portfolios || [];
+    const box = $("portfolioList");
+    box.innerHTML = "";
+    if (!list.length) { box.innerHTML = '<span class="muted">포트폴리오 없음</span>'; return; }
+    list.forEach((p) => {
+      const row = pickRow();
+      const when = (p.uploadedAt || "").replace("T", " ").slice(0, 16);
+      row.innerHTML = `<span class="pill ${p.status === "READY" ? "ok" : ""}">${esc(p.status)}</span> ${esc(p.fileName)} `
+        + `<span class="muted">${esc(String(p.portfolioId).slice(0, 8))}… · ${esc(when)}</span>`;
+      row.onclick = () => { $("portfolioId").value = p.portfolioId; state.portfolioId = p.portfolioId; log("포트폴리오 선택", p.portfolioId); };
+      box.appendChild(row);
+    });
+    log(`포트폴리오 ${list.length}건 조회`);
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+$("btnLoadReports").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const data = await api("/api/v1/interview/sessions");
+    const list = data.reports || [];
+    const box = $("reportList");
+    box.innerHTML = "";
+    if (!list.length) { box.innerHTML = '<span class="muted">리포트 없음</span>'; return; }
+    list.forEach((r) => {
+      const row = pickRow();
+      const when = (r.interviewedAt || "").replace("T", " ").slice(0, 16);
+      row.innerHTML = `<span class="pill ${r.reportStatus === "READY" ? "ok" : ""}">${esc(r.reportStatus)}</span> `
+        + `<b>#${esc(String(r.sessionId))}</b> `
+        + `<span class="muted">${esc(r.jobTypeLabel || r.jobType || "-")} · ${esc(String(r.careerYears ?? "-"))}년 · ${esc(when)} · ${esc(r.portfolioFileName || "포폴 없음")}</span>`;
+      row.onclick = () => viewReport(r.sessionId);
+      box.appendChild(row);
+    });
+    log(`리포트 ${list.length}건 조회`);
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+$("btnViewReport").onclick = () => {
+  const sid = $("lookupSessionId").value.trim();
+  if (!sid) { alert("세션 ID를 입력하세요"); return; }
+  viewReport(sid);
+};
+
+// 세션 리포트를 단건 조회해 기존 렌더러로 그린다(라이브 면접 없이도 열람 가능).
+async function viewReport(sessionId) {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    state.sessionId = sessionId;
+    $("reportCard").style.display = "block";
+    $("reportBody").innerHTML = '<div class="muted">리포트 불러오는 중...</div>';
+    const rep = await api(`/api/v1/interview/sessions/${sessionId}/report`);
+    log(`리포트 조회 #${sessionId}`, rep.status);
+    renderReport(rep);
+    $("reportCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    log("❌ " + e.message); alert(e.message);
+    $("reportBody").innerHTML = '<div class="muted">조회 실패: ' + esc(e.message) + '</div>';
+  }
+}
 
 // ---------- 면접 시작 ----------
 $("btnStart").onclick = async () => {
@@ -459,99 +542,183 @@ async function pollAndRenderReport() {
 
 function esc(s) { return (s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
-let segIndex = []; // { el, role, startSec, endSec, cardEl, qBlock, aBlock, startIndex, endIndex, questionText, transcript }
+let segIndex = [];       // { el, startSec, endSec } — scriptSegments 표 행의 라이브 하이라이트용
+let activeSeg = null;
+let reportPlayer = null; // 현재 리포트 합성 영상(하이라이트/세그먼트/스크립트 클릭 seek 대상)
+
+// 지정 시각으로 영상을 이동해 재생한다. 영상이 없거나 시각이 없으면 안내만.
+function seek(sec) {
+  if (sec == null) { log("이 항목은 발화 시각이 없어 재생 위치를 잡을 수 없어요"); return; }
+  if (!reportPlayer) { log("합성 영상(video.url)이 없어 재생할 수 없어요 — 시각만 표시됩니다"); return; }
+  reportPlayer.currentTime = sec;
+  reportPlayer.play().catch(() => {});
+  reportPlayer.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function el(tag, style, html) {
+  const e = document.createElement(tag);
+  if (style) e.style.cssText = style;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+
+// 답변 대본(transcript)에 highlightSpans를 톤별 색상 마크로 얹고, 마크 클릭 시 해당 startSec으로 재생.
+function highlightedTranscript(transcript, spans) {
+  const box = el("div", "margin:2px 0;white-space:pre-wrap;");
+  const text = transcript || "";
+  const list = (spans || [])
+    .filter((s) => s.startIndex != null && s.endIndex != null && s.endIndex > s.startIndex)
+    .sort((a, b) => a.startIndex - b.startIndex);
+  let cursor = 0;
+  list.forEach((s) => {
+    if (s.startIndex < cursor) return; // 겹치는 구간 건너뜀
+    if (s.startIndex > cursor) box.appendChild(document.createTextNode(text.slice(cursor, s.startIndex)));
+    const good = s.tone === "GOOD";
+    const mark = el("mark", `background:${good ? "rgba(22,163,74,0.28)" : "rgba(217,119,6,0.30)"};`
+      + `border-bottom:2px solid ${good ? "#16a34a" : "#d97706"};border-radius:3px;cursor:pointer;`);
+    mark.textContent = text.slice(s.startIndex, s.endIndex);
+    mark.title = (s.title || s.tone) + (s.startSec != null ? ` · ▶ ${s.startSec.toFixed(1)}s` : " · (시각 없음)");
+    mark.onclick = () => seek(s.startSec);
+    box.appendChild(mark);
+    cursor = s.endIndex;
+  });
+  if (cursor < text.length) box.appendChild(document.createTextNode(text.slice(cursor)));
+  return box;
+}
+
+const REASON_LABEL = { PROBE_WORTHY: "파고들 여지", OFF_INTENT: "딴 답", SHALLOW: "짧고 얕음", SUFFICIENT: "충분함" };
+
+// 하이라이트 상세 카드(톤·제목·분석·개선유형·꼬리질문·OFF_INTENT 대비) + "영상에서 보기" 재생 버튼.
+function renderHighlightDetail(s) {
+  const good = s.tone === "GOOD";
+  const wrap = el("div", `border:1px solid ${good ? "rgba(22,163,74,0.4)" : "rgba(217,119,6,0.4)"};`
+    + `border-left:4px solid ${good ? "#16a34a" : "#d97706"};border-radius:8px;padding:8px 10px;margin:6px 0;`);
+  wrap.appendChild(el("div", "display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;",
+    `<span class="pill" style="background:${good ? "#16a34a" : "#d97706"};color:#fff;">${good ? "잘함" : "개선"}</span>`
+    + `<b style="flex:1">${esc(s.title || "")}</b>`
+    + (s.reason ? `<span class="muted">${esc(REASON_LABEL[s.reason] || s.reason)}</span>` : "")));
+  const btn = el("button", "margin-top:6px;width:auto;padding:3px 10px;font-size:12px;",
+    s.startSec != null ? `▶ 영상에서 보기 (${s.startSec.toFixed(1)}s)` : "▶ 시각 없음");
+  btn.className = "secondary";
+  btn.disabled = s.startSec == null;
+  btn.onclick = () => seek(s.startSec);
+  wrap.appendChild(btn);
+  if (s.analysis) wrap.appendChild(el("div", "margin-top:6px;font-size:13px;", esc(s.analysis)));
+  if (s.reason === "OFF_INTENT" && (s.questionIntentTitle || s.answerTopicTitle)) {
+    wrap.appendChild(el("div", "margin-top:6px;font-size:12px;",
+      `<span class="muted">질문 의도</span> ${esc(s.questionIntentTitle || "-")} <span class="muted">↔ 내 답변</span> ${esc(s.answerTopicTitle || "-")}`
+      + (s.questionIntent ? `<div class="muted" style="margin-top:2px;">${esc(s.questionIntent)}</div>` : "")));
+  }
+  const fu = s.followUpQuestions || [];
+  if (fu.length) {
+    const box = el("div", "margin-top:6px;font-size:12px;", `<span class="muted">예상 꼬리질문</span>`);
+    fu.forEach((q) => box.appendChild(el("div", "margin-left:6px;", "• " + esc(q))));
+    wrap.appendChild(box);
+  }
+  return wrap;
+}
+
+// 클릭해 해당 시각으로 재생되는 대본 행(scriptSegments / script 공용).
+function timedRow(role, textStr, startSec, endSec, roleStyle) {
+  const row = el("div", "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;");
+  row.innerHTML = `<span class="pill" style="${roleStyle || ""}">${esc(role)}</span>`
+    + `<span style="flex:1">${esc(textStr)}</span>`
+    + `<span class="muted">${startSec.toFixed(2)}–${endSec.toFixed(2)}s</span>`;
+  row.onclick = () => seek(startSec);
+  return row;
+}
 
 function renderReport(rep) {
   const body = $("reportBody");
   body.innerHTML = "";
-  segIndex = []; activeSeg = null;
+  segIndex = []; activeSeg = null; reportPlayer = null;
 
-  // 상단 상태 + 합성 영상
-  const head = document.createElement("div");
-  head.innerHTML = `<div class="big">status: <span class="pill ${rep.status === "READY" ? "ok" : ""}">${esc(rep.status)}</span></div>
-    <div class="muted">${esc(rep.headline || "")}</div>`;
-  body.appendChild(head);
+  // 상단: 상태 + 헤드라인
+  body.appendChild(el("div", null,
+    `<div class="big">status: <span class="pill ${rep.status === "READY" ? "ok" : ""}">${esc(rep.status)}</span></div>`
+    + `<div class="muted" style="margin-top:2px;">${esc(rep.headline || "")}</div>`));
 
-  const videoUrl = rep.video && rep.video.url;
-  let player = null;
-  if (videoUrl) {
-    player = document.createElement("video");
-    player.src = videoUrl; player.controls = true; player.playsInline = true;
-    player.style.cssText = "width:100%;border-radius:8px;background:#000;margin:10px 0;";
-    body.appendChild(player);
-    log("합성 영상 재생 준비 — 재생하면 현재 발화 문장이 강조됩니다");
+  // 합성 영상
+  if (rep.video && rep.video.url) {
+    reportPlayer = el("video", "width:100%;border-radius:8px;background:#000;margin:10px 0;");
+    reportPlayer.src = rep.video.url; reportPlayer.controls = true; reportPlayer.playsInline = true;
+    body.appendChild(reportPlayer);
+    body.appendChild(el("div", "margin-bottom:6px;",
+      `<span class="muted">영상 ${rep.video.expired ? "만료됨" : "유효"} · 삭제예정 ${esc((rep.video.expiresAt || "").replace("T", " ").slice(0, 16))}</span>`));
+    log("합성 영상 준비 — 하이라이트/세그먼트/스크립트를 클릭하면 해당 시각으로 재생됩니다");
   } else {
-    const note = document.createElement("div");
-    note.className = "muted"; note.style.margin = "8px 0";
-    note.textContent = "합성 영상(video.url) 없음 — 세그먼트 시각은 아래 표로 확인하세요.";
-    body.appendChild(note);
+    body.appendChild(el("div", "margin:8px 0;",
+      `<span class="muted">합성 영상(video.url) 없음 — 클릭 재생은 비활성, 시각만 표시됩니다.</span>`));
   }
 
+  // 카드
   (rep.cards || []).forEach((card) => {
-    const c = document.createElement("div");
-    c.className = "card"; c.style.marginTop = "10px";
-    const qBlock = document.createElement("div");
-    const aBlock = document.createElement("div");
-    qBlock.style.margin = "4px 0"; aBlock.style.margin = "4px 0";
-    qBlock.innerHTML = `<label>질문 ${card.axisOrder}-${card.depthLevel}</label>` + esc(card.questionText);
-    aBlock.innerHTML = `<label>답변</label>` + esc(card.transcript);
-    c.appendChild(qBlock); c.appendChild(aBlock);
-
-    // 세그먼트 표
+    const c = el("div", "margin-top:10px;"); c.className = "card";
+    c.appendChild(el("div", "margin-bottom:2px;", `<b>질문 ${card.axisOrder}-${card.depthLevel}</b>`
+      + (card.questionIntentTitle ? ` <span class="muted">· ${esc(card.questionIntentTitle)}</span>` : "")));
+    if (card.questionIntent) c.appendChild(el("div", "font-size:12px;margin-bottom:6px;",
+      `<span class="muted">의도</span> ${esc(card.questionIntent)}`));
+    c.appendChild(el("div", "margin:4px 0;", `<label>질문</label>${esc(card.questionText)}`));
+    const aWrap = el("div", "margin:4px 0;");
+    aWrap.appendChild(el("label", null, "답변 (하이라이트 클릭 시 재생)"));
+    aWrap.appendChild(highlightedTranscript(card.transcript, card.highlightSpans));
+    c.appendChild(aWrap);
+    if (card.resolutionNotice) c.appendChild(el("div", "margin:6px 0;font-size:12px;",
+      `<span class="pill">해상도 낮음</span> ${esc(card.resolutionNotice)}`));
+    (card.cardRedFlagNotices || []).forEach((m) =>
+      c.appendChild(el("div", "margin:4px 0;font-size:12px;color:#dc2626;", "⚑ " + esc(m))));
+    const spans = card.highlightSpans || [];
+    if (spans.length) {
+      c.appendChild(el("label", null, `하이라이트 (${spans.length})`));
+      spans.forEach((s) => c.appendChild(renderHighlightDetail(s)));
+    }
     const segs = card.scriptSegments || [];
     if (segs.length) {
-      const tbl = document.createElement("div");
-      tbl.innerHTML = `<label>scriptSegments (${segs.length})</label>`;
+      const tbl = el("div", null, `<label>scriptSegments (${segs.length})</label>`);
       segs.forEach((s) => {
-        const row = document.createElement("div");
-        row.style.cssText = "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;";
-        row.innerHTML = `<span class="pill">${esc(s.role)}</span>
-          <span style="flex:1">${esc(s.text)}</span>
-          <span class="muted">${s.startSec.toFixed(2)}–${s.endSec.toFixed(2)}s</span>`;
-        row.onclick = () => { if (player) { player.currentTime = s.startSec; player.play(); } };
+        const row = timedRow(s.role, s.text, s.startSec, s.endSec);
         tbl.appendChild(row);
-        segIndex.push({ el: row, role: s.role, startSec: s.startSec, endSec: s.endSec,
-          qBlock, aBlock, startIndex: s.startIndex, endIndex: s.endIndex,
-          questionText: card.questionText, transcript: card.transcript });
+        segIndex.push({ el: row, startSec: s.startSec, endSec: s.endSec });
       });
       c.appendChild(tbl);
-    } else {
-      const none = document.createElement("div");
-      none.className = "muted"; none.style.fontSize = "12px"; none.textContent = "scriptSegments 없음(빈 배열)";
-      c.appendChild(none);
     }
     body.appendChild(c);
   });
 
-  if (player) player.addEventListener("timeupdate", () => syncHighlight(player.currentTime));
+  // 전체 대본 타임라인(script)
+  const script = rep.script || [];
+  if (script.length) {
+    const sc = el("div", "margin-top:10px;"); sc.className = "card";
+    sc.appendChild(el("div", "margin-bottom:6px;", `<b>전체 대본 타임라인 (${script.length})</b>`));
+    script.forEach((line) => sc.appendChild(timedRow(line.role, line.text, line.startSec, line.endSec,
+      line.role === "INTERVIEWEE" ? "background:rgba(37,99,235,0.2)" : "")));
+    body.appendChild(sc);
+  }
+
+  // 지인 피드백(guestFeedback)
+  const gf = rep.guestFeedback;
+  if (gf) {
+    const g = el("div", "margin-top:10px;"); g.className = "card";
+    g.appendChild(el("div", "margin-bottom:6px;", `<b>지인 피드백</b> <span class="muted">참여 ${gf.participantCount}명</span>`));
+    if (!(gf.guests || []).length) g.appendChild(el("div", "font-size:12px;", `<span class="muted">제출한 지인 없음</span>`));
+    (gf.guests || []).forEach((guest) => {
+      g.appendChild(el("div", "margin-top:6px;font-size:13px;", `<b>${esc(guest.alias)}</b>`));
+      (guest.attitudeRatings || []).forEach((r) => g.appendChild(el("div", "font-size:12px;margin-left:6px;",
+        `${esc(r.axis)} — <b>${r.level}</b>/4${r.comment ? ` · ${esc(r.comment)}` : ""}`)));
+    });
+    body.appendChild(g);
+  }
+
+  if (reportPlayer) reportPlayer.addEventListener("timeupdate", () => syncHighlight(reportPlayer.currentTime));
 }
 
-let activeSeg = null;
+// 재생 위치에 해당하는 scriptSegments 행을 강조(라이브 싱크).
 function syncHighlight(t) {
   const seg = segIndex.find((s) => t >= s.startSec && t < s.endSec) || null;
   if (seg === activeSeg) return;
-  // 이전 강조 해제
-  if (activeSeg) {
-    activeSeg.el.style.background = "";
-    resetBlock(activeSeg, activeSeg.role);
-  }
+  if (activeSeg) activeSeg.el.style.background = "";
   activeSeg = seg;
-  if (!seg) return;
-  seg.el.style.background = "rgba(37,99,235,0.25)";
-  // 대응 텍스트 블록에서 해당 문장 substring을 <mark>로 강조
-  const block = seg.role === "QUESTION" ? seg.qBlock : seg.aBlock;
-  const full = seg.role === "QUESTION" ? seg.questionText : seg.transcript;
-  const a = esc(full.slice(0, seg.startIndex));
-  const mid = esc(full.slice(seg.startIndex, seg.endIndex));
-  const b = esc(full.slice(seg.endIndex));
-  const labelHtml = seg.role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
-  block.innerHTML = labelHtml + a + "<mark>" + mid + "</mark>" + b;
-}
-function resetBlock(seg, role) {
-  const block = role === "QUESTION" ? seg.qBlock : seg.aBlock;
-  const full = role === "QUESTION" ? seg.questionText : seg.transcript;
-  const labelHtml = role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
-  block.innerHTML = labelHtml + esc(full);
+  if (seg) seg.el.style.background = "rgba(37,99,235,0.25)";
 }
 </script>
 </body>
