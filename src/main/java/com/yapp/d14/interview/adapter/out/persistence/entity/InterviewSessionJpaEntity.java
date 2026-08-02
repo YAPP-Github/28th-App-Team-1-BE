@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.adapter.out.persistence.entity;
 
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
@@ -69,6 +70,10 @@ public class InterviewSessionJpaEntity {
     @Column(name = "end_type", length = 20)
     private InterviewEndType endType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "abandon_cause", length = 20)
+    private AbandonCause abandonCause;
+
     @Column(name = "weight_depth")
     private Integer weightDepth;
 
@@ -109,6 +114,7 @@ public class InterviewSessionJpaEntity {
         entity.startedAt = interviewSession.getStartedAt();
         entity.endedAt = interviewSession.getEndedAt();
         entity.endType = interviewSession.getEndType();
+        entity.abandonCause = interviewSession.getAbandonCause();
         entity.weightDepth = interviewSession.getWeightDepth();
         entity.weightBoundary = interviewSession.getWeightBoundary();
         entity.weightConnection = interviewSession.getWeightConnection();
@@ -143,7 +149,8 @@ public class InterviewSessionJpaEntity {
                 weightConflict,
                 weightResilience,
                 sttFailedSegmentCount,
-                sttTotalSegmentCount
+                sttTotalSegmentCount,
+                abandonCause
         );
     }
 }

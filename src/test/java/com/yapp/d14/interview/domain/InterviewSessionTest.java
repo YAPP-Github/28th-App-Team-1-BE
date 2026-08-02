@@ -62,4 +62,16 @@ class InterviewSessionTest {
         assertThat(session.getEndedAt()).isNotNull();
         assertThat(session.getEndType()).isEqualTo(InterviewEndType.STT_RESET);
     }
+
+    @Test
+    void markAbandoned_호출_시_상태와_종료시각과_abandonCause가_기록되고_endType은_그대로다() {
+        InterviewSession session = create();
+
+        session.markAbandoned(AbandonCause.NETWORK_DISCONNECT);
+
+        assertThat(session.getStatus()).isEqualTo(InterviewSessionStatus.ABANDONED);
+        assertThat(session.getEndedAt()).isNotNull();
+        assertThat(session.getAbandonCause()).isEqualTo(AbandonCause.NETWORK_DISCONNECT);
+        assertThat(session.getEndType()).isNull();
+    }
 }

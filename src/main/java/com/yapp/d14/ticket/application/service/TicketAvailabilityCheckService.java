@@ -1,5 +1,6 @@
 package com.yapp.d14.ticket.application.service;
 
+import com.yapp.d14.interview.application.port.in.InterviewSessionAbandonOnHoldExpiryUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketAvailabilityCheckUseCase;
 import com.yapp.d14.ticket.application.port.out.TicketReservationRepository;
 import com.yapp.d14.ticket.application.port.out.UserTicketRepository;
@@ -25,6 +26,7 @@ class TicketAvailabilityCheckService implements TicketAvailabilityCheckUseCase {
 
     private final UserTicketRepository userTicketRepository;
     private final TicketReservationRepository ticketReservationRepository;
+    private final InterviewSessionAbandonOnHoldExpiryUseCase interviewSessionAbandonOnHoldExpiryUseCase;
 
     @Override
     @Transactional
@@ -48,6 +50,8 @@ class TicketAvailabilityCheckService implements TicketAvailabilityCheckUseCase {
             int released = ticketReservationRepository.releaseIfHeld(reservation.getId(), OUTCOME_HOLD_EXPIRED);
             if (released == 1) {
                 userTicketRepository.increment(userId);
+                // 이용권 정리는 여기서 끝났지만, interview_session.status는 그대로 IN_PROGRESS로 남는 정합성 문제가 있었다 — 함께 정리한다.
+                interviewSessionAbandonOnHoldExpiryUseCase.abandonForHoldExpiry(reservation.getSessionId());
             }
         }
     }

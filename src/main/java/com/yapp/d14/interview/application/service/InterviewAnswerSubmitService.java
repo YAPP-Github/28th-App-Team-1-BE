@@ -54,7 +54,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
         InterviewSession session = InterviewSessionAccessSupport.requireOwned(interviewSessionRepository, command.sessionId(), userId);
-        if (session.getStatus() == InterviewSessionStatus.COMPLETED || session.getStatus() == InterviewSessionStatus.INVALID) {
+        if (session.getStatus() == InterviewSessionStatus.COMPLETED
+                || session.getStatus() == InterviewSessionStatus.INVALID
+                || session.getStatus() == InterviewSessionStatus.ABANDONED) {
             throw new InterviewException(InterviewErrorCode.SESSION_ALREADY_ENDED);
         }
         Question question = InterviewSessionAccessSupport.requireOwnedQuestion(questionRepository, command.questionId(), session);
@@ -71,7 +73,14 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             archiveAnswerAudioSafely(userId, session.getId(), question.getTurnLevel(), command.audioContent());
         }
 
+        InterviewEndType terminationEndType = resolveTerminationEndType(question, command);
+        if (terminationEndType != null) {
+            return handleTermination(session, question, command, terminationEndType);
+        }
         if (question.getTurnLevel().equals(SUMMARY_TURN_LEVEL)) {
+            if (command.endType() == InterviewEndType.SKIP) {
+                throw new InterviewException(InterviewErrorCode.SUMMARY_TURN_SKIP_NOT_ALLOWED);
+            }
             return handleFirstTurn(session, question, command);
         }
         return handleRegularTurn(session, question, command);
@@ -136,10 +145,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleRegularTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
-        InterviewEndType terminationEndType = resolveTerminationEndType(question, command);
-        if (terminationEndType != null) {
-            return handleTermination(session, question, command, terminationEndType);
-        }
+        // 종료 판정(MANUAL_END/HARD_CAP/EARLY_EXIT/NORMAL_END)은 submit()에서 turnLevel==0 분기보다 먼저 처리됐으므로 여기 도달하지 않는다.
         if (command.endType() == InterviewEndType.SKIP) {
             return handleSkippedTurn(session, question, command);
         }

@@ -49,7 +49,7 @@ class InterviewPreloadFailureHandlerTest {
         return InterviewSession.of(
                 1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
 
@@ -101,7 +101,7 @@ class InterviewPreloadFailureHandlerTest {
         InterviewSession readySession = InterviewSession.of(
                 1L, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(readySession));
 

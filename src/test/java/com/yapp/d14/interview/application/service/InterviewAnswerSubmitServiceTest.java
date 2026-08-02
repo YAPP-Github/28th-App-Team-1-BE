@@ -22,6 +22,7 @@ import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
 import com.yapp.d14.interview.application.port.out.UtteranceSegmentRepository;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.ScriptRole;
 import com.yapp.d14.interview.domain.AxisTier;
@@ -140,7 +141,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
     }
 
@@ -583,7 +584,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession completedSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(completedSession));
 
@@ -600,9 +601,26 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession invalidSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0
+                25, 20, 10, 20, 10, 15, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(invalidSession));
+
+        assertThatThrownBy(() -> service.submit(userId, command()))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SESSION_ALREADY_ENDED);
+
+        verifyNoInteractions(questionRepository, speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerTerminationPersister, interviewReportGenerateUseCase);
+    }
+
+    @Test
+    void 중단된_세션이면_예외가_발생하고_이후_단계는_실행되지_않는다() {
+        InterviewSession abandonedSession = InterviewSession.of(
+                sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
+                InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
+                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.USER_EXIT
+        );
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(abandonedSession));
 
         assertThatThrownBy(() -> service.submit(userId, command()))
                 .isInstanceOf(InterviewException.class)
@@ -658,7 +676,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 30, 10, 20, 10, 10, 0, 0
+                20, 30, 10, 20, 10, 10, 0, 0, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithBoundaryWeighted));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
@@ -920,7 +938,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 15, 10, 30, 10, 15, 0, 0
+                20, 15, 10, 30, 10, 15, 0, 0, null
         );
     }
 
@@ -1047,6 +1065,43 @@ class InterviewAnswerSubmitServiceTest {
         verifyNoInteractions(speechToTextTranscriber);
         verify(interviewAnswerTerminationPersister)
                 .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+    }
+
+    @Test
+    void 요약_질문_turnLevel_0에서_종료_endType이_오면_STT로_넘기지_않고_바로_종료한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+        given(interviewVoiceStorage.readBase64(any())).willReturn(null);
+        given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
+        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
+                .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, new InterviewAnswerSubmitCommand(
+                sessionId, summaryQuestionId, null, 100f, 110f, 0f, 5f, 5f, InterviewEndType.HARD_CAP, false
+        ));
+
+        assertThat(result.answerId()).isNull();
+        assertThat(result.nextQuestion()).isNull();
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer);
+        verify(interviewAnswerTerminationPersister)
+                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+    }
+
+    @Test
+    void 요약_질문_turnLevel_0에서_SKIP이_오면_400으로_거부한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
+
+        InterviewAnswerSubmitCommand command = new InterviewAnswerSubmitCommand(
+                sessionId, summaryQuestionId, null, 100f, 110f, 0f, 5f, 5f, InterviewEndType.SKIP, false
+        );
+
+        assertThatThrownBy(() -> service.submit(userId, command))
+                .isInstanceOf(InterviewException.class)
+                .extracting("errorCode")
+                .isEqualTo(InterviewErrorCode.SUMMARY_TURN_SKIP_NOT_ALLOWED);
+
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, interviewAnswerAnalyzePersister, interviewAnswerTerminationPersister);
     }
 
     @Test
