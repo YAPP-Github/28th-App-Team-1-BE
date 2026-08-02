@@ -19,7 +19,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 // turnLevel≥1 SKIP·분석 턴의 원자적 저장 단계.
 @Component
@@ -113,12 +117,24 @@ class InterviewAnswerAnalyzePersister {
         questionCandidateRepository.exhaustOpenBySessionIdAndTestType(sessionId, testType);
     }
 
+    // 건별 findById+save 반복 대신 한 번에 조회·저장한다 — 존재하지 않는 probeId는 기존과 동일하게 조용히 건너뛴다.
     private void applyStaleUpdates(List<StaleProbeUpdate> staleUpdates, int currentTurnLevel) {
-        for (StaleProbeUpdate update : staleUpdates) {
-            questionCandidateRepository.findById(update.probeId()).ifPresent(probe -> {
-                probe.markStale(update.reason(), currentTurnLevel);
-                questionCandidateRepository.save(probe);
-            });
+        if (staleUpdates.isEmpty()) {
+            return;
         }
+        List<Long> probeIds = staleUpdates.stream().map(StaleProbeUpdate::probeId).toList();
+        Map<Long, QuestionCandidate> probesById = questionCandidateRepository.findAllById(probeIds).stream()
+                .collect(Collectors.toMap(QuestionCandidate::getId, Function.identity()));
+
+        List<QuestionCandidate> toSave = new ArrayList<>();
+        for (StaleProbeUpdate update : staleUpdates) {
+            QuestionCandidate probe = probesById.get(update.probeId());
+            if (probe == null) {
+                continue;
+            }
+            probe.markStale(update.reason(), currentTurnLevel);
+            toSave.add(probe);
+        }
+        questionCandidateRepository.saveAll(toSave);
     }
 }

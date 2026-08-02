@@ -364,8 +364,12 @@ async function encodeToM4a(blob) {
     if (!("AudioEncoder" in window) || !("AudioData" in window) || !window.Mp4Muxer) return null;
 
     const ac = new (window.AudioContext || window.webkitAudioContext)();
-    const audioBuffer = await ac.decodeAudioData(await blob.arrayBuffer());
-    ac.close();
+    let audioBuffer;
+    try {
+      audioBuffer = await ac.decodeAudioData(await blob.arrayBuffer());
+    } finally {
+      await ac.close();
+    }
 
     const numberOfChannels = audioBuffer.numberOfChannels;
     const sampleRate = audioBuffer.sampleRate;
@@ -430,8 +434,8 @@ $("btnAnsStart").onclick = () => {
   log("답변 녹음 시작 클릭됨 (stream=" + (state.stream ? "ok" : "없음") + ")");
   if (!state.stream) { alert("먼저 '면접 시작'으로 카메라·마이크를 켜세요."); return; }
   // 서버는 답변 음성을 m4a(audio/mp4)만 허용한다. Safari는 audio/mp4로 녹음되므로 이를 최우선으로 고른다.
-  // Chrome/Firefox는 audio/mp4 녹음을 지원하지 않아 webm으로 떨어지며, 이 경우 서버가 400으로 반려한다
-  // (m4a 실경로 테스트는 Safari 또는 실기기로 해야 함).
+  // Chrome/Firefox는 audio/mp4 녹음을 지원하지 않아 webm으로 떨어진다. 이 경우 제출 시 WebCodecs(AAC)로 m4a 변환을 시도한다.
+  // AAC 인코더를 지원하지 않는 브라우저에서는 변환이 실패하고 서버가 400으로 반려한다(Safari 또는 실기기 필요).
   const mime = pickMime(["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]);
   state.answerChunks = [];
   // 영상 녹화기는 video 트랙만 물고 있으므로, 답변 녹음기는 audio 트랙만 담은 별도 스트림으로 녹음한다(트랙 충돌 방지).

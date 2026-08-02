@@ -65,9 +65,9 @@ class InterviewAnswerSubmitCommandTest {
     }
 
     @Test
-    void endType이_EARLY_EXIT이면_audio_유무와_무관하게_정상_생성한다() {
-        assertThat(of(AUDIO_CONTENT, "EARLY_EXIT", false).endType()).isEqualTo(InterviewEndType.EARLY_EXIT);
-        assertThat(of(null, "EARLY_EXIT", false).endType()).isEqualTo(InterviewEndType.EARLY_EXIT);
+    void endType이_BACK_EXIT이면_audio_유무와_무관하게_정상_생성한다() {
+        assertThat(of(AUDIO_CONTENT, "BACK_EXIT", false).endType()).isEqualTo(InterviewEndType.BACK_EXIT);
+        assertThat(of(null, "BACK_EXIT", false).endType()).isEqualTo(InterviewEndType.BACK_EXIT);
     }
 
     @Test

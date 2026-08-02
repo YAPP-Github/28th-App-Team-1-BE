@@ -943,56 +943,52 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void endType이_EARLY_EXIT이면_STT만_수행하고_즉시_종료하며_EARLY_EXIT으로_commit한다() {
+    void endType이_BACK_EXIT이면_STT만_수행하고_즉시_종료한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
-        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(20L));
 
-        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.EARLY_EXIT, audioContent));
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.BACK_EXIT, audioContent));
 
         assertThat(result.answerId()).isEqualTo(20L);
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
-        assertThat(result.endType()).isEqualTo(InterviewEndType.EARLY_EXIT);
+        assertThat(result.endType()).isEqualTo(InterviewEndType.BACK_EXIT);
         verifyNoInteractions(liveTurnAnalyzer);
 
         ArgumentCaptor<InterviewEndType> endTypeCaptor = ArgumentCaptor.forClass(InterviewEndType.class);
-        ArgumentCaptor<String> outcomeReasonCaptor = ArgumentCaptor.forClass(String.class);
         verify(interviewAnswerTerminationPersister)
-                .persist(any(), any(), any(), endTypeCaptor.capture(), outcomeReasonCaptor.capture());
-        assertThat(endTypeCaptor.getValue()).isEqualTo(InterviewEndType.EARLY_EXIT);
-        assertThat(outcomeReasonCaptor.getValue()).isEqualTo("EARLY_EXIT");
+                .persist(any(), any(), any(), endTypeCaptor.capture());
+        assertThat(endTypeCaptor.getValue()).isEqualTo(InterviewEndType.BACK_EXIT);
         verify(interviewReportGenerateUseCase).generate(sessionId);
     }
 
     @Test
-    void endType이_MANUAL_END이면_짧은_멘트_음성과_함께_종료하고_COMPLETED로_commit한다() {
+    void endType이_MANUAL_END이면_짧은_멘트_음성과_함께_종료한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
         given(interviewVoiceStorage.readBase64(any())).willReturn(null);
         given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
-        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
 
         assertThat(result.wrapUpMessage().ttsAudio()).isEqualTo(Base64.getEncoder().encodeToString("tts-audio".getBytes()));
         verify(interviewVoiceStorage).upload(eq("system/interview/wrapup-messages/MANUAL_END.mp3"), any());
-        ArgumentCaptor<String> outcomeReasonCaptor = ArgumentCaptor.forClass(String.class);
         verify(interviewAnswerTerminationPersister)
-                .persist(any(), any(), any(), eq(InterviewEndType.MANUAL_END), outcomeReasonCaptor.capture());
-        assertThat(outcomeReasonCaptor.getValue()).isEqualTo("COMPLETED");
+                .persist(any(), any(), any(), eq(InterviewEndType.MANUAL_END));
         verify(interviewReportGenerateUseCase).generate(sessionId);
 
         InOrder order = inOrder(textToSpeechSynthesizer, interviewVoiceStorage, interviewAnswerTerminationPersister);
         order.verify(textToSpeechSynthesizer).synthesize(any());
         order.verify(interviewVoiceStorage).upload(any(), any());
-        order.verify(interviewAnswerTerminationPersister).persist(any(), any(), any(), any(), any());
+        order.verify(interviewAnswerTerminationPersister).persist(any(), any(), any(), any());
     }
 
     @Test
@@ -1005,7 +1001,7 @@ class InterviewAnswerSubmitServiceTest {
         given(textToSpeechSynthesizer.synthesize(any()))
                 .willThrow(new RuntimeException("일시적 TTS 오류"))
                 .willReturn("tts-audio".getBytes());
-        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
@@ -1039,7 +1035,7 @@ class InterviewAnswerSubmitServiceTest {
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
         given(interviewVoiceStorage.readBase64("system/interview/wrapup-messages/MANUAL_END.mp3")).willReturn("cached-base64");
-        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(21L));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.MANUAL_END, audioContent));
@@ -1055,7 +1051,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(interviewVoiceStorage.readBase64(any())).willReturn(null);
         given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
-        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.HARD_CAP, null));
@@ -1064,7 +1060,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion()).isNull();
         verifyNoInteractions(speechToTextTranscriber);
         verify(interviewAnswerTerminationPersister)
-                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP));
     }
 
     @Test
@@ -1073,7 +1069,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
         given(interviewVoiceStorage.readBase64(any())).willReturn(null);
         given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
-        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), isNull(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(null));
 
         InterviewAnswerSubmitResult result = service.submit(userId, new InterviewAnswerSubmitCommand(
@@ -1084,7 +1080,7 @@ class InterviewAnswerSubmitServiceTest {
         assertThat(result.nextQuestion()).isNull();
         verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer);
         verify(interviewAnswerTerminationPersister)
-                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP), eq("COMPLETED"));
+                .persist(any(), any(), isNull(), eq(InterviewEndType.HARD_CAP));
     }
 
     @Test
@@ -1105,21 +1101,21 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void 직전_질문이_isWrapUp이면_자연종료로_처리하고_COMPLETED로_commit한다() {
+    void 직전_질문이_isWrapUp이면_자연종료로_처리한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(true)));
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
         given(interviewVoiceStorage.readBase64(any())).willReturn(null);
         given(textToSpeechSynthesizer.synthesize(any())).willReturn("tts-audio".getBytes());
-        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any(), any()))
+        given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(22L));
 
         InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(null, audioContent));
 
         assertThat(result.wrapUpMessage()).isNotNull();
         verify(interviewAnswerTerminationPersister)
-                .persist(any(), any(), any(), eq(InterviewEndType.NORMAL_END), eq("COMPLETED"));
+                .persist(any(), any(), any(), eq(InterviewEndType.NORMAL_END));
         verify(interviewReportGenerateUseCase).generate(sessionId);
     }
 }

@@ -9,7 +9,8 @@ public enum AbandonCause {
 
     NETWORK_DISCONNECT("네트워크 연결 끊김"),
     USER_EXIT("사용자 종료"),
-    HOLD_EXPIRED("이용권 보류 만료");
+    HOLD_EXPIRED("이용권 보류 만료"),
+    SESSION_SUPERSEDED("새 세션 생성으로 정리됨");
 
     private final String label;
 }

@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +42,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -235,5 +238,45 @@ class InterviewControllerTest {
         mockMvc.perform(get("/api/v1/interview/sessions/1/status"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("INTERVIEW_SESSION_NOT_FOUND"));
+    }
+
+    @Test
+    void 답변_음성이_m4a가_아니면_400() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.mp3", "audio/mpeg", "content".getBytes());
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_AUDIO_FORMAT"));
+    }
+
+    @Test
+    void 답변_음성이_video_mp4를_audio_mp4로_위장해도_400() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.m4a", "audio/mp4", Mp4Fixtures.videoTrack());
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_AUDIO_FORMAT"));
+    }
+
+    @Test
+    void 실제_m4a_오디오는_통과한다() throws Exception {
+        MockMultipartFile audio =
+                new MockMultipartFile("audio", "answer.m4a", "audio/mp4", Mp4Fixtures.validM4aAudio());
+        given(interviewAnswerSubmitUseCase.submit(any(), any()))
+                .willReturn(new InterviewAnswerSubmitResult(1L, null, false, null, null));
+
+        mockMvc.perform(multipart("/api/v1/interview/sessions/1/answers")
+                        .file(audio)
+                        .param("questionId", "1")
+                        .param("isWrapUp", "false"))
+                .andExpect(status().isOk());
     }
 }
