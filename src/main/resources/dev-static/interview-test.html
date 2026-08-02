@@ -116,7 +116,7 @@
       <div id="log"></div>
     </div>
     <div class="card" id="reportCard" style="display:none;">
-      <h2>리포트 (#78 scriptSegments)</h2>
+      <h2>리포트</h2>
       <div id="reportBody"></div>
     </div>
   </div>
@@ -134,6 +134,7 @@ const state = {
   stream: null, videoRecorder: null, videoChunks: [], videoMime: null,
   answerRecorder: null, answerChunks: [], answerBlob: null,
   qStartAt: null, qEndAt: null, aStartAt: null, aEndAt: null,
+  wrapUpStartSec: null, wrapUpEndSec: null,   // 마무리 멘트 재생 구간(녹화 타임라인) — complete에 보고
   ended: false,
 };
 
@@ -514,7 +515,16 @@ async function finishInterview(r) {
   state.ended = true;
   ["btnAnsStart","btnAnsStop","btnSubmit","btnSkip","btnEnd"].forEach((id) => $(id).disabled = true);
   $("btnStart").disabled = false; $("btnStart").textContent = "면접 시작 (카메라·마이크 권한)";
-  if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) { log("마무리 멘트 재생"); await playBase64Mp3(r.wrapUpMessage.ttsAudio); }
+  // 마무리 멘트(면접관 종료 TTS) 재생 구간을 녹화 타임라인 기준으로 기록한다. 이 값을 complete에 보고해야
+  // 서버가 합성 영상에 마무리 멘트를 얹는다(보고하지 않으면 합성에서 통째로 빠진다).
+  state.wrapUpStartSec = state.wrapUpEndSec = null;
+  if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) {
+    log("마무리 멘트 재생");
+    state.wrapUpStartSec = nowSec();
+    await playBase64Mp3(r.wrapUpMessage.ttsAudio);
+    state.wrapUpEndSec = nowSec();
+    log(`마무리 멘트 재생 구간 [${state.wrapUpStartSec.toFixed(2)}, ${state.wrapUpEndSec.toFixed(2)}]s`);
+  }
   log("면접 종료 — 영상 마무리 중... reportId=" + r.reportId);
 
   const videoBlob = await stopVideoAndGetBlob();
@@ -541,8 +551,11 @@ async function uploadVideoSafely(videoBlob) {
     const put = await fetch(u.uploadUrl, { method: "PUT", headers: { "Content-Type": u.contentType }, body: videoBlob });
     if (!put.ok) throw new Error("S3 PUT 실패 " + put.status + " (버킷 CORS가 localhost PUT을 허용하는지 확인)");
     log("S3 업로드 완료 → complete 호출(합성 트리거)");
-    await api(`/api/v1/interview/sessions/${state.sessionId}/video/complete`, { method: "POST" });
-    log("영상 complete 완료 ✅ — 서버가 합성 시작");
+    // 마무리 멘트 재생 구간을 함께 보고해 서버 합성에 마무리 멘트가 포함되게 한다(없으면 두 값 생략).
+    const completeBody = (state.wrapUpStartSec != null)
+      ? { wrapUpStartSec: state.wrapUpStartSec, wrapUpEndSec: state.wrapUpEndSec } : {};
+    await api(`/api/v1/interview/sessions/${state.sessionId}/video/complete`, { method: "POST", json: completeBody });
+    log("영상 complete 완료 ✅ — 서버가 합성 시작" + (state.wrapUpStartSec != null ? ` (마무리 멘트 ${state.wrapUpStartSec.toFixed(1)}s 포함)` : " (마무리 멘트 없음)"));
   } catch (e) {
     log("⚠️ 영상 업로드 건너뜀: " + e.message + " (리포트/세그먼트는 계속 확인)");
   }
@@ -571,6 +584,8 @@ function esc(s) { return (s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<"
 let segIndex = [];       // { el, startSec, endSec } — scriptSegments 표 행의 라이브 하이라이트용
 let activeSeg = null;
 let reportPlayer = null; // 현재 리포트 합성 영상(하이라이트/세그먼트/스크립트 클릭 seek 대상)
+let scriptIndex = [];    // { startSec, endSec, role, text } — 전체 대본(script) 기반 자막용
+let captionEl = null;    // 영상 바로 밑 자막 표시 영역
 
 // 지정 시각으로 영상을 이동해 재생한다. 영상이 없거나 시각이 없으면 안내만.
 function seek(sec) {
@@ -657,7 +672,7 @@ function timedRow(role, textStr, startSec, endSec, roleStyle) {
 function renderReport(rep) {
   const body = $("reportBody");
   body.innerHTML = "";
-  segIndex = []; activeSeg = null; reportPlayer = null;
+  segIndex = []; activeSeg = null; reportPlayer = null; scriptIndex = []; captionEl = null;
 
   // 상단: 상태 + 헤드라인
   body.appendChild(el("div", null,
@@ -666,9 +681,13 @@ function renderReport(rep) {
 
   // 합성 영상
   if (rep.video && rep.video.url) {
-    reportPlayer = el("video", "width:100%;border-radius:8px;background:#000;margin:10px 0;");
+    reportPlayer = el("video", "max-width:100%;max-height:220px;width:auto;display:block;margin:10px auto;border-radius:8px;background:#000;");
     reportPlayer.src = rep.video.url; reportPlayer.controls = true; reportPlayer.playsInline = true;
     body.appendChild(reportPlayer);
+    // 영상 바로 밑 실시간 자막 — 재생 위치에 해당하는 전체 대본(script) 문장을 표시한다.
+    captionEl = el("div", "min-height:20px;text-align:center;font-size:13px;color:#fff;"
+      + "background:rgba(0,0,0,0.6);border-radius:6px;padding:4px 10px;margin:6px 0 10px;");
+    body.appendChild(captionEl);
     body.appendChild(el("div", "margin-bottom:6px;",
       `<span class="muted">영상 ${rep.video.expired ? "만료됨" : "유효"} · 삭제예정 ${esc((rep.video.expiresAt || "").replace("T", " ").slice(0, 16))}</span>`));
     log("합성 영상 준비 — 하이라이트/세그먼트/스크립트를 클릭하면 해당 시각으로 재생됩니다");
@@ -716,8 +735,11 @@ function renderReport(rep) {
   if (script.length) {
     const sc = el("div", "margin-top:10px;"); sc.className = "card";
     sc.appendChild(el("div", "margin-bottom:6px;", `<b>전체 대본 타임라인 (${script.length})</b>`));
-    script.forEach((line) => sc.appendChild(timedRow(line.role, line.text, line.startSec, line.endSec,
-      line.role === "INTERVIEWEE" ? "background:rgba(37,99,235,0.2)" : "")));
+    script.forEach((line) => {
+      sc.appendChild(timedRow(line.role, line.text, line.startSec, line.endSec,
+        line.role === "INTERVIEWEE" ? "background:rgba(37,99,235,0.2)" : ""));
+      scriptIndex.push({ startSec: line.startSec, endSec: line.endSec, role: line.role, text: line.text });
+    });
     body.appendChild(sc);
   }
 
@@ -735,7 +757,10 @@ function renderReport(rep) {
     body.appendChild(g);
   }
 
-  if (reportPlayer) reportPlayer.addEventListener("timeupdate", () => syncHighlight(reportPlayer.currentTime));
+  if (reportPlayer) reportPlayer.addEventListener("timeupdate", () => {
+    syncHighlight(reportPlayer.currentTime);
+    syncCaption(reportPlayer.currentTime);
+  });
 }
 
 // 재생 위치에 해당하는 scriptSegments 행을 강조(라이브 싱크).
@@ -745,6 +770,13 @@ function syncHighlight(t) {
   if (activeSeg) activeSeg.el.style.background = "";
   activeSeg = seg;
   if (seg) seg.el.style.background = "rgba(37,99,235,0.25)";
+}
+
+// 재생 위치에 해당하는 전체 대본(script) 문장을 영상 바로 밑 자막으로 표시한다.
+function syncCaption(t) {
+  if (!captionEl) return;
+  const line = scriptIndex.find((s) => t >= s.startSec && t < s.endSec) || null;
+  captionEl.textContent = line ? `${line.role === "INTERVIEWER" ? "면접관" : "지원자"} · ${line.text}` : "";
 }
 </script>
 </body>
