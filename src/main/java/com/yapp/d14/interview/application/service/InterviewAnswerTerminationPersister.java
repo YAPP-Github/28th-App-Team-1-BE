@@ -9,7 +9,6 @@ import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Question;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
-import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
@@ -22,7 +21,6 @@ class InterviewAnswerTerminationPersister {
     private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
     private final InterviewSessionRepository interviewSessionRepository;
-    private final TicketCommitUseCase ticketCommitUseCase;
 
     record PersistResult(Long answerId) {
     }
@@ -32,8 +30,7 @@ class InterviewAnswerTerminationPersister {
             InterviewSession session,
             Question question,
             Answer answer,
-            InterviewEndType endType,
-            String outcomeReason
+            InterviewEndType endType
     ) {
         Long answerId = null;
         if (answer != null) {
@@ -47,8 +44,6 @@ class InterviewAnswerTerminationPersister {
 
         session.markCompleted(endType);
         interviewSessionRepository.save(session);
-
-        ticketCommitUseCase.commit(session.getId(), outcomeReason);
 
         return new PersistResult(answerId);
     }

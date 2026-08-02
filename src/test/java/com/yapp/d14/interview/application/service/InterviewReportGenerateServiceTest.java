@@ -38,6 +38,7 @@ import com.yapp.d14.interview.domain.ReportCard;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.interview.domain.ResolutionLevel;
 import com.yapp.d14.interview.domain.TestType;
+import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -95,6 +96,9 @@ class InterviewReportGenerateServiceTest {
 
     @Mock
     private QuestionUtteranceSegmentPersister questionUtteranceSegmentPersister;
+
+    @Mock
+    private TicketCommitUseCase ticketCommitUseCase;
 
     @InjectMocks
     private InterviewReportGenerateService service;
@@ -172,6 +176,7 @@ class InterviewReportGenerateServiceTest {
         verify(interviewReportPersister).persist(eq(1L), reportCaptor.capture(), eq(List.of()), eq(List.of()), eq(List.of()));
         assertThat(reportCaptor.getValue().getStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
         assertThat(reportCaptor.getValue().getHeadlineBranch()).isEqualTo(HeadlineBranch.INSUFFICIENT_ANALYSIS);
+        verify(ticketCommitUseCase).commit(1L, "COMPLETED");
     }
 
     @Test
@@ -215,6 +220,7 @@ class InterviewReportGenerateServiceTest {
         assertThat(report.getCompositeScore()).isEqualTo(3.56);
         assertThat(report.getInternalGrade()).isEqualTo(InternalGrade.STRONG_HIRE);
         assertThat(axisCaptor.getValue()).hasSize(2);
+        verify(ticketCommitUseCase).commit(1L, "COMPLETED");
     }
 
     @Test
@@ -384,5 +390,6 @@ class InterviewReportGenerateServiceTest {
 
         verify(interviewReportFailureHandler).markFailed(1L);
         verify(interviewReportPersister, never()).persist(any(), any(), any(), any(), any());
+        verify(ticketCommitUseCase, never()).commit(any(), any());
     }
 }

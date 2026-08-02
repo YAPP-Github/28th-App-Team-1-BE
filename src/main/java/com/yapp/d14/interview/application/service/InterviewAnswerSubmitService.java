@@ -337,9 +337,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
 
-        String outcomeReason = endType == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
         InterviewAnswerTerminationPersister.PersistResult persisted =
-                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType, outcomeReason);
+                interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
         if (termination.transcription() != null) {

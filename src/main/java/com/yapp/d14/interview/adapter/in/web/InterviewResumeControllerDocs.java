@@ -226,9 +226,9 @@ public interface InterviewResumeControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- `cause`가 이용권 분기의 유일한 입력값입니다. 경과 시간이나 진행량은 판정에 쓰이지 않습니다.\n" +
                     "  - `cause=NETWORK_DISCONNECT`: 네트워크 끊김으로 인한 중단 — 이용권 환급(`ticketOutcome=RELEASED`), 리포트 미생성.\n" +
-                    "  - `cause=USER_EXIT`: 사용자의 의도적 이탈로 인한 중단 — `ticketOutcome=COMMITTED`, 리포트 생성 트리거(`reportGenerating=true`). " +
-                    "**`ticketOutcome=COMMITTED`는 현재 \"이용권 예약을 유지한다\"는 뜻이며, 이 호출 시점에 즉시 차감되는 것은 아닙니다** " +
-                    "— 실제 차감은 이후 리포트 생성 결과에 따라 처리될 예정입니다(추후 구현). " +
+                    "  - `cause=USER_EXIT`: 사용자의 의도적 이탈로 인한 중단 — `ticketOutcome=HELD`, 리포트 생성 트리거(`reportGenerating=true`). " +
+                    "**이 호출 시점에는 이용권이 아직 확정 차감되지 않습니다** " +
+                    "— 이후 트리거된 리포트 생성이 성공하면 그 시점에 차감이 확정되고, 실패하면 환급됩니다. " +
                     "답변이 적어 해상도가 낮아도 리포트는 생성됩니다(`INSUFFICIENT_ANALYSIS`로 생성될 수 있음).\n" +
                     "- `cause`로 `HOLD_EXPIRED`는 보낼 수 없습니다 — 서버가 hold 만료를 스스로 감지했을 때만 쓰는 내부 전용 값입니다. " +
                     "누락·정의되지 않은 값·`HOLD_EXPIRED` 세 경우 모두 `400 INVALID_ABANDON_CAUSE`로 동일하게 거부됩니다.\n" +
@@ -255,7 +255,7 @@ public interface InterviewResumeControllerDocs {
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "사용자 이탈 — 이용권 차감 + 리포트 생성", value = """
+                                    @ExampleObject(name = "사용자 이탈 — 이용권 보류 + 리포트 생성", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -263,7 +263,7 @@ public interface InterviewResumeControllerDocs {
                                                 "status": "ABANDONED",
                                                 "abandonCause": "USER_EXIT",
                                                 "endedAt": "2026-07-27T10:06:41",
-                                                "ticketOutcome": "COMMITTED",
+                                                "ticketOutcome": "HELD",
                                                 "reportGenerating": true
                                               }
                                             }

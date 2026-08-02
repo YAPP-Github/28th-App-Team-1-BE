@@ -7,7 +7,6 @@ import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
 import com.yapp.d14.interview.exception.InterviewException;
-import com.yapp.d14.ticket.application.port.in.TicketCommitUseCase;
 import com.yapp.d14.ticket.application.port.in.TicketReleaseUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,7 +20,6 @@ import java.util.concurrent.RejectedExecutionException;
 class InterviewAbandonPersister {
 
     private final InterviewSessionRepository interviewSessionRepository;
-    private final TicketCommitUseCase ticketCommitUseCase;
     private final TicketReleaseUseCase ticketReleaseUseCase;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
@@ -41,11 +39,11 @@ class InterviewAbandonPersister {
         current.markAbandoned(cause);
         interviewSessionRepository.save(current);
 
-        // 이용권 처리 실패 시 트랜잭션 전체를 롤백한다(try/catch로 삼키지 않음) — InterviewSttResetPersister와 동일 원칙.
+        // 이용권은 여기서 커밋하지 않는다 — 리포트 생성 트리거만 하고, 실제 커밋/환급은 그 결과에 따라
+        // InterviewReportGenerateService(성공 시 커밋)와 InterviewReportFailureHandler(실패 시 환급)가 처리한다.
         if (cause == AbandonCause.USER_EXIT) {
-            // TODO: 이용권 커밋을 여기서 바로 하지 않는다 — 나중에 보고서 생성 성공 시 이용권 커밋, 실패 시 이용권 환불하는 방향으로 미룰 예정.
             triggerReportGeneration(current.getId());
-            return new PersistResult(current.getEndedAt(), "COMMITTED", true);
+            return new PersistResult(current.getEndedAt(), "HELD", true);
         }
 
         ticketReleaseUseCase.release(current.getId(), cause.name());
