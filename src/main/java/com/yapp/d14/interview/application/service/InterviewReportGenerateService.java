@@ -103,6 +103,8 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                         sessionId, null, null, INSUFFICIENT_ANALYSIS_HEADLINE, HeadlineBranch.INSUFFICIENT_ANALYSIS, ReportStatus.INSUFFICIENT_ANALYSIS
                 );
                 interviewReportPersister.persist(sessionId, report, List.of(), List.of(), List.of());
+                // 채점 대상 턴이 없어도(조기 종료 등) 영상은 합성되므로, 대본 타임라인이 비지 않게 질문 발화 시각은 그대로 채운다.
+                generateQuestionSegmentsSafely(session.getUserId(), sessionId);
                 return;
             }
 
