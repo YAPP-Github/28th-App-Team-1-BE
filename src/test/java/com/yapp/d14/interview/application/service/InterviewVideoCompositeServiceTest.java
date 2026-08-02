@@ -61,7 +61,7 @@ class InterviewVideoCompositeServiceTest {
     }
 
     private String answerKey(int turnLevel) {
-        return "users/%s/sessions/%s/answers/%s.webm".formatted(USER_ID, SESSION_ID, turnLevel);
+        return "users/%s/sessions/%s/answers/%s.m4a".formatted(USER_ID, SESSION_ID, turnLevel);
     }
 
     @Test
@@ -71,8 +71,8 @@ class InterviewVideoCompositeServiceTest {
                 question(2L, 2, 12.0f)
         ));
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
-                answer(1L, 8.0f, false),   // turnLevel 1 → answers/1.webm
-                answer(2L, 15.0f, false)   // turnLevel 2 → answers/2.webm
+                answer(1L, 8.0f, false),   // turnLevel 1 → answers/1.m4a
+                answer(2L, 15.0f, false)   // turnLevel 2 → answers/2.m4a
         ));
         given(interviewVideoRepository.markComposited(SESSION_ID)).willReturn(1);
 

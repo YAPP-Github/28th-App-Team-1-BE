@@ -476,7 +476,7 @@ public interface InterviewControllerDocs {
     ResponseEntity<ApiResponse<InterviewAnswerSubmitHttpResponse>> submitAnswer(
             @Parameter(hidden = true) @CurrentUser UUID userId,
             @Parameter(description = "면접 세션 ID") @PathVariable Long sessionId,
-            @Parameter(description = "답변 음성 파일(mp3). endType=SKIP이면 생략, HARD_CAP은 있어도 없어도 됨") MultipartFile audio,
+            @Parameter(description = "답변 음성 파일(m4a). endType=SKIP이면 생략, HARD_CAP은 있어도 없어도 됨") MultipartFile audio,
             @Valid @ParameterObject InterviewAnswerSubmitHttpRequest request
     );
 }

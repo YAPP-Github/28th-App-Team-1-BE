@@ -24,7 +24,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
     private static final int MAX_ATTEMPTS = 3;
     private static final long BASE_BACKOFF_MILLIS = 200L;
     private static final String CONTENT_TYPE = "audio/mpeg";
-    private static final String ANSWER_CONTENT_TYPE = "audio/webm";
+    private static final String ANSWER_CONTENT_TYPE = "audio/mp4";
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;

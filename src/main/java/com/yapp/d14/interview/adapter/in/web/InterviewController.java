@@ -15,6 +15,8 @@ import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
+import com.yapp.d14.interview.exception.InterviewErrorCode;
+import com.yapp.d14.interview.exception.InterviewException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,12 +32,18 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/interview/sessions")
 @RequiredArgsConstructor
 class InterviewController implements InterviewControllerDocs {
+
+    // m4a(MP4 컨테이너/AAC) 계열로 허용하는 content-type. 클라·프록시가 붙이는 표기 편차를 흡수한다.
+    private static final Set<String> M4A_CONTENT_TYPES =
+            Set.of("audio/mp4", "audio/x-m4a", "audio/m4a");
 
     private final InterviewSessionCreateUseCase interviewSessionCreateUseCase;
     private final InterviewSessionStatusUseCase interviewSessionStatusUseCase;
@@ -78,9 +86,31 @@ class InterviewController implements InterviewControllerDocs {
             @RequestPart(value = "audio", required = false) MultipartFile audio,
             @Valid @ModelAttribute InterviewAnswerSubmitHttpRequest request
     ) {
+        validateAudioFormat(audio);
         InterviewAnswerSubmitResult result =
                 interviewAnswerSubmitUseCase.submit(userId, request.toCommand(sessionId, audio));
         return ResponseEntity.ok(ApiResponse.ok(InterviewAnswerSubmitHttpResponse.from(result)));
+    }
+
+    // 클라이언트(iOS/Android 네이티브)는 답변 음성을 m4a로 통일 업로드한다. STT(Whisper)는 확장자로 포맷을
+    // 추론하므로, m4a 계약을 어긴 업로드(예: 브라우저 기본 webm)를 여기서 400으로 조기 차단한다.
+    // content-type이 일반값(application/octet-stream 등)일 수 있어 파일명 확장자도 함께 신호로 본다.
+    private static void validateAudioFormat(MultipartFile audio) {
+        if (audio == null || audio.isEmpty()) {
+            return;
+        }
+        String contentType = audio.getContentType();
+        if (contentType != null && M4A_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
+            return;
+        }
+        String filename = audio.getOriginalFilename();
+        if (filename != null) {
+            String lower = filename.toLowerCase(Locale.ROOT);
+            if (lower.endsWith(".m4a") || lower.endsWith(".mp4")) {
+                return;
+            }
+        }
+        throw new InterviewException(InterviewErrorCode.INVALID_AUDIO_FORMAT);
     }
 }
 

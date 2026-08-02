@@ -57,15 +57,15 @@ class FfmpegInterviewVideoCompositorAdapterSmokeTest {
 
         rawVideo = inputsDir.resolve("raw.mp4");
         questionAudio = inputsDir.resolve("q.mp3");
-        answerAudio = inputsDir.resolve("a.webm");
+        answerAudio = inputsDir.resolve("a.m4a");
 
         // 10초 무음 테스트 영상(녹화본 대역). 오디오 트랙 없음 — 서버가 얹는 오디오만으로 합성되는지 본다.
         run("ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc=duration=10:size=320x240:rate=30",
                 "-pix_fmt", "yuv420p", rawVideo.toString());
         // 질문 TTS 대역: 440Hz 2초.
         run("ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", questionAudio.toString());
-        // 답변 음성 대역: 880Hz 3초, webm/opus(실제 답변 저장 포맷과 동일).
-        run("ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=880:duration=3", "-c:a", "libopus", answerAudio.toString());
+        // 답변 음성 대역: 880Hz 3초, m4a/aac(실제 답변 저장 포맷과 동일).
+        run("ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=880:duration=3", "-c:a", "aac", answerAudio.toString());
     }
 
     @Test

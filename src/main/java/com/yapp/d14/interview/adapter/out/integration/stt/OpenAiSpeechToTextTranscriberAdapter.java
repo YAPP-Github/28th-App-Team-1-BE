@@ -17,8 +17,9 @@ import java.util.List;
 @RequiredArgsConstructor
 class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
 
-    // 클라이언트 답변 음성 파일은 mp3로 고정 전제 (설계 문서 7-2장). 추후 포맷이 늘어나면 원본 확장자를 전달받아야 한다.
-    private static final String AUDIO_FILENAME = "answer.mp3";
+    // 클라이언트(iOS/Android 네이티브) 답변 음성은 m4a로 통일 업로드한다. Whisper는 파일명 확장자로 포맷을
+    // 추론하므로 실제 바이트(m4a)와 확장자를 일치시킨다. 제출 API에서 m4a 계열만 허용하므로 여기서는 고정으로 둔다.
+    private static final String AUDIO_FILENAME = "answer.m4a";
     // 5-2장: no_speech_prob이 이 값을 초과하는 세그먼트를 인식 실패로 간주
     private static final float NO_SPEECH_PROB_THRESHOLD = 0.6f;
 
