@@ -91,6 +91,28 @@ class ScriptSegmentMapperTest {
     }
 
     @Test
+    void 연속으로_매칭에_실패해도_커서가_전진해_같은_구간을_중복_배치하지_않는다() {
+        // 재현: 질문 재-STT 시 Whisper 세그먼트가 구두점 차이 등으로 원문과 연속으로 매칭되지 않으면,
+        // 근사 배치(fallback)가 커서를 전진시키지 않을 경우 같은 위치에서 같은 길이의 슬라이스를 반복
+        // 생성해 서로 다른 세그먼트가 완전히 동일한 텍스트로 중복 저장된다(#78 인터뷰어 대본 중복 버그).
+        String fullText = "안녕하세요 반갑습니다 오늘 날씨가 좋네요";
+        List<TranscriptSegment> sttSegments = List.of(
+                new TranscriptSegment("안녕하세요", 0.0f, 1.0f),
+                new TranscriptSegment("ZZZZ", 1.0f, 2.0f), // 원문에 없는 4글자 — 매칭 실패
+                new TranscriptSegment("WWWW", 2.0f, 3.0f)  // 원문에 없는 4글자(다른 내용, 같은 길이) — 매칭 실패
+        );
+
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWER, fullText, sttSegments, 0.0f);
+
+        assertThat(result).hasSize(3);
+        UtteranceSegment second = result.get(1);
+        UtteranceSegment third = result.get(2);
+        // 매칭에 실패한 두 세그먼트가 같은 길이라도, 커서가 전진했다면 서로 다른 위치를 가리켜야 한다.
+        assertThat(third.startIndex()).isEqualTo(second.endIndex());
+        assertThat(third.startIndex()).isGreaterThan(second.startIndex());
+    }
+
+    @Test
     void 세그먼트가_없거나_대본이_비면_빈_리스트다() {
         assertThat(ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, "대본", List.of(), 0.0f)).isEmpty();
         assertThat(ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, "", List.of(new TranscriptSegment("x", 0f, 1f)), 0.0f)).isEmpty();

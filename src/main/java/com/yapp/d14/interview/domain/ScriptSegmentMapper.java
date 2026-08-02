@@ -31,8 +31,12 @@ public final class ScriptSegmentMapper {
             int end;
             if (start < 0) {
                 // 공백·정규화 차이 등으로 못 찾으면 커서 위치에 근사 배치한다(정확도보다 누락 방지 우선).
+                // 이 경우에도 커서를 전진시켜야 한다 — 그러지 않으면 다음 세그먼트들이 매칭에 계속 실패할 때
+                // (예: Whisper 세그먼트가 원문과 구두점이 달라 연속으로 못 찾는 경우) 같은 위치에서 근사 배치가
+                // 반복돼 동일한 텍스트가 중복 저장된다(#78 인터뷰어 대본 중복 버그).
                 start = Math.min(cursor, fullText.length());
                 end = Math.min(start + piece.length(), fullText.length());
+                cursor = end;
             } else {
                 end = start + piece.length();
                 cursor = end;
