@@ -17,6 +17,8 @@ class DevInterviewTestPageController {
 
     // #78 문장 발화 시각 확인용 하네스
     private static final Resource SCRIPT_TIMING_PAGE = new ClassPathResource("dev-static/interview-test.html");
+    // Chrome 등 audio/mp4 녹음 미지원 브라우저에서 답변 음성을 m4a로 변환할 때 쓰는 MP4 muxer(WebCodecs AAC와 조합)
+    private static final Resource MP4_MUXER_JS = new ClassPathResource("dev-static/mp4-muxer.js");
 
     // 면접 진행 전반(녹음·MP3 인코딩 포함)을 다루는 범용 하네스
     private static final Resource HARNESS_PAGE = new ClassPathResource("dev-static/interview-harness/index.html");
@@ -25,6 +27,11 @@ class DevInterviewTestPageController {
     @GetMapping("/interview-test.html")
     ResponseEntity<Resource> interviewTestPage() {
         return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(SCRIPT_TIMING_PAGE);
+    }
+
+    @GetMapping("/mp4-muxer.js")
+    ResponseEntity<Resource> mp4MuxerJs() {
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/javascript")).body(MP4_MUXER_JS);
     }
 
     @GetMapping({"/interview-harness", "/interview-harness/", "/interview-harness/index.html"})
