@@ -56,10 +56,10 @@ class ScriptSegmentMapperTest {
     }
 
     @Test
-    void 이후에_다시_등장하지_않는_짧은_구간은_커서를_역행시키지_않는다() {
+    void 이후에_다시_등장하지_않는_짧은_구간은_커서를_역행시키지_않고_소비할_문자가_없으면_생성하지_않는다() {
         // "네"는 인덱스 0에만 존재한다. 세 번째 세그먼트가 앞서 소비된 "네"와 같은 텍스트를 반환하면
-        // (Whisper가 간투사를 중복/재인식하는 경우) cursor 이후 전방 탐색은 실패하고,
-        // 전체 재검색 폴백이 cursor보다 앞선 위치(0)를 찾아낸다 — 이 값은 채택하면 안 된다.
+        // (Whisper가 간투사를 중복/재인식하는 경우) cursor 이후 전방 탐색은 실패하고, 대본 끝까지도
+        // 더 소비할 문자가 없으므로 이 세그먼트는 빈 세그먼트로 만들어지지 않고 버려진다.
         String fullText = "네 압니다";
         List<TranscriptSegment> sttSegments = List.of(
                 new TranscriptSegment("네", 0.0f, 0.3f),
@@ -69,11 +69,29 @@ class ScriptSegmentMapperTest {
 
         List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 0.0f);
 
-        assertThat(result).hasSize(3);
+        assertThat(result).hasSize(2);
         assertThat(result.get(0).startIndex()).isZero();
         assertThat(result.get(1).startIndex()).isEqualTo(2);
-        // cursor(5)보다 앞선 위치(0)를 되찾지 않고, 근사 배치(cursor 위치)로 처리해 인덱스가 역행하지 않는다.
-        assertThat(result.get(2).startIndex()).isGreaterThanOrEqualTo(result.get(1).endIndex());
+    }
+
+    @Test
+    void 근사_배치는_이후의_정확한_매칭을_건너뛰지_않는다() {
+        // "ZZZZ"는 원문에 없어 근사 배치되지만, 그 뒤 "반갑습니다"는 원문에 정확히 존재한다.
+        // 근사 배치가 커서를 piece.length()만큼 무작정 전진시키면 "반갑습니다"의 실제 시작 위치를
+        // 지나쳐버려 세 번째 세그먼트가 엉뚱한 문자를 가리키게 된다 — 이를 방지해야 한다.
+        String fullText = "안녕하세요 반갑습니다";
+        List<TranscriptSegment> sttSegments = List.of(
+                new TranscriptSegment("안녕하세요", 0.0f, 1.0f),
+                new TranscriptSegment("ZZZZ", 1.0f, 2.0f),
+                new TranscriptSegment("반갑습니다", 2.0f, 3.0f)
+        );
+
+        List<UtteranceSegment> result = ScriptSegmentMapper.map(ScriptRole.INTERVIEWEE, fullText, sttSegments, 0.0f);
+
+        assertThat(result).hasSize(3);
+        UtteranceSegment third = result.get(2);
+        assertThat(third.text()).isEqualTo("반갑습니다");
+        assertThat(fullText.substring(third.startIndex(), third.endIndex())).isEqualTo("반갑습니다");
     }
 
     @Test
