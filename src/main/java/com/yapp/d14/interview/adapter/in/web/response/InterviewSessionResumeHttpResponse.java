@@ -12,7 +12,7 @@ public record InterviewSessionResumeHttpResponse(
         @Schema(description = "면접 시작 시각. RESUMABLE일 때만 값 존재")
         LocalDateTime startedAt,
 
-        @Schema(description = "면접 시작 후 경과 시간(초, 벽시계 기준). RESUMABLE일 때만 값 존재")
+        @Schema(description = "면접 시작 후 경과 시간(초, 서버 기준 — 클라이언트 타이머와 무관). RESUMABLE일 때만 값 존재")
         Long elapsedSeconds,
 
         @Schema(description = "세션 종료 상태 — COMPLETED / ABANDONED / INVALID. ENDED일 때만 값 존재")
