@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>면접 테스트 하네스 (#78)</title>
+<title>관리자용 테스트 도구</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -24,6 +24,8 @@
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
   video { width: 100%; border-radius: 8px; background: #000; aspect-ratio: 4/3; }
+  /* 카메라 프리뷰는 화면을 다 차지하지 않게 작게 고정한다(리포트 합성 영상 플레이어에는 영향 없음). */
+  #preview { width: auto; max-width: 100%; max-height: 220px; display: block; margin: 0 auto; }
   #log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow: auto; background: rgba(128,128,128,0.08); border-radius: 8px; padding: 10px; }
   .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(128,128,128,0.2); }
   .pill.rec { background: #dc2626; color: #fff; }
@@ -34,7 +36,7 @@
 </style>
 </head>
 <body>
-<h1>면접 테스트 하네스 <span class="muted">#78 문장 발화 시각</span></h1>
+<h1>관리자용 테스트 도구</h1>
 <p class="sub">백엔드를 <code>dev</code> 프로파일로 로컬 실행(Postgres·Redis·S3·ffmpeg·OpenAI·Anthropic 키 필요)한 뒤 이 페이지를 엽니다. API는 같은 출처로 호출됩니다.</p>
 
 <div class="grid">
@@ -78,23 +80,7 @@
     </div>
 
     <div class="card">
-      <h2>3. 진행</h2>
-      <div class="big">턴: <span id="turnInfo">-</span> <span id="recPill" class="pill">대기</span></div>
-      <div class="muted" id="qInfo">아직 시작 전</div>
-      <audio id="qAudio" controls style="width:100%; margin-top:8px;"></audio>
-      <div class="row">
-        <button id="btnAnsStart" class="secondary" disabled>답변 녹음 시작</button>
-        <button id="btnAnsStop" class="secondary" disabled>정지</button>
-      </div>
-      <button id="btnSubmit" disabled>답변 제출 → 다음 질문</button>
-      <div class="row">
-        <button id="btnSkip" class="secondary" disabled>이 턴 스킵</button>
-        <button id="btnEnd" class="danger" disabled>면접 종료(수동)</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>4. 리포트 조회 (읽기 전용)</h2>
+      <h2>3. 리포트 조회 (읽기 전용)</h2>
       <button id="btnLoadReports" class="secondary">내 리포트 목록</button>
       <div id="reportList" style="margin-top:6px;"></div>
       <hr />
@@ -109,6 +95,21 @@
     <div class="card">
       <h2>카메라</h2>
       <video id="preview" autoplay muted playsinline></video>
+    </div>
+    <div class="card">
+      <h2>진행</h2>
+      <div class="big">턴: <span id="turnInfo">-</span> <span id="recPill" class="pill">대기</span></div>
+      <div class="muted" id="qInfo">아직 시작 전</div>
+      <audio id="qAudio" controls style="width:100%; margin-top:8px;"></audio>
+      <div class="row">
+        <button id="btnAnsStart" class="secondary" disabled>답변 녹음 시작</button>
+        <button id="btnAnsStop" class="secondary" disabled>정지</button>
+      </div>
+      <button id="btnSubmit" disabled>답변 제출 → 다음 질문</button>
+      <div class="row">
+        <button id="btnSkip" class="secondary" disabled>이 턴 스킵</button>
+        <button id="btnEnd" class="danger" disabled>면접 종료(수동)</button>
+      </div>
     </div>
     <div class="card">
       <h2>로그</h2>
@@ -144,6 +145,9 @@ function log(msg, obj) {
   $("log").scrollTop = $("log").scrollHeight;
   console.log(msg, obj ?? "");
 }
+// 로드 시점/핸들러 내부에서 조용히 죽는 예외를 화면 로그로 끌어올린다(버튼 무반응 원인 추적용).
+window.addEventListener("error", (e) => { log("❌ JS 에러: " + (e.message || e.error) + (e.filename ? " @" + e.filename + ":" + e.lineno : "")); });
+window.addEventListener("unhandledrejection", (e) => { log("❌ 미처리 rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason)); });
 function nowSec() { return state.t0 == null ? 0 : (performance.now() - state.t0) / 1000; }
 function token() { return $("token").value.trim(); }
 function authHeaders(extra) { return Object.assign({ "Authorization": "Bearer " + token() }, extra || {}); }
@@ -177,9 +181,11 @@ function playBase64Mp3(b64) { return playAudioUrl("data:audio/mp3;base64," + b64
 function playAudioUrl(url) {
   return new Promise((resolve) => {
     const a = $("qAudio"); a.src = url;
-    a.onended = () => resolve();
-    a.play().catch((e) => { log("자동재생 차단 — 재생 버튼을 누르세요", e.message); });
-    // 자동재생이 막혀도 진행은 가능하도록 사용자가 재생/종료를 조작할 수 있음
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    a.onended = finish;
+    // 자동재생이 막혀도 흐름을 멈추지 않고 바로 녹음 단계로 넘어간다(질문은 qAudio 재생 버튼으로 직접 들을 수 있음).
+    a.play().catch((e) => { log("자동재생 차단 — qAudio의 ▶로 직접 재생하세요(진행은 계속됩니다)", e.message); finish(); });
   });
 }
 
@@ -289,6 +295,8 @@ $("btnStart").onclick = async () => {
     const pid = $("portfolioId").value.trim() || state.portfolioId;
     if (!pid) { alert("포트폴리오 ID가 필요합니다(업로드 또는 붙여넣기)"); return; }
     state.portfolioId = pid;
+    // 중복 시작 방지: 준비가 끝날 때까지 시작 버튼을 잠근다(여러 번 눌러 세션이 중복 생성되는 것 방지).
+    $("btnStart").disabled = true; $("btnStart").textContent = "면접 준비 중...";
 
     // 카메라·마이크
     log("카메라·마이크 권한 요청...");
@@ -296,16 +304,20 @@ $("btnStart").onclick = async () => {
     $("preview").srcObject = state.stream;
 
     // 연속 영상 녹화 시작 (raw). 이 순간이 타임라인 t0.
+    // raw.mp4는 '영상 전용'이어야 한다(서버가 질문·답변 음성을 FFmpeg로 합성). 또 오디오 트랙을 영상 녹화기가
+    // 물면 답변 녹음기(같은 트랙)의 MediaRecorder.start()가 Chrome에서 충돌로 실패한다. 그래서 영상 녹화기에는
+    // video 트랙만 담은 별도 MediaStream을 준다(오디오 트랙은 답변 녹음기 전용으로 남긴다).
+    const videoOnlyStream = new MediaStream(state.stream.getVideoTracks());
     // 서버 합성이 -c:v copy(재인코딩 없음)라 mp4에 담기는 H.264를 우선한다. webm(vp8)로 떨어지면 합성이 실패할 수 있다.
     state.videoMime = pickMime([
-      "video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=h264", "video/mp4",
-      "video/webm;codecs=vp8,opus", "video/webm",
+      "video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=h264", "video/mp4",
+      "video/webm;codecs=vp8", "video/webm",
     ]);
     if (!state.videoMime || state.videoMime.startsWith("video/webm")) {
       log("⚠️ 이 브라우저는 mp4(H.264) 녹화를 지원하지 않아 webm으로 녹화됩니다 — 서버 합성(-c:v copy)이 실패할 수 있습니다(면접·세그먼트는 정상). Chrome/Safari 최신 버전 권장.");
     }
     state.videoChunks = [];
-    state.videoRecorder = new MediaRecorder(state.stream, state.videoMime ? { mimeType: state.videoMime } : undefined);
+    state.videoRecorder = new MediaRecorder(videoOnlyStream, state.videoMime ? { mimeType: state.videoMime } : undefined);
     state.videoRecorder.ondataavailable = (e) => { if (e.data.size) state.videoChunks.push(e.data); };
     state.videoRecorder.start(1000);
     state.t0 = performance.now();
@@ -333,7 +345,10 @@ $("btnStart").onclick = async () => {
 
     await goToQuestion(summary.questionId, summary.turn, () => playBase64Mp3(summary.ttsAudio));
     log("면접 준비 완료 — 첫 질문 재생. 답변을 녹음하세요. (요약 턴은 스킵/종료 불가 — 답변 제출 필요)");
-  } catch (e) { log("❌ " + e.message); alert(e.message); }
+  } catch (e) {
+    log("❌ " + e.message); alert(e.message);
+    $("btnStart").disabled = false; $("btnStart").textContent = "면접 시작 (카메라·마이크 권한)";
+  }
 };
 
 function pickMime(cands) { for (const c of cands) { if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c; } return null; }
@@ -394,6 +409,7 @@ async function goToQuestion(questionId, turn, playFn) {
   $("turnInfo").textContent = `turn ${state.currentTurn} · depth ${state.currentDepth} (qId ${questionId})`;
   $("qInfo").textContent = "질문 음성 재생 중...";
   $("btnSubmit").disabled = true; $("btnAnsStart").disabled = false; $("btnAnsStop").disabled = true;
+  log("🎙️ 준비됨 — '답변 녹음 시작' 버튼을 누르세요");
   // 요약 턴(turnLevel 0)은 오디오 없는 스킵/종료가 서버에서 STT를 타 깨지므로 막는다.
   const canEnd = state.currentTurn != null && state.currentTurn > 0;
   $("btnSkip").disabled = !canEnd; $("btnEnd").disabled = !canEnd;
@@ -406,12 +422,17 @@ async function goToQuestion(questionId, turn, playFn) {
 
 // ---------- 답변 녹음 ----------
 $("btnAnsStart").onclick = () => {
+ try {
+  log("답변 녹음 시작 클릭됨 (stream=" + (state.stream ? "ok" : "없음") + ")");
+  if (!state.stream) { alert("먼저 '면접 시작'으로 카메라·마이크를 켜세요."); return; }
   // 서버는 답변 음성을 m4a(audio/mp4)만 허용한다. Safari는 audio/mp4로 녹음되므로 이를 최우선으로 고른다.
   // Chrome/Firefox는 audio/mp4 녹음을 지원하지 않아 webm으로 떨어지며, 이 경우 서버가 400으로 반려한다
   // (m4a 실경로 테스트는 Safari 또는 실기기로 해야 함).
   const mime = pickMime(["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]);
   state.answerChunks = [];
-  state.answerRecorder = new MediaRecorder(state.stream, mime ? { mimeType: mime } : undefined);
+  // 영상 녹화기는 video 트랙만 물고 있으므로, 답변 녹음기는 audio 트랙만 담은 별도 스트림으로 녹음한다(트랙 충돌 방지).
+  const audioOnlyStream = new MediaStream(state.stream.getAudioTracks());
+  state.answerRecorder = new MediaRecorder(audioOnlyStream, mime ? { mimeType: mime } : undefined);
   state.answerRecorder.ondataavailable = (e) => { if (e.data.size) state.answerChunks.push(e.data); };
   state.answerRecorder.onstop = () => {
     state.answerBlob = new Blob(state.answerChunks, { type: state.answerChunks[0]?.type || "audio/webm" });
@@ -427,6 +448,10 @@ $("btnAnsStart").onclick = () => {
   $("recPill").className = "pill rec"; $("recPill").textContent = "녹음중";
   $("btnAnsStart").disabled = true; $("btnAnsStop").disabled = false;
   log("답변 녹음 시작...");
+ } catch (e) {
+  log("❌ 답변 녹음 시작 실패: " + (e && e.message ? e.message : e));
+  alert("답변 녹음 시작 실패: " + (e && e.message ? e.message : e));
+ }
 };
 $("btnAnsStop").onclick = () => {
   if (state.answerRecorder && state.answerRecorder.state !== "inactive") state.answerRecorder.stop();
@@ -488,6 +513,7 @@ $("btnEnd").onclick = async () => {
 async function finishInterview(r) {
   state.ended = true;
   ["btnAnsStart","btnAnsStop","btnSubmit","btnSkip","btnEnd"].forEach((id) => $(id).disabled = true);
+  $("btnStart").disabled = false; $("btnStart").textContent = "면접 시작 (카메라·마이크 권한)";
   if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) { log("마무리 멘트 재생"); await playBase64Mp3(r.wrapUpMessage.ttsAudio); }
   log("면접 종료 — 영상 마무리 중... reportId=" + r.reportId);
 
