@@ -943,7 +943,7 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void endType이_EARLY_EXIT이면_STT만_수행하고_즉시_종료한다() {
+    void endType이_BACK_EXIT이면_STT만_수행하고_즉시_종료한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(session()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
         given(speechToTextTranscriber.transcribe(audioContent))
@@ -951,18 +951,18 @@ class InterviewAnswerSubmitServiceTest {
         given(interviewAnswerTerminationPersister.persist(any(), any(), any(), any()))
                 .willReturn(new InterviewAnswerTerminationPersister.PersistResult(20L));
 
-        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.EARLY_EXIT, audioContent));
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.BACK_EXIT, audioContent));
 
         assertThat(result.answerId()).isEqualTo(20L);
         assertThat(result.nextQuestion()).isNull();
         assertThat(result.wrapUpMessage()).isNull();
-        assertThat(result.endType()).isEqualTo(InterviewEndType.EARLY_EXIT);
+        assertThat(result.endType()).isEqualTo(InterviewEndType.BACK_EXIT);
         verifyNoInteractions(liveTurnAnalyzer);
 
         ArgumentCaptor<InterviewEndType> endTypeCaptor = ArgumentCaptor.forClass(InterviewEndType.class);
         verify(interviewAnswerTerminationPersister)
                 .persist(any(), any(), any(), endTypeCaptor.capture());
-        assertThat(endTypeCaptor.getValue()).isEqualTo(InterviewEndType.EARLY_EXIT);
+        assertThat(endTypeCaptor.getValue()).isEqualTo(InterviewEndType.BACK_EXIT);
         verify(interviewReportGenerateUseCase).generate(sessionId);
     }
 

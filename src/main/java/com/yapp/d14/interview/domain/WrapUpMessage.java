@@ -11,7 +11,7 @@ public final class WrapUpMessage {
     private WrapUpMessage() {
     }
 
-    /** 종료 유형에 해당하는 마무리 멘트 문구. 마무리 멘트가 없으면 null(예: EARLY_EXIT). */
+    /** 종료 유형에 해당하는 마무리 멘트 문구. 마무리 멘트가 없으면 null(예: BACK_EXIT). */
     public static String textFor(InterviewEndType endType) {
         if (endType == null) {
             return null;

@@ -264,19 +264,19 @@ public interface InterviewControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- turnLevel=0(요약 질문) 응답은 항상 다음 질문을 생성합니다.\n" +
                     "- turnLevel≥1에서는 `endType`에 따라 즉시 세션이 종료될 수 있습니다.\n" +
-                    "  - `endType=EARLY_EXIT`: 0:00~8:00 사이 사용자가 의도적으로 이탈 — audio가 있으면 STT만 기록하고 즉시 종료(wrapUpMessage 없음).\n" +
-                    "  - `endType=MANUAL_END`: 8:00 이후 수동 종료 — 즉시 종료하며 짧은 마무리 멘트를 반환합니다.\n" +
+                    "  - `endType=BACK_EXIT`: 0:00~8:00 사이 사용자가 뒤로가기 버튼을 눌러 이탈 — audio가 있으면 STT만 기록하고 즉시 종료(wrapUpMessage 없음).\n" +
+                    "  - `endType=MANUAL_END`: 8:00 이후 사용자가 면접 종료 버튼을 눌러 수동 종료 — 즉시 종료하며 짧은 마무리 멘트를 반환합니다.\n" +
                     "  - `endType=HARD_CAP`: 12:00 경과 강제 종료 — audio 유무와 무관하게 즉시 종료합니다.\n" +
                     "  - 직전에 받은 질문이 마무리(wrap-up) 질문이었던 경우, endType 없이도 자연 종료됩니다.\n" +
-                    "  - 위 종료 경로에서는 `nextQuestion`이 `null`, `sessionEnded`가 `true`이며, 이용권이 확정(commit)되고 리포트 생성이 비동기로 트리거됩니다.\n" +
+                    "  - 위 종료 경로에서는 `nextQuestion`이 `null`, `sessionEnded`가 `true`이며, 이용권은 보류(HELD) 상태를 유지한 채 리포트 생성이 비동기로 트리거됩니다 — 확정(commit)은 리포트 생성 성공 시점에 이뤄집니다.\n" +
                     "  - 세션 전체 누적 STT 인식 실패율이 30%를 초과하면 `endType`과 무관하게 즉시 세션이 무효화되어 종료됩니다(`sessionEnded=true`, `endType=STT_RESET`, `wrapUpMessage=null`, 리포트 생성 없음). 이때는 이용권이 차감되지 않고 환불(release)됩니다.\n" +
-                    "  - `endType` 응답 필드로 종료 사유를 구분할 수 있습니다: `NORMAL_END`/`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`/`STT_RESET`. 세션이 끝나지 않았으면 `null`입니다.\n" +
+                    "  - `endType` 응답 필드로 종료 사유를 구분할 수 있습니다: `NORMAL_END`/`MANUAL_END`/`HARD_CAP`/`BACK_EXIT`/`STT_RESET`. 세션이 끝나지 않았으면 `null`입니다.\n" +
                     "  - 그 외에는 매 턴 루프로 이어집니다(현재 구현 중), `sessionEnded`는 `false`입니다.\n" +
-                    "- `wrapUpMessage.ttsAudio`는 마무리 멘트 음성을 base64로 인코딩한 mp3입니다(EARLY_EXIT은 `wrapUpMessage` 자체가 `null`). " +
+                    "- `wrapUpMessage.ttsAudio`는 마무리 멘트 음성을 base64로 인코딩한 mp3입니다(BACK_EXIT은 `wrapUpMessage` 자체가 `null`). " +
                     "고정 문구 3종(MANUAL_END/HARD_CAP/자연종료)은 최초 요청 시 TTS로 합성해 S3에 캐시하고 이후에는 캐시를 재사용합니다.\n" +
                     "- `isWrapUp`은 클라이언트 타이머 기준 8:45 경과 여부이며, 다음 질문을 마무리 질문으로 만들지 여부에 사용됩니다.\n" +
                     "- `audio` 파트는 선택적입니다. `endType=SKIP`이면 audio가 없어야 하고, `endType=null`이면 audio가 있어야 합니다. " +
-                    "`MANUAL_END`/`HARD_CAP`/`EARLY_EXIT`은 audio 유무와 무관합니다.\n" +
+                    "`MANUAL_END`/`HARD_CAP`/`BACK_EXIT`은 audio 유무와 무관합니다.\n" +
                     "- 응답에는 오디오가 동봉되지 않습니다. `nextQuestion.questionId`로 " +
                     "`GET /{sessionId}/questions/{questionId}/audio/stream`을 호출해 오디오를 받으세요.\n" +
                     "- STT·답변 분석·질문 생성·TTS 등 내부 AI 호출은 1회 자동 재시도되며, 그래도 실패하면 503(`AI_TEMPORARILY_UNAVAILABLE`)을 반환합니다. " +
@@ -347,7 +347,7 @@ public interface InterviewControllerDocs {
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "세션 종료 — EARLY_EXIT(중도 이탈, 마무리 멘트 없음)", value = """
+                                    @ExampleObject(name = "세션 종료 — BACK_EXIT(뒤로가기, 마무리 멘트 없음)", value = """
                                             {
                                               "success": true,
                                               "data": {
@@ -355,7 +355,7 @@ public interface InterviewControllerDocs {
                                                 "nextQuestion": null,
                                                 "sessionEnded": true,
                                                 "wrapUpMessage": null,
-                                                "endType": "EARLY_EXIT"
+                                                "endType": "BACK_EXIT"
                                               }
                                             }
                                             """),

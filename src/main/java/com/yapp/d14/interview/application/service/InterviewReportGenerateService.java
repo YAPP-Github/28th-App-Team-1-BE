@@ -146,7 +146,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         if (session.getStatus() == InterviewSessionStatus.ABANDONED) {
             return session.getAbandonCause() != null ? session.getAbandonCause().name() : "ABANDONED";
         }
-        return session.getEndType() == InterviewEndType.EARLY_EXIT ? "EARLY_EXIT" : "COMPLETED";
+        return session.getEndType() == InterviewEndType.BACK_EXIT ? "BACK_EXIT" : "COMPLETED";
     }
 
     // 질문 문장 발화 시각 생성(#78)은 리포트 부가 기능이라, 어떤 실패도 이미 저장된 리포트를 FAILED로 되돌리면 안 된다 — 삼키고 로깅만 한다.
