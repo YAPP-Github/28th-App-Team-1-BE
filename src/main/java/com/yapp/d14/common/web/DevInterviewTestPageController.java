@@ -38,11 +38,11 @@ class DevInterviewTestPageController {
 
     @GetMapping({"/interview-harness", "/interview-harness/", "/interview-harness/index.html"})
     ResponseEntity<Resource> interviewHarnessPage() {
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(HARNESS_PAGE);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.TEXT_HTML).body(HARNESS_PAGE);
     }
 
     @GetMapping("/interview-harness/lame.min.js")
     ResponseEntity<Resource> interviewHarnessLameJs() {
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/javascript")).body(HARNESS_LAME_JS);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType("application/javascript")).body(HARNESS_LAME_JS);
     }
 }
