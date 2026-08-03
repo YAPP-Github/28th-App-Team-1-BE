@@ -33,6 +33,18 @@ public class AppVersionPolicyJpaEntity {
     @Column(name = "store_url", nullable = false)
     private String storeUrl;
 
+    @Column(name = "force_title", length = 100)
+    private String forceTitle;
+
+    @Column(name = "force_body", length = 500)
+    private String forceBody;
+
+    @Column(name = "optional_title", length = 100)
+    private String optionalTitle;
+
+    @Column(name = "optional_body", length = 500)
+    private String optionalBody;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -42,6 +54,10 @@ public class AppVersionPolicyJpaEntity {
                 AppVersion.parse(minSupportedVersion),
                 AppVersion.parse(latestVersion),
                 storeUrl,
+                forceTitle,
+                forceBody,
+                optionalTitle,
+                optionalBody,
                 updatedAt
         );
     }

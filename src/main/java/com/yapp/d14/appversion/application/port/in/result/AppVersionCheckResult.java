@@ -6,6 +6,8 @@ public record AppVersionCheckResult(
         UpdateType updateType,
         String latestVersion,
         String minSupportedVersion,
-        String storeUrl
+        String storeUrl,
+        String title,
+        String body
 ) {
 }

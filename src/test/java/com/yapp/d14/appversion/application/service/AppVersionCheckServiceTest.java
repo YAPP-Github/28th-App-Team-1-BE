@@ -37,6 +37,10 @@ class AppVersionCheckServiceTest {
                 AppVersion.parse("1.3.0"),
                 AppVersion.parse("1.4.0"),
                 "https://apps.apple.com/app/idXXXXXXXXX",
+                "업데이트가 필요해요",
+                "지금 버전에서는 앱을 이용할 수 없어요. 최신 버전으로 업데이트해 주세요.",
+                "새 버전이 나왔어요",
+                "면접 연습 화면이 더 빨라졌어요. 지금 업데이트할까요?",
                 LocalDateTime.now()
         );
     }
@@ -52,6 +56,20 @@ class AppVersionCheckServiceTest {
         assertThat(result.latestVersion()).isEqualTo("1.4.0");
         assertThat(result.minSupportedVersion()).isEqualTo("1.3.0");
         assertThat(result.storeUrl()).isEqualTo("https://apps.apple.com/app/idXXXXXXXXX");
+        assertThat(result.title()).isEqualTo("업데이트가 필요해요");
+        assertThat(result.body()).isEqualTo("지금 버전에서는 앱을 이용할 수 없어요. 최신 버전으로 업데이트해 주세요.");
+    }
+
+    @Test
+    void NONE_상태면_문구가_없다() {
+        given(appVersionPolicyRepository.findByPlatform(Platform.IOS))
+                .willReturn(Optional.of(iosPolicy()));
+
+        AppVersionCheckResult result = service.check(AppVersionCheckCommand.of("IOS", "1.4.0"));
+
+        assertThat(result.updateType()).isEqualTo(UpdateType.NONE);
+        assertThat(result.title()).isNull();
+        assertThat(result.body()).isNull();
     }
 
     @Test

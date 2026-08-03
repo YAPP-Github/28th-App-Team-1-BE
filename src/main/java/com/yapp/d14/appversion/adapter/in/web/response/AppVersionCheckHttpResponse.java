@@ -16,7 +16,14 @@ public record AppVersionCheckHttpResponse(
         String minSupportedVersion,
 
         @Schema(description = "플랫폼별 스토어 링크", example = "https://apps.apple.com/app/idXXXXXXXXX")
-        String storeUrl
+        String storeUrl,
+
+        @Schema(description = "안내창 제목 (updateType이 NONE이면 null)", example = "업데이트가 필요해요", nullable = true)
+        String title,
+
+        @Schema(description = "안내창 본문 (updateType이 NONE이면 null)",
+                example = "지금 버전에서는 앱을 이용할 수 없어요. 최신 버전으로 업데이트해 주세요.", nullable = true)
+        String body
 ) {
 
     public static AppVersionCheckHttpResponse from(AppVersionCheckResult result) {
@@ -24,7 +31,9 @@ public record AppVersionCheckHttpResponse(
                 result.updateType(),
                 result.latestVersion(),
                 result.minSupportedVersion(),
-                result.storeUrl()
+                result.storeUrl(),
+                result.title(),
+                result.body()
         );
     }
 }
