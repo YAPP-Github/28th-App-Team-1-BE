@@ -2,6 +2,14 @@ package com.yapp.d14.devtool.tool;
 
 import com.yapp.d14.D14Application;
 import com.yapp.d14.devtool.tool.DummyAnswerAudioGenerator.AnswerAudio;
+import com.yapp.d14.feedback.application.command.FeedbackShareCreateCommand;
+import com.yapp.d14.feedback.application.command.GuestFeedbackSubmitCommand;
+import com.yapp.d14.feedback.application.command.GuestFeedbackSubmitCommand.RawRating;
+import com.yapp.d14.feedback.application.port.in.FeedbackShareCreateUseCase;
+import com.yapp.d14.feedback.application.port.in.GuestFeedbackSubmitUseCase;
+import com.yapp.d14.feedback.application.port.in.result.FeedbackShareCreateResult;
+import com.yapp.d14.feedback.application.port.in.result.GuestFeedbackSubmitResult;
+import com.yapp.d14.feedback.domain.AttitudeAxis;
 import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
 import com.yapp.d14.interview.application.port.in.AudioStreamUseCase;
@@ -48,7 +56,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -122,16 +132,22 @@ public class InterviewFullPipelineSeedCli {
                     context.getBean(InterviewVideoQueryUseCase.class)
             );
 
+            Long feedbackSubmissionId = submitGuestFeedback(
+                    userId, sessionId,
+                    context.getBean(FeedbackShareCreateUseCase.class),
+                    context.getBean(GuestFeedbackSubmitUseCase.class)
+            );
+
             System.out.println("==============================================");
-            System.out.println("userId          : " + userId);
-            System.out.println("userName        : " + userName);
-            System.out.println("turnCount       : " + turnCount);
-            System.out.println("portfolioId     : " + portfolioId);
-            System.out.println("sessionId       : " + sessionId);
-            System.out.println("totalTimelineSec: " + totalTimelineSec);
-            System.out.println("reportStatus    : " + reportStatus);
-            System.out.println("playbackUrl     : " + playbackUrl);
-            System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
+            System.out.println("userId              : " + userId);
+            System.out.println("userName            : " + userName);
+            System.out.println("turnCount           : " + turnCount);
+            System.out.println("portfolioId         : " + portfolioId);
+            System.out.println("sessionId           : " + sessionId);
+            System.out.println("totalTimelineSec    : " + totalTimelineSec);
+            System.out.println("reportStatus        : " + reportStatus);
+            System.out.println("playbackUrl         : " + playbackUrl);
+            System.out.println("feedbackSubmissionId: " + feedbackSubmissionId);
             System.out.println("==============================================");
         } finally {
             SpringApplication.exit(context);
@@ -314,6 +330,26 @@ public class InterviewFullPipelineSeedCli {
             sleep(3000);
         }
         throw new IllegalStateException("영상 합성 대기 시간 초과: sessionId=" + sessionId);
+    }
+
+    private static Long submitGuestFeedback(
+            UUID userId,
+            Long sessionId,
+            FeedbackShareCreateUseCase feedbackShareCreateUseCase,
+            GuestFeedbackSubmitUseCase guestFeedbackSubmitUseCase
+    ) {
+        FeedbackShareCreateCommand shareCommand = new FeedbackShareCreateCommand(userId, sessionId, List.of(AttitudeAxis.values()));
+        FeedbackShareCreateResult shareResult = feedbackShareCreateUseCase.create(shareCommand);
+        System.out.println("[FEEDBACK] 공유 링크 발급 완료: token=" + shareResult.token());
+
+        List<RawRating> rawRatings = Arrays.stream(AttitudeAxis.values())
+                .map(axis -> new RawRating(axis.name(), 3, "더미 피드백입니다."))
+                .toList();
+        String deviceId = "dummy-device-" + UUID.randomUUID();
+        GuestFeedbackSubmitCommand submitCommand = GuestFeedbackSubmitCommand.of(shareResult.token(), deviceId, "테스트지인", rawRatings);
+        GuestFeedbackSubmitResult submitResult = guestFeedbackSubmitUseCase.submit(submitCommand);
+        System.out.println("[FEEDBACK] 게스트 피드백 제출 완료: submissionId=" + submitResult.submissionId());
+        return submitResult.submissionId();
     }
 
     private static void deleteQuietly(Path file) {
