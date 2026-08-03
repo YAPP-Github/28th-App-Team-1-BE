@@ -50,8 +50,7 @@ final class DummyAnswerAudioGenerator {
                 Files.write(sourceFile, sourceAudio);
                 runFfmpeg(sourceFile, targetFile);
                 byte[] m4aBytes = Files.readAllBytes(targetFile);
-                float durationSec = probeDurationSec(targetFile);
-                return new AnswerAudio(m4aBytes, durationSec);
+                return new AnswerAudio(m4aBytes, probeDurationSec(m4aBytes, ".m4a"));
             } finally {
                 Files.deleteIfExists(sourceFile);
                 Files.deleteIfExists(targetFile);
@@ -65,11 +64,22 @@ final class DummyAnswerAudioGenerator {
         run(new ProcessBuilder("ffmpeg", "-y", "-i", sourceFile.toString(), "-c:a", "aac", targetFile.toString()));
     }
 
-    private static float probeDurationSec(Path targetFile) throws IOException {
-        String output = run(new ProcessBuilder(
-                "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", targetFile.toString()
-        ));
-        return Float.parseFloat(output.trim());
+    /** 질문 TTS 오디오(원본 mp3 바이트 등) 길이 측정에도 재사용된다 — 타임라인을 실제 오디오 길이에 맞추기 위해 필요하다. */
+    static float probeDurationSec(byte[] audioContent, String fileSuffix) {
+        try {
+            Path tempFile = Files.createTempFile("dummy-audio-", fileSuffix);
+            try {
+                Files.write(tempFile, audioContent);
+                String output = run(new ProcessBuilder(
+                        "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", tempFile.toString()
+                ));
+                return Float.parseFloat(output.trim());
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("오디오 길이 측정 중 IO 오류가 발생했습니다.", e);
+        }
     }
 
     private static String run(ProcessBuilder processBuilder) throws IOException {

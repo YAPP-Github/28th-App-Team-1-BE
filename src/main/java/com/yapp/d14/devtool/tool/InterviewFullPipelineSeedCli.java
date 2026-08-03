@@ -47,6 +47,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -62,6 +63,7 @@ import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +105,9 @@ public class InterviewFullPipelineSeedCli {
     // 저장되고 그 컬럼은 Hibernate 기본 varchar(255)라서 실제로는 255자를 넘으면 insert가 실패한다. 여유를 두고 240자로 자른다.
     private static final int MAX_FREE_TEXT_LENGTH = 240;
 
-    private static final float QUESTION_AUDIO_DURATION_SEC = 4f;
+    // 질문 음성 길이는 실제 합성된 오디오를 ffprobe로 측정해서 쓴다(고정값을 쓰면 답변 타임라인과 어긋나
+    // 합성 영상에서 질문·답변 발화가 겹친다). 이 값은 오디오를 못 구했을 때만 쓰는 대체값이다.
+    private static final float QUESTION_AUDIO_FALLBACK_DURATION_SEC = 4f;
     private static final String MANUAL_END_TYPE = "MANUAL_END";
 
     public static void main(String[] args) {
@@ -283,14 +287,21 @@ public class InterviewFullPipelineSeedCli {
     ) {
         Long questionId = summaryQuestion.questionId();
         int turnLevel = summaryQuestion.turnLevel();
+        byte[] firstQuestionAudio = summaryQuestion.ttsAudio() != null
+                ? Base64.getDecoder().decode(summaryQuestion.ttsAudio())
+                : null;
         float timelineCursorSec = 0f;
 
         for (int turnIndex = 0; turnIndex < turnCount; turnIndex++) {
-            if (turnLevel >= 1) {
-                audioStreamUseCase.stream(userId, sessionId, questionId).collectList().block();
-            }
+            byte[] questionAudio = turnLevel == 0
+                    ? firstQuestionAudio
+                    : concatenate(audioStreamUseCase.stream(userId, sessionId, questionId).collectList().block());
+            float questionDurationSec = (questionAudio != null && questionAudio.length > 0)
+                    ? DummyAnswerAudioGenerator.probeDurationSec(questionAudio, ".mp3")
+                    : QUESTION_AUDIO_FALLBACK_DURATION_SEC;
+
             float questionAudioStartSec = timelineCursorSec;
-            timelineCursorSec += QUESTION_AUDIO_DURATION_SEC;
+            timelineCursorSec += questionDurationSec;
             float questionAudioEndSec = timelineCursorSec;
 
             AnswerAudio answerAudio = DummyAnswerAudioGenerator.synthesizeAnswerAudio(textToSpeechSynthesizer, turnIndex);
@@ -318,6 +329,20 @@ public class InterviewFullPipelineSeedCli {
         }
 
         return timelineCursorSec;
+    }
+
+    private static byte[] concatenate(List<byte[]> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            return null;
+        }
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+            for (byte[] chunk : chunks) {
+                buffer.write(chunk);
+            }
+            return buffer.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException("질문 음성 스트림 병합 중 오류가 발생했습니다.", e);
+        }
     }
 
     private static ReportStatus awaitReportReady(UUID userId, Long sessionId, InterviewReportQueryUseCase interviewReportQueryUseCase) {
