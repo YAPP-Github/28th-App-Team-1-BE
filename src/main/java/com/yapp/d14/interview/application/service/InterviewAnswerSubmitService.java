@@ -17,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -169,7 +171,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
         markQuestionPlayed(question, command);
 
-        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of(), null);
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of(), null, axisPlans);
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persistSkipped(
                 answer, question, plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         );
@@ -196,10 +199,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<PriorTurn> priorQa = priorQaCache.get(session.getId(), currentAxis); // 이전 이력
         List<QuestionCandidate> openProbesForAxis =
                 questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis); // 열린 후보
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        Set<TestType> exhaustedAxes = axisPlans.stream()
+                .filter(InterviewAxisPlan::isCompleted)
+                .map(InterviewAxisPlan::getTestType)
+                .collect(Collectors.toSet()); // 이미 끝난 axis — 이 축으로는 새 후보를 만들 필요가 없다
 
         LiveTurnResult liveTurnResult = retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
-                currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
+                currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis, exhaustedAxes
         )); // 답변 분석
         logLiveTurnResult(session.getId(), currentAxis, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates =
@@ -223,7 +231,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         NextQuestionPlan plan = planNextQuestion(
                 session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific,
-                newProbeCandidates, openProbesForAxis
+                newProbeCandidates, openProbesForAxis, axisPlans
         ); // 다음 질문 계획
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
@@ -443,7 +451,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 null,
                 session.getSnapshotJobType(),
                 List.of(),
-                List.of()
+                List.of(),
+                Set.of() // 첫 턴은 아직 완료된 axis가 있을 수 없다
         ));
     }
 
@@ -477,13 +486,13 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             boolean hasRedFlag,
             boolean isUnusuallySpecific,
             List<QuestionCandidate> newProbeCandidates,
-            List<QuestionCandidate> openProbesForCurrentAxis
+            List<QuestionCandidate> openProbesForCurrentAxis,
+            List<InterviewAxisPlan> axisPlans
     ) {
         TestType currentAxis = question.getTestType(); // 현재 축
         boolean isWrapUpForced = Boolean.TRUE.equals(command.isWrapUp()); // 랩업 강제
         int nextTurnLevel = question.getTurnLevel() + 1; // 다음 턴
 
-        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId()); // 축 계획 조회
         TestType nextAxis = isWrapUpForced
                 ? currentAxis // 축 유지
                 : NextAxisSelector.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정

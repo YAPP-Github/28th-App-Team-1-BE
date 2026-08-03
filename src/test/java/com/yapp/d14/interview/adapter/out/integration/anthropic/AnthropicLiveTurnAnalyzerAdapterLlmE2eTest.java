@@ -27,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +71,7 @@ class AnthropicLiveTurnAnalyzerAdapterLlmE2eTest {
         LiveTurnResult result = liveTurnAnalyzer.analyze(
                 1L, null, lastQuestion, lastAnswer, TestType.TRADEOFF, JobType.BACKEND,
                 List.of(new PriorTurn(2, "그 기술을 선택하신 이유가 뭔가요?", "혼자 판단해서 결정했어요", TestType.TRADEOFF)),
-                List.of(openProbe)
+                List.of(openProbe), Set.of()
         );
 
         log.info("========== [LLM E2E] run_live_turn(turnLevel>=1) 결과 ==========");
