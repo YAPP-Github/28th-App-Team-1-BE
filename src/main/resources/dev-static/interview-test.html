@@ -62,7 +62,9 @@
     </div>
 
     <div class="card">
-      <h2>2. 세션 설정</h2>
+      <h2>2. 프로필 등록 (직군·연차 — 면접 시작 전 필수)</h2>
+      <label>이름 (한글/영문, 5자 이하)</label>
+      <input id="profileName" value="테스터" />
       <div class="row">
         <div><label>직군</label>
           <select id="jobRole">
@@ -70,8 +72,14 @@
             <option>DATA_ENGINEER</option><option>INFRA_SRE</option>
           </select>
         </div>
-        <div><label>연차</label><input id="careerYears" type="number" value="1" min="0" /></div>
+        <div><label>연차 (0~10)</label><input id="careerYears" type="number" value="1" min="0" max="10" /></div>
       </div>
+      <button id="btnRegisterProfile" class="secondary">프로필 등록</button>
+      <div id="profileStatus" class="muted" style="margin-top:6px;">상태: -</div>
+    </div>
+
+    <div class="card">
+      <h2>3. 세션 설정</h2>
       <label>JD 원문(직접 입력, 선택 — 입력 시 200~3,000자)</label>
       <textarea id="jdText" placeholder="비워두면 JD 없이 진행. 입력하려면 200자 이상 3,000자 이하."></textarea>
       <label>집중 프로젝트 설명(10~300자, 선택)</label>
@@ -80,7 +88,7 @@
     </div>
 
     <div class="card">
-      <h2>3. 리포트 조회 (읽기 전용)</h2>
+      <h2>4. 리포트 조회 (읽기 전용)</h2>
       <button id="btnLoadReports" class="secondary">내 리포트 목록</button>
       <div id="reportList" style="margin-top:6px;"></div>
       <hr />
@@ -225,6 +233,19 @@ $("btnUpload").onclick = async () => {
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 };
 
+// ---------- 프로필 등록 ----------
+$("btnRegisterProfile").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const name = $("profileName").value.trim();
+    const jobRole = $("jobRole").value;
+    const careerYears = Number($("careerYears").value);
+    await api("/api/v1/users/me/profile", { method: "PATCH", json: { name, jobRole, careerYears } });
+    $("profileStatus").textContent = `등록됨: ${name} / ${jobRole} / ${careerYears}년`;
+    log("프로필 등록 완료", { name, jobRole, careerYears });
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
 // ---------- 조회 (읽기 전용): 내 포트폴리오 · 리포트 ----------
 function pickRow() {
   const row = document.createElement("div");
@@ -334,7 +355,7 @@ $("btnStart").onclick = async () => {
     // 세션 생성
     log("세션 생성...");
     const created = await api("/api/v1/interview/sessions", { method: "POST", json: {
-      portfolioId: pid, jobRole: $("jobRole").value, careerYears: Number($("careerYears").value),
+      portfolioId: pid,
       jdText: $("jdText").value.trim() || null, freeText: $("freeText").value.trim() || null,
     }});
     state.sessionId = created.sessionId;
