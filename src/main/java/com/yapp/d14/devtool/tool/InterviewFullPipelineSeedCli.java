@@ -32,10 +32,13 @@ import com.yapp.d14.interview.application.port.in.result.InterviewVideoUploadUrl
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
+import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
@@ -106,7 +109,9 @@ public class InterviewFullPipelineSeedCli {
                 .run();
 
         try {
-            UUID portfolioId = registerPortfolio(userId, context.getBean(PortfolioRegisterUseCase.class));
+            UUID portfolioId = resolvePortfolioId(
+                    userId, context.getBean(PortfolioListUseCase.class), context.getBean(PortfolioRegisterUseCase.class)
+            );
             awaitPortfolioReady(userId, portfolioId, context.getBean(PortfolioStatusUseCase.class));
 
             Long sessionId = createSession(userId, portfolioId, context.getBean(InterviewSessionCreateUseCase.class));
@@ -152,6 +157,20 @@ public class InterviewFullPipelineSeedCli {
         } finally {
             SpringApplication.exit(context);
         }
+    }
+
+    private static UUID resolvePortfolioId(
+            UUID userId,
+            PortfolioListUseCase portfolioListUseCase,
+            PortfolioRegisterUseCase portfolioRegisterUseCase
+    ) {
+        PortfolioListResult existing = portfolioListUseCase.getList(userId);
+        if (!existing.portfolios().isEmpty()) {
+            PortfolioSummary summary = existing.portfolios().get(0);
+            System.out.println("[PORTFOLIO] 기존 포트폴리오 재사용: portfolioId=" + summary.portfolioId() + ", status=" + summary.status());
+            return summary.portfolioId();
+        }
+        return registerPortfolio(userId, portfolioRegisterUseCase);
     }
 
     private static UUID registerPortfolio(UUID userId, PortfolioRegisterUseCase portfolioRegisterUseCase) {
