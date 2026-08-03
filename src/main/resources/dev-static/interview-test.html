@@ -458,9 +458,9 @@ $("btnAnsStart").onclick = () => {
  try {
   log("답변 녹음 시작 클릭됨 (stream=" + (state.stream ? "ok" : "없음") + ")");
   if (!state.stream) { alert("먼저 '면접 시작'으로 카메라·마이크를 켜세요."); return; }
-  // 서버는 답변 음성을 m4a(audio/mp4)만 허용한다. Safari는 audio/mp4로 녹음되므로 이를 최우선으로 고른다.
-  // Chrome/Firefox는 audio/mp4 녹음을 지원하지 않아 webm으로 떨어진다. 이 경우 제출 시 WebCodecs(AAC)로 m4a 변환을 시도한다.
-  // AAC 인코더를 지원하지 않는 브라우저에서는 변환이 실패하고 서버가 400으로 반려한다(Safari 또는 실기기 필요).
+  // 서버는 답변 음성을 m4a(AAC-in-MP4)만 허용한다. Safari는 audio/mp4(AAC)로 녹음되므로 이를 최우선으로 고른다.
+  // Chrome은 "audio/mp4"를 지원한다고 답해도 실제로는 Opus-in-MP4로 녹음한다(AAC가 아님) — MIME 타입만으로는
+  // 진짜 AAC인지 구분이 안 되므로, isAacInMp4()로 코덱 문자열까지 확인해 변환 필요 여부를 판단한다.
   const mime = pickMime(["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]);
   state.answerChunks = [];
   // 영상 녹화기는 video 트랙만 물고 있으므로, 답변 녹음기는 audio 트랙만 담은 별도 스트림으로 녹음한다(트랙 충돌 방지).
@@ -471,8 +471,8 @@ $("btnAnsStart").onclick = () => {
     state.answerBlob = new Blob(state.answerChunks, { type: state.answerChunks[0]?.type || "audio/webm" });
     state.aEndAt = nowSec();
     log(`답변 녹음 완료 [${state.aStartAt.toFixed(2)}, ${state.aEndAt.toFixed(2)}]s (${(state.answerBlob.size/1024).toFixed(0)}KB, ${state.answerBlob.type || "unknown"})`);
-    if (!(state.answerBlob.type || "").includes("mp4")) {
-      log("ℹ️ webm으로 녹음됨 — 제출 시 WebCodecs로 m4a 변환을 시도합니다(미지원 브라우저는 Safari/실기기 필요).");
+    if (!isAacInMp4(state.answerBlob.type)) {
+      log("ℹ️ AAC(m4a)가 아닌 포맷으로 녹음됨 — 제출 시 WebCodecs로 m4a 변환을 시도합니다(미지원 브라우저는 Safari/실기기 필요).");
     }
     $("btnSubmit").disabled = false;
   };
@@ -492,20 +492,27 @@ $("btnAnsStop").onclick = () => {
   $("btnAnsStop").disabled = true;
 };
 
+// 진짜 AAC-in-MP4인지 확인한다. Chrome은 "audio/mp4"라고 답해도 실제로는 Opus를 담는 경우가 있어
+// mimeType 문자열에 "mp4"가 있는지만으로는 부족하고, opus 코덱이 명시돼 있지 않은지까지 봐야 한다.
+function isAacInMp4(mimeType) {
+  const type = (mimeType || "").toLowerCase();
+  return type.includes("mp4") && !type.includes("opus");
+}
+
 // ---------- 답변 제출 ----------
 async function submitAnswer(endType) {
   const fd = new FormData();
-  // 서버는 m4a만 받는다. mp4 녹음(Safari)은 그대로, 비-mp4(Chrome webm)는 WebCodecs로 m4a 변환을 시도한다.
-  // 변환 실패(AAC 인코더 미지원 브라우저)면 원본대로 보내 서버가 400으로 반려 → Safari/실기기로 유도.
+  // 서버는 m4a(AAC-in-MP4)만 받는다. 진짜 AAC(Safari)는 그대로, 그 외(Chrome의 webm 또는 Opus-in-MP4)는
+  // WebCodecs로 m4a 변환을 시도한다. 변환 실패(AAC 인코더 미지원 브라우저)면 원본대로 보내 서버가 400으로 반려 → Safari/실기기로 유도.
   if (state.answerBlob && endType !== "SKIP") {
     let blob = state.answerBlob;
-    if (!(blob.type || "").includes("mp4")) {
+    let isM4a = isAacInMp4(blob.type);
+    if (!isM4a) {
       const m4a = await encodeToM4a(blob);
-      if (m4a) { blob = m4a; log(`m4a 변환 완료 (${(m4a.size / 1024).toFixed(0)}KB)`); }
+      if (m4a) { blob = m4a; isM4a = true; log(`m4a 변환 완료 (${(m4a.size / 1024).toFixed(0)}KB)`); }
       else log("⚠️ m4a 변환 불가(AAC 인코더 미지원) — 서버가 반려합니다. Safari/실기기로 테스트하세요.");
     }
-    const ext = (blob.type || "").includes("mp4") ? "m4a" : "webm";
-    fd.append("audio", blob, "answer." + ext);
+    fd.append("audio", blob, "answer." + (isM4a ? "m4a" : "webm"));
   }
   fd.append("questionId", String(state.currentQuestionId));
   if (state.qStartAt != null) fd.append("questionAudioStartAt", state.qStartAt.toFixed(3));
