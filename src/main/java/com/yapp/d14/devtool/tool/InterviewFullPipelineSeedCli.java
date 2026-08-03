@@ -9,11 +9,14 @@ import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewReportQueryUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
+import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
@@ -96,6 +99,8 @@ public class InterviewFullPipelineSeedCli {
                     context.getBean(InterviewAnswerSubmitUseCase.class)
             );
 
+            ReportStatus reportStatus = awaitReportReady(userId, sessionId, context.getBean(InterviewReportQueryUseCase.class));
+
             System.out.println("==============================================");
             System.out.println("userId          : " + userId);
             System.out.println("userName        : " + userName);
@@ -103,6 +108,7 @@ public class InterviewFullPipelineSeedCli {
             System.out.println("portfolioId     : " + portfolioId);
             System.out.println("sessionId       : " + sessionId);
             System.out.println("totalTimelineSec: " + totalTimelineSec);
+            System.out.println("reportStatus    : " + reportStatus);
             System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
             System.out.println("==============================================");
         } finally {
@@ -214,6 +220,21 @@ public class InterviewFullPipelineSeedCli {
         }
 
         return timelineCursorSec;
+    }
+
+    private static ReportStatus awaitReportReady(UUID userId, Long sessionId, InterviewReportQueryUseCase interviewReportQueryUseCase) {
+        Instant deadline = Instant.now().plusSeconds(180);
+        while (Instant.now().isBefore(deadline)) {
+            InterviewReportQueryResult report = interviewReportQueryUseCase.getReport(userId, sessionId);
+            if (report.status() == ReportStatus.READY
+                    || report.status() == ReportStatus.INSUFFICIENT_ANALYSIS
+                    || report.status() == ReportStatus.FAILED) {
+                System.out.println("[REPORT] 생성 완료: sessionId=" + sessionId + ", status=" + report.status());
+                return report.status();
+            }
+            sleep(3000);
+        }
+        throw new IllegalStateException("리포트 생성 대기 시간 초과: sessionId=" + sessionId);
     }
 
     private static void sleep(long millis) {
