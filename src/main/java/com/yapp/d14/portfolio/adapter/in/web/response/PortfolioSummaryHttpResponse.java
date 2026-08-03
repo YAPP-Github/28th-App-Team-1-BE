@@ -26,18 +26,6 @@ public record PortfolioSummaryHttpResponse(
         @Schema(description = "업로드 시각")
         LocalDateTime uploadedAt,
 
-        @Schema(description = "이번 달 남은 재업로드(교체) 기회 여부. true면 1회 가능, false면 0회(업로드 시도 시 REPLACEMENT_LIMIT_EXCEEDED). 삭제 기회와는 독립적으로 집계됨")
-        boolean replaceAvailable,
-
-        @Schema(description = "재업로드가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
-        LocalDateTime nextAvailableAt,
-
-        @Schema(description = "이번 달 남은 삭제 기회 여부. true면 1회 가능, false면 0회(삭제 시도 시 DELETE_LIMIT_EXCEEDED). 재업로드 기회와는 독립적으로 집계됨")
-        boolean deleteAvailable,
-
-        @Schema(description = "삭제가 막혀 있을 때 다시 가능해지는 시각(다음 달 1일 0시). 가능한 상태면 null")
-        LocalDateTime nextDeleteAvailableAt,
-
         @Schema(description = "이 포트폴리오를 사용 중인 진행 중(IN_PROGRESS) 면접 세션이 있는지 여부. true면 deleteAvailable 값과 무관하게 삭제 시도 시 PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW로 거부됨 — deleteAvailable보다 우선 확인해야 함")
         boolean interviewInProgress
 ) {
@@ -50,10 +38,6 @@ public record PortfolioSummaryHttpResponse(
                 summary.pageCount(),
                 summary.status(),
                 summary.uploadedAt(),
-                summary.replaceAvailable(),
-                summary.nextAvailableAt(),
-                summary.deleteAvailable(),
-                summary.nextDeleteAvailableAt(),
                 summary.interviewInProgress()
         );
     }
