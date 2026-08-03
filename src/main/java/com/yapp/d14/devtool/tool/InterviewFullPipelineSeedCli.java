@@ -99,7 +99,9 @@ public class InterviewFullPipelineSeedCli {
             트래픽 증가에 따른 성능 이슈를 데이터베이스 인덱스 튜닝과 캐싱으로 해결한 경험이 있습니다.
             """;
     private static final int MIN_FREE_TEXT_LENGTH = 10;
-    private static final int MAX_FREE_TEXT_LENGTH = 300;
+    // 검증 로직(InterviewSessionCreateValidator)은 300자까지 허용하지만, freeText는 그대로 InterviewSession.focusProject로
+    // 저장되고 그 컬럼은 Hibernate 기본 varchar(255)라서 실제로는 255자를 넘으면 insert가 실패한다. 여유를 두고 240자로 자른다.
+    private static final int MAX_FREE_TEXT_LENGTH = 240;
 
     private static final float QUESTION_AUDIO_DURATION_SEC = 4f;
     private static final String MANUAL_END_TYPE = "MANUAL_END";
