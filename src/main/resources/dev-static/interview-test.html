@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>면접 테스트 하네스 (#78)</title>
+<title>관리자용 테스트 도구</title>
 <style>
   :root { color-scheme: light dark; }
   * { box-sizing: border-box; }
@@ -24,6 +24,8 @@
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
   video { width: 100%; border-radius: 8px; background: #000; aspect-ratio: 4/3; }
+  /* 카메라 프리뷰는 화면을 다 차지하지 않게 작게 고정한다(리포트 합성 영상 플레이어에는 영향 없음). */
+  #preview { width: auto; max-width: 100%; max-height: 220px; display: block; margin: 0 auto; }
   #log { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow: auto; background: rgba(128,128,128,0.08); border-radius: 8px; padding: 10px; }
   .pill { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(128,128,128,0.2); }
   .pill.rec { background: #dc2626; color: #fff; }
@@ -34,7 +36,7 @@
 </style>
 </head>
 <body>
-<h1>면접 테스트 하네스 <span class="muted">#78 문장 발화 시각</span></h1>
+<h1>관리자용 테스트 도구</h1>
 <p class="sub">백엔드를 <code>dev</code> 프로파일로 로컬 실행(Postgres·Redis·S3·ffmpeg·OpenAI·Anthropic 키 필요)한 뒤 이 페이지를 엽니다. API는 같은 출처로 호출됩니다.</p>
 
 <div class="grid">
@@ -47,6 +49,8 @@
 
       <label>기존 포트폴리오 ID (있으면 붙여넣기 — 업로드 생략)</label>
       <input id="portfolioId" placeholder="uuid" />
+      <button id="btnLoadPortfolios" class="secondary">내 포트폴리오 조회 (클릭해 선택)</button>
+      <div id="portfolioList" style="margin-top:6px;"></div>
 
       <hr />
       <label>또는 PDF 업로드</label>
@@ -58,7 +62,9 @@
     </div>
 
     <div class="card">
-      <h2>2. 세션 설정</h2>
+      <h2>2. 프로필 등록 (직군·연차 — 면접 시작 전 필수)</h2>
+      <label>이름 (한글/영문, 5자 이하)</label>
+      <input id="profileName" value="테스터" />
       <div class="row">
         <div><label>직군</label>
           <select id="jobRole">
@@ -66,17 +72,40 @@
             <option>DATA_ENGINEER</option><option>INFRA_SRE</option>
           </select>
         </div>
-        <div><label>연차</label><input id="careerYears" type="number" value="1" min="0" /></div>
+        <div><label>연차 (0~10)</label><input id="careerYears" type="number" value="1" min="0" max="10" /></div>
       </div>
-      <label>JD 원문(직접 입력)</label>
-      <textarea id="jdText" placeholder="채용 공고 본문...">백엔드 개발자를 모집합니다. Java/Spring 기반 API 개발, 대용량 트래픽 처리, DB 최적화 경험을 중시합니다.</textarea>
+      <button id="btnRegisterProfile" class="secondary">프로필 등록</button>
+      <div id="profileStatus" class="muted" style="margin-top:6px;">상태: -</div>
+    </div>
+
+    <div class="card">
+      <h2>3. 세션 설정</h2>
+      <label>JD 원문(직접 입력, 선택 — 입력 시 200~3,000자)</label>
+      <textarea id="jdText" placeholder="비워두면 JD 없이 진행. 입력하려면 200자 이상 3,000자 이하."></textarea>
       <label>집중 프로젝트 설명(10~300자, 선택)</label>
       <textarea id="freeText" placeholder="선택"></textarea>
       <button id="btnStart">면접 시작 (카메라·마이크 권한)</button>
     </div>
 
     <div class="card">
-      <h2>3. 진행</h2>
+      <h2>4. 리포트 조회 (읽기 전용)</h2>
+      <button id="btnLoadReports" class="secondary">내 리포트 목록</button>
+      <div id="reportList" style="margin-top:6px;"></div>
+      <hr />
+      <label>세션 ID로 직접 조회</label>
+      <input id="lookupSessionId" placeholder="sessionId (예: 1024)" />
+      <button id="btnViewReport" class="secondary">리포트 보기</button>
+    </div>
+  </div>
+
+  <!-- 우측: 미리보기 & 로그 & 리포트 -->
+  <div>
+    <div class="card">
+      <h2>카메라</h2>
+      <video id="preview" autoplay muted playsinline></video>
+    </div>
+    <div class="card">
+      <h2>진행</h2>
       <div class="big">턴: <span id="turnInfo">-</span> <span id="recPill" class="pill">대기</span></div>
       <div class="muted" id="qInfo">아직 시작 전</div>
       <audio id="qAudio" controls style="width:100%; margin-top:8px;"></audio>
@@ -90,20 +119,12 @@
         <button id="btnEnd" class="danger" disabled>면접 종료(수동)</button>
       </div>
     </div>
-  </div>
-
-  <!-- 우측: 미리보기 & 로그 & 리포트 -->
-  <div>
-    <div class="card">
-      <h2>카메라</h2>
-      <video id="preview" autoplay muted playsinline></video>
-    </div>
     <div class="card">
       <h2>로그</h2>
       <div id="log"></div>
     </div>
     <div class="card" id="reportCard" style="display:none;">
-      <h2>리포트 (#78 scriptSegments)</h2>
+      <h2>리포트</h2>
       <div id="reportBody"></div>
     </div>
   </div>
@@ -121,6 +142,7 @@ const state = {
   stream: null, videoRecorder: null, videoChunks: [], videoMime: null,
   answerRecorder: null, answerChunks: [], answerBlob: null,
   qStartAt: null, qEndAt: null, aStartAt: null, aEndAt: null,
+  wrapUpStartSec: null, wrapUpEndSec: null,   // 마무리 멘트 재생 구간(녹화 타임라인) — complete에 보고
   ended: false,
 };
 
@@ -132,6 +154,9 @@ function log(msg, obj) {
   $("log").scrollTop = $("log").scrollHeight;
   console.log(msg, obj ?? "");
 }
+// 로드 시점/핸들러 내부에서 조용히 죽는 예외를 화면 로그로 끌어올린다(버튼 무반응 원인 추적용).
+window.addEventListener("error", (e) => { log("❌ JS 에러: " + (e.message || e.error) + (e.filename ? " @" + e.filename + ":" + e.lineno : "")); });
+window.addEventListener("unhandledrejection", (e) => { log("❌ 미처리 rejection: " + (e.reason && e.reason.message ? e.reason.message : e.reason)); });
 function nowSec() { return state.t0 == null ? 0 : (performance.now() - state.t0) / 1000; }
 function token() { return $("token").value.trim(); }
 function authHeaders(extra) { return Object.assign({ "Authorization": "Bearer " + token() }, extra || {}); }
@@ -162,12 +187,21 @@ async function apiBlob(path) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function playBase64Mp3(b64) { return playAudioUrl("data:audio/mp3;base64," + b64); }
+// resolve({played, startSec}): played=true면 실제로 끝까지 재생됨, false면 자동재생 차단/재생 오류로 중단됨.
+// startSec은 실제로 재생이 시작된(=디코딩 끝나고 소리가 나오기 시작한) 시각이며, played=false면 null이다.
 function playAudioUrl(url) {
   return new Promise((resolve) => {
     const a = $("qAudio"); a.src = url;
-    a.onended = () => resolve();
-    a.play().catch((e) => { log("자동재생 차단 — 재생 버튼을 누르세요", e.message); });
-    // 자동재생이 막혀도 진행은 가능하도록 사용자가 재생/종료를 조작할 수 있음
+    let done = false;
+    let startSec = null;
+    const finish = (played) => { if (!done) { done = true; resolve({ played: !!played, startSec }); } };
+    // playing은 버퍼링/디코딩이 끝나고 실제로 소리가 나오기 시작하는 시점에 발생한다 — play() 호출 시점보다 늦을 수 있다.
+    a.onplaying = () => { if (startSec == null) startSec = nowSec(); };
+    a.onended = () => finish(true);
+    // play() 성공 후 디코드/소스 오류가 나면 onended가 발생하지 않아 Promise가 멈추므로 별도 처리한다.
+    a.onerror = () => { log("오디오 재생 오류 — 다음 단계로 진행합니다"); finish(false); };
+    // 자동재생이 막혀도 흐름을 멈추지 않고 바로 녹음 단계로 넘어간다(질문은 qAudio 재생 버튼으로 직접 들을 수 있음).
+    a.play().catch((e) => { log("자동재생 차단 — qAudio의 ▶로 직접 재생하세요(진행은 계속됩니다)", e.message); finish(false); });
   });
 }
 
@@ -199,6 +233,90 @@ $("btnUpload").onclick = async () => {
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 };
 
+// ---------- 프로필 등록 ----------
+$("btnRegisterProfile").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const name = $("profileName").value.trim();
+    const jobRole = $("jobRole").value;
+    const careerYears = Number($("careerYears").value);
+    await api("/api/v1/users/me/profile", { method: "PATCH", json: { name, jobRole, careerYears } });
+    $("profileStatus").textContent = `등록됨: ${name} / ${jobRole} / ${careerYears}년`;
+    log("프로필 등록 완료", { name, jobRole, careerYears });
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+// ---------- 조회 (읽기 전용): 내 포트폴리오 · 리포트 ----------
+function pickRow() {
+  const row = document.createElement("div");
+  row.style.cssText = "padding:5px 7px;border-radius:6px;cursor:pointer;border:1px solid rgba(128,128,128,0.3);margin-bottom:4px;font-size:12px;";
+  return row;
+}
+
+$("btnLoadPortfolios").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const data = await api("/api/v1/portfolios");
+    const list = data.portfolios || [];
+    const box = $("portfolioList");
+    box.innerHTML = "";
+    if (!list.length) { box.innerHTML = '<span class="muted">포트폴리오 없음</span>'; return; }
+    list.forEach((p) => {
+      const row = pickRow();
+      const when = (p.uploadedAt || "").replace("T", " ").slice(0, 16);
+      row.innerHTML = `<span class="pill ${p.status === "READY" ? "ok" : ""}">${esc(p.status)}</span> ${esc(p.fileName)} `
+        + `<span class="muted">${esc(String(p.portfolioId).slice(0, 8))}… · ${esc(when)}</span>`;
+      row.onclick = () => { $("portfolioId").value = p.portfolioId; state.portfolioId = p.portfolioId; log("포트폴리오 선택", p.portfolioId); };
+      box.appendChild(row);
+    });
+    log(`포트폴리오 ${list.length}건 조회`);
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+$("btnLoadReports").onclick = async () => {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    const data = await api("/api/v1/interview/sessions");
+    const list = data.reports || [];
+    const box = $("reportList");
+    box.innerHTML = "";
+    if (!list.length) { box.innerHTML = '<span class="muted">리포트 없음</span>'; return; }
+    list.forEach((r) => {
+      const row = pickRow();
+      const when = (r.interviewedAt || "").replace("T", " ").slice(0, 16);
+      row.innerHTML = `<span class="pill ${r.reportStatus === "READY" ? "ok" : ""}">${esc(r.reportStatus)}</span> `
+        + `<b>#${esc(String(r.sessionId))}</b> `
+        + `<span class="muted">${esc(r.jobTypeLabel || r.jobType || "-")} · ${esc(String(r.careerYears ?? "-"))}년 · ${esc(when)} · ${esc(r.portfolioFileName || "포폴 없음")}</span>`;
+      row.onclick = () => viewReport(r.sessionId);
+      box.appendChild(row);
+    });
+    log(`리포트 ${list.length}건 조회`);
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+};
+
+$("btnViewReport").onclick = () => {
+  const sid = $("lookupSessionId").value.trim();
+  if (!sid) { alert("세션 ID를 입력하세요"); return; }
+  viewReport(sid);
+};
+
+// 세션 리포트를 단건 조회해 기존 렌더러로 그린다(라이브 면접 없이도 열람 가능).
+async function viewReport(sessionId) {
+  try {
+    if (!token()) { alert("토큰을 입력하세요"); return; }
+    state.sessionId = sessionId;
+    $("reportCard").style.display = "block";
+    $("reportBody").innerHTML = '<div class="muted">리포트 불러오는 중...</div>';
+    const rep = await api(`/api/v1/interview/sessions/${sessionId}/report`);
+    log(`리포트 조회 #${sessionId}`, rep.status);
+    renderReport(rep);
+    $("reportCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    log("❌ " + e.message); alert(e.message);
+    $("reportBody").innerHTML = '<div class="muted">조회 실패: ' + esc(e.message) + '</div>';
+  }
+}
+
 // ---------- 면접 시작 ----------
 $("btnStart").onclick = async () => {
   try {
@@ -206,6 +324,8 @@ $("btnStart").onclick = async () => {
     const pid = $("portfolioId").value.trim() || state.portfolioId;
     if (!pid) { alert("포트폴리오 ID가 필요합니다(업로드 또는 붙여넣기)"); return; }
     state.portfolioId = pid;
+    // 중복 시작 방지: 준비가 끝날 때까지 시작 버튼을 잠근다(여러 번 눌러 세션이 중복 생성되는 것 방지).
+    $("btnStart").disabled = true; $("btnStart").textContent = "면접 준비 중...";
 
     // 카메라·마이크
     log("카메라·마이크 권한 요청...");
@@ -213,16 +333,20 @@ $("btnStart").onclick = async () => {
     $("preview").srcObject = state.stream;
 
     // 연속 영상 녹화 시작 (raw). 이 순간이 타임라인 t0.
+    // raw.mp4는 '영상 전용'이어야 한다(서버가 질문·답변 음성을 FFmpeg로 합성). 또 오디오 트랙을 영상 녹화기가
+    // 물면 답변 녹음기(같은 트랙)의 MediaRecorder.start()가 Chrome에서 충돌로 실패한다. 그래서 영상 녹화기에는
+    // video 트랙만 담은 별도 MediaStream을 준다(오디오 트랙은 답변 녹음기 전용으로 남긴다).
+    const videoOnlyStream = new MediaStream(state.stream.getVideoTracks());
     // 서버 합성이 -c:v copy(재인코딩 없음)라 mp4에 담기는 H.264를 우선한다. webm(vp8)로 떨어지면 합성이 실패할 수 있다.
     state.videoMime = pickMime([
-      "video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=h264", "video/mp4",
-      "video/webm;codecs=vp8,opus", "video/webm",
+      "video/mp4;codecs=avc1.42E01E", "video/mp4;codecs=h264", "video/mp4",
+      "video/webm;codecs=vp8", "video/webm",
     ]);
     if (!state.videoMime || state.videoMime.startsWith("video/webm")) {
       log("⚠️ 이 브라우저는 mp4(H.264) 녹화를 지원하지 않아 webm으로 녹화됩니다 — 서버 합성(-c:v copy)이 실패할 수 있습니다(면접·세그먼트는 정상). Chrome/Safari 최신 버전 권장.");
     }
     state.videoChunks = [];
-    state.videoRecorder = new MediaRecorder(state.stream, state.videoMime ? { mimeType: state.videoMime } : undefined);
+    state.videoRecorder = new MediaRecorder(videoOnlyStream, state.videoMime ? { mimeType: state.videoMime } : undefined);
     state.videoRecorder.ondataavailable = (e) => { if (e.data.size) state.videoChunks.push(e.data); };
     state.videoRecorder.start(1000);
     state.t0 = performance.now();
@@ -231,7 +355,7 @@ $("btnStart").onclick = async () => {
     // 세션 생성
     log("세션 생성...");
     const created = await api("/api/v1/interview/sessions", { method: "POST", json: {
-      portfolioId: pid, jobRole: $("jobRole").value, careerYears: Number($("careerYears").value),
+      portfolioId: pid,
       jdText: $("jdText").value.trim() || null, freeText: $("freeText").value.trim() || null,
     }});
     state.sessionId = created.sessionId;
@@ -250,7 +374,10 @@ $("btnStart").onclick = async () => {
 
     await goToQuestion(summary.questionId, summary.turn, () => playBase64Mp3(summary.ttsAudio));
     log("면접 준비 완료 — 첫 질문 재생. 답변을 녹음하세요. (요약 턴은 스킵/종료 불가 — 답변 제출 필요)");
-  } catch (e) { log("❌ " + e.message); alert(e.message); }
+  } catch (e) {
+    log("❌ " + e.message); alert(e.message);
+    $("btnStart").disabled = false; $("btnStart").textContent = "면접 시작 (카메라·마이크 권한)";
+  }
 };
 
 function pickMime(cands) { for (const c of cands) { if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c; } return null; }
@@ -315,6 +442,7 @@ async function goToQuestion(questionId, turn, playFn) {
   $("turnInfo").textContent = `turn ${state.currentTurn} · depth ${state.currentDepth} (qId ${questionId})`;
   $("qInfo").textContent = "질문 음성 재생 중...";
   $("btnSubmit").disabled = true; $("btnAnsStart").disabled = false; $("btnAnsStop").disabled = true;
+  log("🎙️ 준비됨 — '답변 녹음 시작' 버튼을 누르세요");
   // 요약 턴(turnLevel 0)은 오디오 없는 스킵/종료가 서버에서 STT를 타 깨지므로 막는다.
   const canEnd = state.currentTurn != null && state.currentTurn > 0;
   $("btnSkip").disabled = !canEnd; $("btnEnd").disabled = !canEnd;
@@ -327,19 +455,24 @@ async function goToQuestion(questionId, turn, playFn) {
 
 // ---------- 답변 녹음 ----------
 $("btnAnsStart").onclick = () => {
-  // 서버는 답변 음성을 m4a(audio/mp4)만 허용한다. Safari는 audio/mp4로 녹음되므로 이를 최우선으로 고른다.
-  // Chrome/Firefox는 audio/mp4 녹음을 지원하지 않아 webm으로 떨어진다. 이 경우 제출 시 WebCodecs(AAC)로 m4a 변환을 시도한다.
-  // AAC 인코더를 지원하지 않는 브라우저에서는 변환이 실패하고 서버가 400으로 반려한다(Safari 또는 실기기 필요).
+ try {
+  log("답변 녹음 시작 클릭됨 (stream=" + (state.stream ? "ok" : "없음") + ")");
+  if (!state.stream) { alert("먼저 '면접 시작'으로 카메라·마이크를 켜세요."); return; }
+  // 서버는 답변 음성을 m4a(AAC-in-MP4)만 허용한다. Safari는 audio/mp4(AAC)로 녹음되므로 이를 최우선으로 고른다.
+  // Chrome은 "audio/mp4"를 지원한다고 답해도 실제로는 Opus-in-MP4로 녹음한다(AAC가 아님) — MIME 타입만으로는
+  // 진짜 AAC인지 구분이 안 되므로, isAacInMp4()로 코덱 문자열까지 확인해 변환 필요 여부를 판단한다.
   const mime = pickMime(["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]);
   state.answerChunks = [];
-  state.answerRecorder = new MediaRecorder(state.stream, mime ? { mimeType: mime } : undefined);
+  // 영상 녹화기는 video 트랙만 물고 있으므로, 답변 녹음기는 audio 트랙만 담은 별도 스트림으로 녹음한다(트랙 충돌 방지).
+  const audioOnlyStream = new MediaStream(state.stream.getAudioTracks());
+  state.answerRecorder = new MediaRecorder(audioOnlyStream, mime ? { mimeType: mime } : undefined);
   state.answerRecorder.ondataavailable = (e) => { if (e.data.size) state.answerChunks.push(e.data); };
   state.answerRecorder.onstop = () => {
     state.answerBlob = new Blob(state.answerChunks, { type: state.answerChunks[0]?.type || "audio/webm" });
     state.aEndAt = nowSec();
     log(`답변 녹음 완료 [${state.aStartAt.toFixed(2)}, ${state.aEndAt.toFixed(2)}]s (${(state.answerBlob.size/1024).toFixed(0)}KB, ${state.answerBlob.type || "unknown"})`);
-    if (!(state.answerBlob.type || "").includes("mp4")) {
-      log("ℹ️ webm으로 녹음됨 — 제출 시 WebCodecs로 m4a 변환을 시도합니다(미지원 브라우저는 Safari/실기기 필요).");
+    if (!isAacInMp4(state.answerBlob.type)) {
+      log("ℹ️ AAC(m4a)가 아닌 포맷으로 녹음됨 — 제출 시 WebCodecs로 m4a 변환을 시도합니다(미지원 브라우저는 Safari/실기기 필요).");
     }
     $("btnSubmit").disabled = false;
   };
@@ -348,6 +481,10 @@ $("btnAnsStart").onclick = () => {
   $("recPill").className = "pill rec"; $("recPill").textContent = "녹음중";
   $("btnAnsStart").disabled = true; $("btnAnsStop").disabled = false;
   log("답변 녹음 시작...");
+ } catch (e) {
+  log("❌ 답변 녹음 시작 실패: " + (e && e.message ? e.message : e));
+  alert("답변 녹음 시작 실패: " + (e && e.message ? e.message : e));
+ }
 };
 $("btnAnsStop").onclick = () => {
   if (state.answerRecorder && state.answerRecorder.state !== "inactive") state.answerRecorder.stop();
@@ -355,20 +492,27 @@ $("btnAnsStop").onclick = () => {
   $("btnAnsStop").disabled = true;
 };
 
+// 진짜 AAC-in-MP4인지 확인한다. Chrome은 "audio/mp4"라고 답해도 실제로는 Opus를 담는 경우가 있어
+// mimeType 문자열에 "mp4"가 있는지만으로는 부족하고, opus 코덱이 명시돼 있지 않은지까지 봐야 한다.
+function isAacInMp4(mimeType) {
+  const type = (mimeType || "").toLowerCase();
+  return type.includes("mp4") && !type.includes("opus");
+}
+
 // ---------- 답변 제출 ----------
 async function submitAnswer(endType) {
   const fd = new FormData();
-  // 서버는 m4a만 받는다. mp4 녹음(Safari)은 그대로, 비-mp4(Chrome webm)는 WebCodecs로 m4a 변환을 시도한다.
-  // 변환 실패(AAC 인코더 미지원 브라우저)면 원본대로 보내 서버가 400으로 반려 → Safari/실기기로 유도.
+  // 서버는 m4a(AAC-in-MP4)만 받는다. 진짜 AAC(Safari)는 그대로, 그 외(Chrome의 webm 또는 Opus-in-MP4)는
+  // WebCodecs로 m4a 변환을 시도한다. 변환 실패(AAC 인코더 미지원 브라우저)면 원본대로 보내 서버가 400으로 반려 → Safari/실기기로 유도.
   if (state.answerBlob && endType !== "SKIP") {
     let blob = state.answerBlob;
-    if (!(blob.type || "").includes("mp4")) {
+    let isM4a = isAacInMp4(blob.type);
+    if (!isM4a) {
       const m4a = await encodeToM4a(blob);
-      if (m4a) { blob = m4a; log(`m4a 변환 완료 (${(m4a.size / 1024).toFixed(0)}KB)`); }
+      if (m4a) { blob = m4a; isM4a = true; log(`m4a 변환 완료 (${(m4a.size / 1024).toFixed(0)}KB)`); }
       else log("⚠️ m4a 변환 불가(AAC 인코더 미지원) — 서버가 반려합니다. Safari/실기기로 테스트하세요.");
     }
-    const ext = (blob.type || "").includes("mp4") ? "m4a" : "webm";
-    fd.append("audio", blob, "answer." + ext);
+    fd.append("audio", blob, "answer." + (isM4a ? "m4a" : "webm"));
   }
   fd.append("questionId", String(state.currentQuestionId));
   if (state.qStartAt != null) fd.append("questionAudioStartAt", state.qStartAt.toFixed(3));
@@ -409,7 +553,25 @@ $("btnEnd").onclick = async () => {
 async function finishInterview(r) {
   state.ended = true;
   ["btnAnsStart","btnAnsStop","btnSubmit","btnSkip","btnEnd"].forEach((id) => $(id).disabled = true);
-  if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) { log("마무리 멘트 재생"); await playBase64Mp3(r.wrapUpMessage.ttsAudio); }
+  $("btnStart").disabled = false; $("btnStart").textContent = "면접 시작 (카메라·마이크 권한)";
+  // 마무리 멘트(면접관 종료 TTS) 재생 구간을 녹화 타임라인 기준으로 기록한다. 이 값을 complete에 보고해야
+  // 서버가 합성 영상에 마무리 멘트를 얹는다(보고하지 않으면 합성에서 통째로 빠진다).
+  state.wrapUpStartSec = state.wrapUpEndSec = null;
+  if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) {
+    log("마무리 멘트 재생");
+    // 자동재생 차단/재생 오류로 즉시 resolve된 경우(played=false) 구간이 0초에 가까워 합성에 못 쓰므로 보고를 생략한다.
+    // startSec은 재생 시작 전이 아니라 실제 재생이 시작된 시점(playing 이벤트)을 쓴다 — 그래야 디코딩 지연으로
+    // 인한 선행 무음이 마무리 멘트 구간에 섞여 들어가지 않는다.
+    const { played, startSec: wrapUpStartSec } = await playBase64Mp3(r.wrapUpMessage.ttsAudio);
+    const wrapUpEndSec = nowSec();
+    if (played) {
+      state.wrapUpStartSec = wrapUpStartSec;
+      state.wrapUpEndSec = wrapUpEndSec;
+      log(`마무리 멘트 재생 구간 [${wrapUpStartSec.toFixed(2)}, ${wrapUpEndSec.toFixed(2)}]s`);
+    } else {
+      log("마무리 멘트 재생 실패/차단 — 구간 보고 생략");
+    }
+  }
   log("면접 종료 — 영상 마무리 중... reportId=" + r.reportId);
 
   const videoBlob = await stopVideoAndGetBlob();
@@ -436,8 +598,11 @@ async function uploadVideoSafely(videoBlob) {
     const put = await fetch(u.uploadUrl, { method: "PUT", headers: { "Content-Type": u.contentType }, body: videoBlob });
     if (!put.ok) throw new Error("S3 PUT 실패 " + put.status + " (버킷 CORS가 localhost PUT을 허용하는지 확인)");
     log("S3 업로드 완료 → complete 호출(합성 트리거)");
-    await api(`/api/v1/interview/sessions/${state.sessionId}/video/complete`, { method: "POST" });
-    log("영상 complete 완료 ✅ — 서버가 합성 시작");
+    // 마무리 멘트 재생 구간을 함께 보고해 서버 합성에 마무리 멘트가 포함되게 한다(없으면 두 값 생략).
+    const completeBody = (state.wrapUpStartSec != null)
+      ? { wrapUpStartSec: state.wrapUpStartSec, wrapUpEndSec: state.wrapUpEndSec } : {};
+    await api(`/api/v1/interview/sessions/${state.sessionId}/video/complete`, { method: "POST", json: completeBody });
+    log("영상 complete 완료 ✅ — 서버가 합성 시작" + (state.wrapUpStartSec != null ? ` (마무리 멘트 ${state.wrapUpStartSec.toFixed(1)}s 포함)` : " (마무리 멘트 없음)"));
   } catch (e) {
     log("⚠️ 영상 업로드 건너뜀: " + e.message + " (리포트/세그먼트는 계속 확인)");
   }
@@ -463,99 +628,203 @@ async function pollAndRenderReport() {
 
 function esc(s) { return (s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
 
-let segIndex = []; // { el, role, startSec, endSec, cardEl, qBlock, aBlock, startIndex, endIndex, questionText, transcript }
+let segIndex = [];       // { el, startSec, endSec } — scriptSegments 표 행의 라이브 하이라이트용
+let activeSeg = null;
+let reportPlayer = null; // 현재 리포트 합성 영상(하이라이트/세그먼트/스크립트 클릭 seek 대상)
+let scriptIndex = [];    // { startSec, endSec, role, text } — 전체 대본(script) 기반 자막용
+let captionEl = null;    // 영상 바로 밑 자막 표시 영역
+
+// 지정 시각으로 영상을 이동해 재생한다. 영상이 없거나 시각이 없으면 안내만.
+function seek(sec) {
+  if (sec == null) { log("이 항목은 발화 시각이 없어 재생 위치를 잡을 수 없어요"); return; }
+  if (!reportPlayer) { log("합성 영상(video.url)이 없어 재생할 수 없어요 — 시각만 표시됩니다"); return; }
+  reportPlayer.currentTime = sec;
+  reportPlayer.play().catch(() => {});
+  reportPlayer.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function el(tag, style, html) {
+  const e = document.createElement(tag);
+  if (style) e.style.cssText = style;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+
+// 답변 대본(transcript)에 highlightSpans를 톤별 색상 마크로 얹고, 마크 클릭 시 해당 startSec으로 재생.
+function highlightedTranscript(transcript, spans) {
+  const box = el("div", "margin:2px 0;white-space:pre-wrap;");
+  const text = transcript || "";
+  const list = (spans || [])
+    .filter((s) => s.startIndex != null && s.endIndex != null && s.endIndex > s.startIndex)
+    .sort((a, b) => a.startIndex - b.startIndex);
+  let cursor = 0;
+  list.forEach((s) => {
+    if (s.startIndex < cursor) return; // 겹치는 구간 건너뜀
+    if (s.startIndex > cursor) box.appendChild(document.createTextNode(text.slice(cursor, s.startIndex)));
+    const good = s.tone === "GOOD";
+    const mark = el("mark", `background:${good ? "rgba(22,163,74,0.28)" : "rgba(217,119,6,0.30)"};`
+      + `border-bottom:2px solid ${good ? "#16a34a" : "#d97706"};border-radius:3px;cursor:pointer;`);
+    mark.textContent = text.slice(s.startIndex, s.endIndex);
+    mark.title = (s.title || s.tone) + (s.startSec != null ? ` · ▶ ${s.startSec.toFixed(1)}s` : " · (시각 없음)");
+    mark.onclick = () => seek(s.startSec);
+    box.appendChild(mark);
+    cursor = s.endIndex;
+  });
+  if (cursor < text.length) box.appendChild(document.createTextNode(text.slice(cursor)));
+  return box;
+}
+
+const REASON_LABEL = { PROBE_WORTHY: "파고들 여지", OFF_INTENT: "딴 답", SHALLOW: "짧고 얕음", SUFFICIENT: "충분함" };
+
+// 하이라이트 상세 카드(톤·제목·분석·개선유형·꼬리질문·OFF_INTENT 대비) + "영상에서 보기" 재생 버튼.
+function renderHighlightDetail(s) {
+  const good = s.tone === "GOOD";
+  const wrap = el("div", `border:1px solid ${good ? "rgba(22,163,74,0.4)" : "rgba(217,119,6,0.4)"};`
+    + `border-left:4px solid ${good ? "#16a34a" : "#d97706"};border-radius:8px;padding:8px 10px;margin:6px 0;`);
+  wrap.appendChild(el("div", "display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;",
+    `<span class="pill" style="background:${good ? "#16a34a" : "#d97706"};color:#fff;">${good ? "잘함" : "개선"}</span>`
+    + `<b style="flex:1">${esc(s.title || "")}</b>`
+    + (s.reason ? `<span class="muted">${esc(REASON_LABEL[s.reason] || s.reason)}</span>` : "")));
+  const btn = el("button", "margin-top:6px;width:auto;padding:3px 10px;font-size:12px;",
+    s.startSec != null ? `▶ 영상에서 보기 (${s.startSec.toFixed(1)}s)` : "▶ 시각 없음");
+  btn.className = "secondary";
+  btn.disabled = s.startSec == null;
+  btn.onclick = () => seek(s.startSec);
+  wrap.appendChild(btn);
+  if (s.analysis) wrap.appendChild(el("div", "margin-top:6px;font-size:13px;", esc(s.analysis)));
+  if (s.reason === "OFF_INTENT" && (s.questionIntentTitle || s.answerTopicTitle)) {
+    wrap.appendChild(el("div", "margin-top:6px;font-size:12px;",
+      `<span class="muted">질문 의도</span> ${esc(s.questionIntentTitle || "-")} <span class="muted">↔ 내 답변</span> ${esc(s.answerTopicTitle || "-")}`
+      + (s.questionIntent ? `<div class="muted" style="margin-top:2px;">${esc(s.questionIntent)}</div>` : "")));
+  }
+  const fu = s.followUpQuestions || [];
+  if (fu.length) {
+    const box = el("div", "margin-top:6px;font-size:12px;", `<span class="muted">예상 꼬리질문</span>`);
+    fu.forEach((q) => box.appendChild(el("div", "margin-left:6px;", "• " + esc(q))));
+    wrap.appendChild(box);
+  }
+  return wrap;
+}
+
+// 클릭해 해당 시각으로 재생되는 대본 행(scriptSegments / script 공용).
+function timedRow(role, textStr, startSec, endSec, roleStyle) {
+  const fmt = (v) => (typeof v === "number" && Number.isFinite(v) ? v.toFixed(2) : "-");
+  const row = el("div", "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;");
+  row.innerHTML = `<span class="pill" style="${roleStyle || ""}">${esc(role)}</span>`
+    + `<span style="flex:1">${esc(textStr)}</span>`
+    + `<span class="muted">${fmt(startSec)}–${fmt(endSec)}s</span>`;
+  row.onclick = () => seek(startSec);
+  return row;
+}
 
 function renderReport(rep) {
   const body = $("reportBody");
   body.innerHTML = "";
-  segIndex = []; activeSeg = null;
+  segIndex = []; activeSeg = null; reportPlayer = null; scriptIndex = []; captionEl = null;
 
-  // 상단 상태 + 합성 영상
-  const head = document.createElement("div");
-  head.innerHTML = `<div class="big">status: <span class="pill ${rep.status === "READY" ? "ok" : ""}">${esc(rep.status)}</span></div>
-    <div class="muted">${esc(rep.headline || "")}</div>`;
-  body.appendChild(head);
+  // 상단: 상태 + 헤드라인
+  body.appendChild(el("div", null,
+    `<div class="big">status: <span class="pill ${rep.status === "READY" ? "ok" : ""}">${esc(rep.status)}</span></div>`
+    + `<div class="muted" style="margin-top:2px;">${esc(rep.headline || "")}</div>`));
 
-  const videoUrl = rep.video && rep.video.url;
-  let player = null;
-  if (videoUrl) {
-    player = document.createElement("video");
-    player.src = videoUrl; player.controls = true; player.playsInline = true;
-    player.style.cssText = "width:100%;border-radius:8px;background:#000;margin:10px 0;";
-    body.appendChild(player);
-    log("합성 영상 재생 준비 — 재생하면 현재 발화 문장이 강조됩니다");
+  // 합성 영상
+  if (rep.video && rep.video.url) {
+    reportPlayer = el("video", "max-width:100%;max-height:220px;width:auto;display:block;margin:10px auto;border-radius:8px;background:#000;");
+    reportPlayer.src = rep.video.url; reportPlayer.controls = true; reportPlayer.playsInline = true;
+    body.appendChild(reportPlayer);
+    // 영상 바로 밑 실시간 자막 — 재생 위치에 해당하는 전체 대본(script) 문장을 표시한다.
+    captionEl = el("div", "min-height:20px;text-align:center;font-size:13px;color:#fff;"
+      + "background:rgba(0,0,0,0.6);border-radius:6px;padding:4px 10px;margin:6px 0 10px;");
+    body.appendChild(captionEl);
+    body.appendChild(el("div", "margin-bottom:6px;",
+      `<span class="muted">영상 ${rep.video.expired ? "만료됨" : "유효"} · 삭제예정 ${esc((rep.video.expiresAt || "").replace("T", " ").slice(0, 16))}</span>`));
+    log("합성 영상 준비 — 하이라이트/세그먼트/스크립트를 클릭하면 해당 시각으로 재생됩니다");
   } else {
-    const note = document.createElement("div");
-    note.className = "muted"; note.style.margin = "8px 0";
-    note.textContent = "합성 영상(video.url) 없음 — 세그먼트 시각은 아래 표로 확인하세요.";
-    body.appendChild(note);
+    body.appendChild(el("div", "margin:8px 0;",
+      `<span class="muted">합성 영상(video.url) 없음 — 클릭 재생은 비활성, 시각만 표시됩니다.</span>`));
   }
 
+  // 카드
   (rep.cards || []).forEach((card) => {
-    const c = document.createElement("div");
-    c.className = "card"; c.style.marginTop = "10px";
-    const qBlock = document.createElement("div");
-    const aBlock = document.createElement("div");
-    qBlock.style.margin = "4px 0"; aBlock.style.margin = "4px 0";
-    qBlock.innerHTML = `<label>질문 ${card.axisOrder}-${card.depthLevel}</label>` + esc(card.questionText);
-    aBlock.innerHTML = `<label>답변</label>` + esc(card.transcript);
-    c.appendChild(qBlock); c.appendChild(aBlock);
-
-    // 세그먼트 표
+    const c = el("div", "margin-top:10px;"); c.className = "card";
+    c.appendChild(el("div", "margin-bottom:2px;", `<b>질문 ${card.axisOrder}-${card.depthLevel}</b>`
+      + (card.questionIntentTitle ? ` <span class="muted">· ${esc(card.questionIntentTitle)}</span>` : "")));
+    if (card.questionIntent) c.appendChild(el("div", "font-size:12px;margin-bottom:6px;",
+      `<span class="muted">의도</span> ${esc(card.questionIntent)}`));
+    c.appendChild(el("div", "margin:4px 0;", `<label>질문</label>${esc(card.questionText)}`));
+    const aWrap = el("div", "margin:4px 0;");
+    aWrap.appendChild(el("label", null, "답변 (하이라이트 클릭 시 재생)"));
+    aWrap.appendChild(highlightedTranscript(card.transcript, card.highlightSpans));
+    c.appendChild(aWrap);
+    if (card.resolutionNotice) c.appendChild(el("div", "margin:6px 0;font-size:12px;",
+      `<span class="pill">해상도 낮음</span> ${esc(card.resolutionNotice)}`));
+    (card.cardRedFlagNotices || []).forEach((m) =>
+      c.appendChild(el("div", "margin:4px 0;font-size:12px;color:#dc2626;", "⚑ " + esc(m))));
+    const spans = card.highlightSpans || [];
+    if (spans.length) {
+      c.appendChild(el("label", null, `하이라이트 (${spans.length})`));
+      spans.forEach((s) => c.appendChild(renderHighlightDetail(s)));
+    }
     const segs = card.scriptSegments || [];
     if (segs.length) {
-      const tbl = document.createElement("div");
-      tbl.innerHTML = `<label>scriptSegments (${segs.length})</label>`;
+      const tbl = el("div", null, `<label>scriptSegments (${segs.length})</label>`);
       segs.forEach((s) => {
-        const row = document.createElement("div");
-        row.style.cssText = "display:flex;gap:8px;font-size:12px;padding:3px 6px;border-radius:6px;cursor:pointer;align-items:baseline;";
-        row.innerHTML = `<span class="pill">${esc(s.role)}</span>
-          <span style="flex:1">${esc(s.text)}</span>
-          <span class="muted">${s.startSec.toFixed(2)}–${s.endSec.toFixed(2)}s</span>`;
-        row.onclick = () => { if (player) { player.currentTime = s.startSec; player.play(); } };
+        const row = timedRow(s.role, s.text, s.startSec, s.endSec);
         tbl.appendChild(row);
-        segIndex.push({ el: row, role: s.role, startSec: s.startSec, endSec: s.endSec,
-          qBlock, aBlock, startIndex: s.startIndex, endIndex: s.endIndex,
-          questionText: card.questionText, transcript: card.transcript });
+        segIndex.push({ el: row, startSec: s.startSec, endSec: s.endSec });
       });
       c.appendChild(tbl);
-    } else {
-      const none = document.createElement("div");
-      none.className = "muted"; none.style.fontSize = "12px"; none.textContent = "scriptSegments 없음(빈 배열)";
-      c.appendChild(none);
     }
     body.appendChild(c);
   });
 
-  if (player) player.addEventListener("timeupdate", () => syncHighlight(player.currentTime));
+  // 전체 대본 타임라인(script)
+  const script = rep.script || [];
+  if (script.length) {
+    const sc = el("div", "margin-top:10px;"); sc.className = "card";
+    sc.appendChild(el("div", "margin-bottom:6px;", `<b>전체 대본 타임라인 (${script.length})</b>`));
+    script.forEach((line) => {
+      sc.appendChild(timedRow(line.role, line.text, line.startSec, line.endSec,
+        line.role === "INTERVIEWEE" ? "background:rgba(37,99,235,0.2)" : ""));
+      scriptIndex.push({ startSec: line.startSec, endSec: line.endSec, role: line.role, text: line.text });
+    });
+    body.appendChild(sc);
+  }
+
+  // 지인 피드백(guestFeedback)
+  const gf = rep.guestFeedback;
+  if (gf) {
+    const g = el("div", "margin-top:10px;"); g.className = "card";
+    g.appendChild(el("div", "margin-bottom:6px;", `<b>지인 피드백</b> <span class="muted">참여 ${gf.participantCount}명</span>`));
+    if (!(gf.guests || []).length) g.appendChild(el("div", "font-size:12px;", `<span class="muted">제출한 지인 없음</span>`));
+    (gf.guests || []).forEach((guest) => {
+      g.appendChild(el("div", "margin-top:6px;font-size:13px;", `<b>${esc(guest.alias)}</b>`));
+      (guest.attitudeRatings || []).forEach((r) => g.appendChild(el("div", "font-size:12px;margin-left:6px;",
+        `${esc(r.axis)} — <b>${r.level}</b>/4${r.comment ? ` · ${esc(r.comment)}` : ""}`)));
+    });
+    body.appendChild(g);
+  }
+
+  if (reportPlayer) reportPlayer.addEventListener("timeupdate", () => {
+    syncHighlight(reportPlayer.currentTime);
+    syncCaption(reportPlayer.currentTime);
+  });
 }
 
-let activeSeg = null;
+// 재생 위치에 해당하는 scriptSegments 행을 강조(라이브 싱크).
 function syncHighlight(t) {
   const seg = segIndex.find((s) => t >= s.startSec && t < s.endSec) || null;
   if (seg === activeSeg) return;
-  // 이전 강조 해제
-  if (activeSeg) {
-    activeSeg.el.style.background = "";
-    resetBlock(activeSeg, activeSeg.role);
-  }
+  if (activeSeg) activeSeg.el.style.background = "";
   activeSeg = seg;
-  if (!seg) return;
-  seg.el.style.background = "rgba(37,99,235,0.25)";
-  // 대응 텍스트 블록에서 해당 문장 substring을 <mark>로 강조
-  const block = seg.role === "QUESTION" ? seg.qBlock : seg.aBlock;
-  const full = seg.role === "QUESTION" ? seg.questionText : seg.transcript;
-  const a = esc(full.slice(0, seg.startIndex));
-  const mid = esc(full.slice(seg.startIndex, seg.endIndex));
-  const b = esc(full.slice(seg.endIndex));
-  const labelHtml = seg.role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
-  block.innerHTML = labelHtml + a + "<mark>" + mid + "</mark>" + b;
+  if (seg) seg.el.style.background = "rgba(37,99,235,0.25)";
 }
-function resetBlock(seg, role) {
-  const block = role === "QUESTION" ? seg.qBlock : seg.aBlock;
-  const full = role === "QUESTION" ? seg.questionText : seg.transcript;
-  const labelHtml = role === "QUESTION" ? block.querySelector("label").outerHTML : `<label>답변</label>`;
-  block.innerHTML = labelHtml + esc(full);
+
+// 재생 위치에 해당하는 전체 대본(script) 문장을 영상 바로 밑 자막으로 표시한다.
+function syncCaption(t) {
+  if (!captionEl) return;
+  const line = scriptIndex.find((s) => t >= s.startSec && t < s.endSec) || null;
+  captionEl.textContent = line ? `${line.role === "INTERVIEWER" ? "면접관" : "지원자"} · ${line.text}` : "";
 }
 </script>
 </body>

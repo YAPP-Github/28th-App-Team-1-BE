@@ -3,6 +3,7 @@ package com.yapp.d14.common.web;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,21 +27,22 @@ class DevInterviewTestPageController {
 
     @GetMapping("/interview-test.html")
     ResponseEntity<Resource> interviewTestPage() {
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(SCRIPT_TIMING_PAGE);
+        // dev 하네스는 자주 수정되므로 브라우저가 옛 버전을 재사용하지 않게 캐시를 끈다.
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.TEXT_HTML).body(SCRIPT_TIMING_PAGE);
     }
 
     @GetMapping("/mp4-muxer.js")
     ResponseEntity<Resource> mp4MuxerJs() {
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/javascript")).body(MP4_MUXER_JS);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType("application/javascript")).body(MP4_MUXER_JS);
     }
 
     @GetMapping({"/interview-harness", "/interview-harness/", "/interview-harness/index.html"})
     ResponseEntity<Resource> interviewHarnessPage() {
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(HARNESS_PAGE);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.TEXT_HTML).body(HARNESS_PAGE);
     }
 
     @GetMapping("/interview-harness/lame.min.js")
     ResponseEntity<Resource> interviewHarnessLameJs() {
-        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/javascript")).body(HARNESS_LAME_JS);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.parseMediaType("application/javascript")).body(HARNESS_LAME_JS);
     }
 }
