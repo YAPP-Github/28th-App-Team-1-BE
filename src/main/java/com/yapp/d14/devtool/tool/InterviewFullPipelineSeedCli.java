@@ -32,9 +32,11 @@ import com.yapp.d14.interview.application.port.in.result.InterviewVideoUploadUrl
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
+import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
@@ -92,10 +94,12 @@ public class InterviewFullPipelineSeedCli {
             - 헥사고날 아키텍처 등 관심사 분리를 고려한 설계 경험
             """;
 
-    private static final String FREE_TEXT = """
+    private static final String FREE_TEXT_FALLBACK = """
             3년차 백엔드 엔지니어입니다. Spring Boot로 API 서버를 설계·운영해왔고,
             트래픽 증가에 따른 성능 이슈를 데이터베이스 인덱스 튜닝과 캐싱으로 해결한 경험이 있습니다.
             """;
+    private static final int MIN_FREE_TEXT_LENGTH = 10;
+    private static final int MAX_FREE_TEXT_LENGTH = 300;
 
     private static final float QUESTION_AUDIO_DURATION_SEC = 4f;
     private static final String MANUAL_END_TYPE = "MANUAL_END";
@@ -122,7 +126,11 @@ public class InterviewFullPipelineSeedCli {
             );
             awaitPortfolioReady(userId, portfolioId, context.getBean(PortfolioStatusUseCase.class));
 
-            Long sessionId = createSession(userId, portfolioId, context.getBean(InterviewSessionCreateUseCase.class));
+            Long sessionId = createSession(
+                    userId, portfolioId,
+                    context.getBean(InterviewSessionCreateUseCase.class),
+                    context.getBean(PortfolioChunkSearchUseCase.class)
+            );
             InterviewSessionStatusResult.SummaryQuestion summaryQuestion = preloadAndAwaitReady(
                     userId, sessionId,
                     context.getBean(InterviewSessionPreloadUseCase.class),
@@ -209,11 +217,34 @@ public class InterviewFullPipelineSeedCli {
         throw new IllegalStateException("포트폴리오 처리 대기 시간 초과: portfolioId=" + portfolioId);
     }
 
-    private static Long createSession(UUID userId, UUID portfolioId, InterviewSessionCreateUseCase interviewSessionCreateUseCase) {
-        InterviewSessionCreateCommand command = new InterviewSessionCreateCommand(userId, portfolioId, null, JD_TEXT, FREE_TEXT);
+    private static Long createSession(
+            UUID userId,
+            UUID portfolioId,
+            InterviewSessionCreateUseCase interviewSessionCreateUseCase,
+            PortfolioChunkSearchUseCase portfolioChunkSearchUseCase
+    ) {
+        String freeText = buildFreeTextFromPortfolio(portfolioId, portfolioChunkSearchUseCase);
+        InterviewSessionCreateCommand command = new InterviewSessionCreateCommand(userId, portfolioId, null, JD_TEXT, freeText);
         InterviewSessionCreateResult result = interviewSessionCreateUseCase.create(command);
         System.out.println("[SESSION] 생성 완료: sessionId=" + result.sessionId() + ", status=" + result.status());
         return result.sessionId();
+    }
+
+    private static String buildFreeTextFromPortfolio(UUID portfolioId, PortfolioChunkSearchUseCase portfolioChunkSearchUseCase) {
+        List<PortfolioChunkResult> chunks = portfolioChunkSearchUseCase.searchChunksWithoutThreshold(
+                portfolioId, "경력 프로젝트 경험 기술 스택", 1
+        );
+        if (chunks.isEmpty()) {
+            return FREE_TEXT_FALLBACK;
+        }
+        String text = chunks.get(0).text().trim();
+        if (text.length() > MAX_FREE_TEXT_LENGTH) {
+            text = text.substring(0, MAX_FREE_TEXT_LENGTH);
+        }
+        if (text.length() < MIN_FREE_TEXT_LENGTH) {
+            return FREE_TEXT_FALLBACK;
+        }
+        return text;
     }
 
     private static InterviewSessionStatusResult.SummaryQuestion preloadAndAwaitReady(
