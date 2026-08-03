@@ -224,8 +224,10 @@ public interface PortfolioControllerDocs {
             summary = "내 포트폴리오 목록 조회",
             description = "로그인한 사용자가 등록한 포트폴리오 목록을 조회합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- MVP는 계정당 1개로 제한되지만, 응답은 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
-                    "- 소프트 삭제된 포트폴리오는 응답에서 제외됩니다.\n" +
+                    "- MVP는 계정당 1개로 제한되지만, `portfolios`는 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
+                    "- 소프트 삭제된 포트폴리오는 `portfolios`에서 제외됩니다.\n" +
+                    "- `replaceAvailable`·`deleteAvailable`·`nextAvailableAt`·`nextDeleteAvailableAt`는 계정 단위로 결정되는 값이라 " +
+                    "응답 최상위에 위치하며, `portfolios`가 빈 배열이어도(포트폴리오가 없어도) 항상 포함됩니다.\n" +
                     "- `replaceAvailable`: 이번 달 남은 재업로드(교체) 기회입니다. `true`면 1회 업로드 가능, " +
                     "`false`면 이미 이번 달 재업로드를 마쳐 업로드 시도 시 `REPLACEMENT_LIMIT_EXCEEDED`로 거부됩니다. " +
                     "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
@@ -246,16 +248,26 @@ public interface PortfolioControllerDocs {
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
-                                    @ExampleObject(name = "등록된 포트폴리오 없음", value = """
+                                    @ExampleObject(name = "등록된 포트폴리오 없음(재업로드·삭제 가능 여부는 계정 단위로 여전히 내려감)", value = """
                                             {
                                               "success": true,
-                                              "data": { "portfolios": [] }
+                                              "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": false,
+                                                "nextDeleteAvailableAt": "2026-09-01T00:00:00",
+                                                "portfolios": []
+                                              }
                                             }
                                             """),
                                     @ExampleObject(name = "처리 중(PROCESSING)", value = """
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": true,
+                                                "nextDeleteAvailableAt": null,
                                                 "portfolios": [{
                                                   "portfolioId": "b1f2c3d4-0000-0000-0000-000000000001",
                                                   "fileName": "portfolio.pdf",
@@ -263,10 +275,6 @@ public interface PortfolioControllerDocs {
                                                   "pageCount": 12,
                                                   "status": "PROCESSING",
                                                   "uploadedAt": null,
-                                                  "replaceAvailable": true,
-                                                  "nextAvailableAt": null,
-                                                  "deleteAvailable": true,
-                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
@@ -276,6 +284,10 @@ public interface PortfolioControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": true,
+                                                "nextDeleteAvailableAt": null,
                                                 "portfolios": [{
                                                   "portfolioId": "b1f2c3d4-0000-0000-0000-000000000002",
                                                   "fileName": "portfolio.pdf",
@@ -283,10 +295,6 @@ public interface PortfolioControllerDocs {
                                                   "pageCount": 12,
                                                   "status": "READY",
                                                   "uploadedAt": "2026-07-01T10:00:00",
-                                                  "replaceAvailable": true,
-                                                  "nextAvailableAt": null,
-                                                  "deleteAvailable": true,
-                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }
@@ -296,6 +304,10 @@ public interface PortfolioControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": false,
+                                                "nextAvailableAt": "2026-08-01T00:00:00",
+                                                "deleteAvailable": false,
+                                                "nextDeleteAvailableAt": "2026-08-01T00:00:00",
                                                 "portfolios": [{
                                                   "portfolioId": "b1f2c3d4-0000-0000-0000-000000000003",
                                                   "fileName": "portfolio.pdf",
@@ -303,30 +315,26 @@ public interface PortfolioControllerDocs {
                                                   "pageCount": 12,
                                                   "status": "READY",
                                                   "uploadedAt": "2026-07-15T10:00:00",
-                                                  "replaceAvailable": false,
-                                                  "nextAvailableAt": "2026-08-01T00:00:00",
-                                                  "deleteAvailable": false,
-                                                  "nextDeleteAvailableAt": "2026-08-01T00:00:00",
                                                   "interviewInProgress": false
                                                 }]
                                               }
                                             }
                                             """),
-                                    @ExampleObject(name = "완료(READY) — 재업로드 기회만 소진(삭제는 아직 가능, 서로 독립)", value = """
+                                    @ExampleObject(name = "완료(READY) — 삭제 기회만 소진(재업로드는 아직 가능, 서로 독립)", value = """
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": false,
+                                                "nextDeleteAvailableAt": "2026-08-01T00:00:00",
                                                 "portfolios": [{
-                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000006",
+                                                  "portfolioId": "b1f2c3d4-0000-0000-0000-000000000007",
                                                   "fileName": "portfolio.pdf",
                                                   "fileSize": 1048576,
                                                   "pageCount": 12,
                                                   "status": "READY",
-                                                  "uploadedAt": "2026-07-18T10:00:00",
-                                                  "replaceAvailable": false,
-                                                  "nextAvailableAt": "2026-08-01T00:00:00",
-                                                  "deleteAvailable": true,
-                                                  "nextDeleteAvailableAt": null,
+                                                  "uploadedAt": "2026-07-22T10:00:00",
                                                   "interviewInProgress": false
                                                 }]
                                               }
@@ -336,6 +344,10 @@ public interface PortfolioControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": true,
+                                                "nextDeleteAvailableAt": null,
                                                 "portfolios": [{
                                                   "portfolioId": "b1f2c3d4-0000-0000-0000-000000000004",
                                                   "fileName": "portfolio.pdf",
@@ -343,10 +355,6 @@ public interface PortfolioControllerDocs {
                                                   "pageCount": 12,
                                                   "status": "READY",
                                                   "uploadedAt": "2026-07-20T10:00:00",
-                                                  "replaceAvailable": true,
-                                                  "nextAvailableAt": null,
-                                                  "deleteAvailable": true,
-                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": true
                                                 }]
                                               }
@@ -356,6 +364,10 @@ public interface PortfolioControllerDocs {
                                             {
                                               "success": true,
                                               "data": {
+                                                "replaceAvailable": true,
+                                                "nextAvailableAt": null,
+                                                "deleteAvailable": true,
+                                                "nextDeleteAvailableAt": null,
                                                 "portfolios": [{
                                                   "portfolioId": "b1f2c3d4-0000-0000-0000-000000000005",
                                                   "fileName": "portfolio.pdf",
@@ -363,10 +375,6 @@ public interface PortfolioControllerDocs {
                                                   "pageCount": 12,
                                                   "status": "FAILED_FILE",
                                                   "uploadedAt": null,
-                                                  "replaceAvailable": true,
-                                                  "nextAvailableAt": null,
-                                                  "deleteAvailable": true,
-                                                  "nextDeleteAvailableAt": null,
                                                   "interviewInProgress": false
                                                 }]
                                               }

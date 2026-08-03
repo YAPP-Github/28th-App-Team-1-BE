@@ -1,6 +1,7 @@
 package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
@@ -53,11 +54,11 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(summaries).hasSize(1);
-        assertThat(summaries.get(0).replaceAvailable()).isTrue();
-        assertThat(summaries.get(0).nextAvailableAt()).isNull();
+        assertThat(result.portfolios()).hasSize(1);
+        assertThat(result.replaceAvailable()).isTrue();
+        assertThat(result.nextAvailableAt()).isNull();
     }
 
     @Test
@@ -65,10 +66,10 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(summaries.get(0).replaceAvailable()).isFalse();
-        assertThat(summaries.get(0).nextAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
+        assertThat(result.replaceAvailable()).isFalse();
+        assertThat(result.nextAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
     }
 
     @Test
@@ -77,11 +78,11 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
         given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(false);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(summaries.get(0).replaceAvailable()).isFalse();
-        assertThat(summaries.get(0).deleteAvailable()).isTrue();
-        assertThat(summaries.get(0).nextDeleteAvailableAt()).isNull();
+        assertThat(result.replaceAvailable()).isFalse();
+        assertThat(result.deleteAvailable()).isTrue();
+        assertThat(result.nextDeleteAvailableAt()).isNull();
     }
 
     @Test
@@ -90,12 +91,26 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
         given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(true);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(summaries.get(0).deleteAvailable()).isFalse();
-        assertThat(summaries.get(0).nextDeleteAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
-        assertThat(summaries.get(0).replaceAvailable()).isTrue();
-        assertThat(summaries.get(0).nextAvailableAt()).isNull();
+        assertThat(result.deleteAvailable()).isFalse();
+        assertThat(result.nextDeleteAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
+        assertThat(result.replaceAvailable()).isTrue();
+        assertThat(result.nextAvailableAt()).isNull();
+    }
+
+    @Test
+    void 포트폴리오가_없어도_재업로드_삭제_가능_여부는_계정_단위로_내려간다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+        given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(true);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).isEmpty();
+        assertThat(result.replaceAvailable()).isTrue();
+        assertThat(result.deleteAvailable()).isFalse();
+        assertThat(result.nextDeleteAvailableAt()).isEqualTo(PortfolioReplacementPolicy.nextMonthStart());
     }
 
     @Test
@@ -104,9 +119,9 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
         given(interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())).willReturn(true);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(userId);
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(summaries.get(0).interviewInProgress()).isTrue();
+        assertThat(result.portfolios().get(0).interviewInProgress()).isTrue();
     }
 
     @Test
@@ -137,9 +152,9 @@ class PortfolioQueryServiceTest {
         given(portfolioRepository.findAllActiveByUserId(stale.getUserId())).willReturn(List.of(stale));
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
 
-        List<PortfolioSummary> summaries = portfolioQueryService.getList(stale.getUserId());
+        PortfolioListResult result = portfolioQueryService.getList(stale.getUserId());
 
-        assertThat(summaries.get(0).status()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
+        assertThat(result.portfolios().get(0).status()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
         verify(portfolioRepository).save(stale);
     }
 

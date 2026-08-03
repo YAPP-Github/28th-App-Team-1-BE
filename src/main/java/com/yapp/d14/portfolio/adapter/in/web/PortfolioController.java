@@ -13,11 +13,11 @@ import com.yapp.d14.portfolio.application.port.in.PortfolioDeleteUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioFileUrlQueryUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioFileUrlResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
-import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -72,8 +71,8 @@ class PortfolioController implements PortfolioControllerDocs {
     @Override
     @GetMapping
     public ResponseEntity<ApiResponse<PortfolioListHttpResponse>> getList(@CurrentUser UUID userId) {
-        List<PortfolioSummary> summaries = portfolioListUseCase.getList(userId);
-        return ResponseEntity.ok(ApiResponse.ok(PortfolioListHttpResponse.from(summaries)));
+        PortfolioListResult result = portfolioListUseCase.getList(userId);
+        return ResponseEntity.ok(ApiResponse.ok(PortfolioListHttpResponse.from(result)));
     }
 
     @Override

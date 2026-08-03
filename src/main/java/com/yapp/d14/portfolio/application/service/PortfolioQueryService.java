@@ -3,6 +3,7 @@ package com.yapp.d14.portfolio.application.service;
 import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioActiveCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
@@ -44,11 +45,23 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
 
     @Override
     @Transactional
-    public List<PortfolioSummary> getList(UUID userId) {
-        return portfolioRepository.findAllActiveByUserId(userId).stream()
+    public PortfolioListResult getList(UUID userId) {
+        List<PortfolioSummary> summaries = portfolioRepository.findAllActiveByUserId(userId).stream()
                 .peek(this::timeoutIfStale)
                 .map(this::toSummary)
                 .toList();
+
+        LocalDateTime monthStart = PortfolioReplacementPolicy.currentMonthStart();
+        boolean replaceBlocked = portfolioRepository.existsReplacementSince(userId, monthStart);
+        boolean deleteBlocked = portfolioRepository.existsDeletionSince(userId, monthStart);
+
+        return new PortfolioListResult(
+                !replaceBlocked,
+                replaceBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
+                !deleteBlocked,
+                deleteBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
+                summaries
+        );
     }
 
     private void timeoutIfStale(Portfolio portfolio) {
@@ -58,10 +71,6 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {
-        LocalDateTime monthStart = PortfolioReplacementPolicy.currentMonthStart();
-        boolean replaceBlocked = portfolioRepository.existsReplacementSince(portfolio.getUserId(), monthStart);
-        boolean deleteBlocked = portfolioRepository.existsDeletionSince(portfolio.getUserId(), monthStart);
-
         return new PortfolioSummary(
                 portfolio.getId(),
                 portfolio.getFileName(),
@@ -69,10 +78,6 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
                 portfolio.getPageCount(),
                 portfolio.getStatus(),
                 portfolio.getUploadedAt(),
-                !replaceBlocked,
-                replaceBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
-                !deleteBlocked,
-                deleteBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
                 interviewSessionInProgressCheckUseCase.existsInProgress(portfolio.getId())
         );
     }
