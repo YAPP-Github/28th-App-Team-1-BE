@@ -172,7 +172,8 @@ class InterviewAnswerSubmitServiceTest {
         given(speechToTextTranscriber.transcribe(audioContent))
                 .willReturn(new TranscriptionResult("STT 변환된 답변", 1, 0));
         given(liveTurnAnalyzer.analyze(
-                eq(sessionId), any(), any(), eq("STT 변환된 답변"), isNull(), eq(JobType.BACKEND), eq(List.of()), eq(List.of()), eq(Set.of())
+                eq(sessionId), any(), any(), eq("STT 변환된 답변"), isNull(), eq(JobType.BACKEND), eq(List.of()), eq(List.of()),
+                eq(Set.of(TestType.CONFLICT, TestType.RESILIENCE))
         ))
                 .willReturn(new LiveTurnResult(
                         List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, null)),
@@ -738,7 +739,7 @@ class InterviewAnswerSubmitServiceTest {
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
         given(liveTurnAnalyzer.analyze(
                 eq(sessionId), any(), eq("꼬리 질문"), eq("STT 변환된 답변"), eq(TestType.DEPTH),
-                eq(JobType.BACKEND), eq(List.of()), eq(List.of()), eq(Set.of())
+                eq(JobType.BACKEND), eq(List.of()), eq(List.of()), eq(Set.of(TestType.CONFLICT, TestType.RESILIENCE))
         )).willReturn(new LiveTurnResult(
                 List.of(new ProbeCandidateDraft(TestType.DEPTH, null, "probe", "echo", null, QuestionCandidateStrength.HIGH, "P3")),
                 new CeilingAssessment(false, null, "아직 새 내용이 나오는 중"),
@@ -805,7 +806,8 @@ class InterviewAnswerSubmitServiceTest {
         verify(liveTurnAnalyzer).analyze(
                 any(), any(), any(), any(), any(), any(), any(), any(), exhaustedAxesCaptor.capture()
         );
-        assertThat(exhaustedAxesCaptor.getValue()).containsExactly(TestType.BOUNDARY);
+        assertThat(exhaustedAxesCaptor.getValue())
+                .containsExactlyInAnyOrder(TestType.BOUNDARY, TestType.CONFLICT, TestType.RESILIENCE);
     }
 
     @Test

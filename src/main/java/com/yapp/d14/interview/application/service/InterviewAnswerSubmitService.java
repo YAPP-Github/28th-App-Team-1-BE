@@ -97,13 +97,19 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, Q={}, A={}",
                 session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(),
                 singleLine(summaryQuestion.getContent()), singleLine(sttText));
-        LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        Set<TestType> exhaustedAxes = axisPlans.stream()
+                .filter(plan -> plan.getBudget() == 0)
+                .map(InterviewAxisPlan::getTestType)
+                .collect(Collectors.toSet()); // 이번 세션에서 예산이 없는(SKIP tier) axis — 절대 선택되지 않으니 후보를 만들 필요가 없다. 첫 턴이라 완료된 axis는 아직 없다.
+
+        LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText, exhaustedAxes); // 캐물지점 추출
         logLiveTurnResult(session.getId(), null, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
         ); // 새 후보 변환 — 축 선택 전에 만들어 이번 턴에 추출한 후보도 선택 대상에 포함시킨다
 
-        InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session); // 다음 axis 선택
+        InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session, axisPlans); // 다음 axis 선택
         TestType nextAxis = nextAxisPlan.getTestType(); // axis 값 추출
         Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 기존 OPEN 후보 + 신규 후보를 병합해 한 번만 선택
         String nextQuestionText = generateNextQuestionText(selectedProbe, nextAxis, session); // 질문 문장 생성
@@ -203,9 +209,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis); // 열린 후보
         List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
         Set<TestType> exhaustedAxes = axisPlans.stream()
-                .filter(InterviewAxisPlan::isCompleted)
+                .filter(plan -> plan.isCompleted() || plan.getBudget() == 0)
                 .map(InterviewAxisPlan::getTestType)
-                .collect(Collectors.toSet()); // 이미 끝난 axis — 이 축으로는 새 후보를 만들 필요가 없다
+                .collect(Collectors.toSet()); // 이미 끝났거나(completed) 이번 세션에 예산이 없는(SKIP tier) axis — 이 축으로는 새 후보를 만들 필요가 없다
 
         LiveTurnResult liveTurnResult = retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
@@ -444,7 +450,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
-    private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
+    private LiveTurnResult analyzeFirstTurn(
+            InterviewSession session, Question summaryQuestion, String sttText, Set<TestType> exhaustedAxes
+    ) {
         return retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(),
                 session.getPortfolioId(),
@@ -454,12 +462,11 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session.getSnapshotJobType(),
                 List.of(),
                 List.of(),
-                Set.of() // 첫 턴은 아직 완료된 axis가 있을 수 없다
+                exhaustedAxes
         ));
     }
 
-    private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session) {
-        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+    private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session, List<InterviewAxisPlan> axisPlans) {
         TestType nextAxis = FirstCoreAxisSelector.select(axisPlans, session.getWeights())
                 .orElseThrow(() -> new IllegalStateException("CORE tier 항목이 없어요. sessionId=" + session.getId()));
         log.info("[AXIS TRANSITION] sessionId={}, 첫 축 선택: {}", session.getId(), nextAxis);

@@ -70,8 +70,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
               신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑되, 최대 %d개까지만 반환하세요.
               그보다 많이 나올 수 있다면 신호 강도(strength)가 가장 강한 순으로 추리세요.
-            - 사용자 메시지의 [완료된 axis] 목록에 있는 axis는 이미 끝난 항목이라 더 이상 후보가 필요 없습니다.
-              그 axis로는 new_probes를 만들지 마세요.
+            - 사용자 메시지의 [제외 axis] 목록에 있는 axis는 이미 끝났거나 이번 세션에서 아예 다루지 않는 항목이라
+              더 이상 후보가 필요 없습니다. 그 axis로는 new_probes를 만들지 마세요.
 
             ceiling 규칙:
             - current_axis가 없으면 reached=false, kind=null, reason="current_axis 없음 - 판별 대상 아님"으로 고정합니다.
@@ -168,7 +168,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         }
     }
 
-    // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes·완료된 axis 컨텍스트를 채워넣는다.
+    // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes·제외 axis(완료됐거나 예산 없는 axis) 컨텍스트를 채워넣는다.
     private String buildUserMessage(
             String lastQuestion,
             String lastAnswer,
@@ -194,7 +194,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         return """
                 [직무] %s
                 [current_axis] %s
-                [완료된 axis] %s
+                [제외 axis] %s
                 [방금 질문] %s
                 [방금 답변] %s
                 [prior_qa]
