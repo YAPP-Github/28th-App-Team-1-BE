@@ -9,12 +9,18 @@ import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.command.InterviewVideoUploadCompleteCommand;
 import com.yapp.d14.interview.application.port.in.InterviewReportQueryUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewVideoQueryUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewVideoUploadCompleteUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewVideoUploadUrlIssueUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewReportQueryResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewVideoPlaybackResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewVideoUploadUrlResult;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
@@ -28,6 +34,14 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -101,6 +115,13 @@ public class InterviewFullPipelineSeedCli {
 
             ReportStatus reportStatus = awaitReportReady(userId, sessionId, context.getBean(InterviewReportQueryUseCase.class));
 
+            String playbackUrl = uploadAndCompositeVideo(
+                    userId, sessionId, totalTimelineSec,
+                    context.getBean(InterviewVideoUploadUrlIssueUseCase.class),
+                    context.getBean(InterviewVideoUploadCompleteUseCase.class),
+                    context.getBean(InterviewVideoQueryUseCase.class)
+            );
+
             System.out.println("==============================================");
             System.out.println("userId          : " + userId);
             System.out.println("userName        : " + userName);
@@ -109,6 +130,7 @@ public class InterviewFullPipelineSeedCli {
             System.out.println("sessionId       : " + sessionId);
             System.out.println("totalTimelineSec: " + totalTimelineSec);
             System.out.println("reportStatus    : " + reportStatus);
+            System.out.println("playbackUrl     : " + playbackUrl);
             System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
             System.out.println("==============================================");
         } finally {
@@ -235,6 +257,71 @@ public class InterviewFullPipelineSeedCli {
             sleep(3000);
         }
         throw new IllegalStateException("리포트 생성 대기 시간 초과: sessionId=" + sessionId);
+    }
+
+    private static String uploadAndCompositeVideo(
+            UUID userId,
+            Long sessionId,
+            float totalTimelineSec,
+            InterviewVideoUploadUrlIssueUseCase interviewVideoUploadUrlIssueUseCase,
+            InterviewVideoUploadCompleteUseCase interviewVideoUploadCompleteUseCase,
+            InterviewVideoQueryUseCase interviewVideoQueryUseCase
+    ) {
+        InterviewVideoUploadUrlResult uploadUrlResult = interviewVideoUploadUrlIssueUseCase.issue(userId, sessionId);
+
+        Path rawVideoFile = DummyRawVideoGenerator.generate(totalTimelineSec);
+        try {
+            putToPresignedUrl(uploadUrlResult.uploadUrl(), uploadUrlResult.contentType(), rawVideoFile);
+        } finally {
+            deleteQuietly(rawVideoFile);
+        }
+
+        interviewVideoUploadCompleteUseCase.complete(new InterviewVideoUploadCompleteCommand(userId, sessionId, null, null));
+        System.out.println("[VIDEO] 업로드 완료 처리, 합성 대기 시작: sessionId=" + sessionId);
+
+        return awaitCompositeReady(sessionId, interviewVideoQueryUseCase);
+    }
+
+    private static void putToPresignedUrl(String uploadUrl, String contentType, Path file) {
+        try {
+            HttpClient httpClient = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(uploadUrl))
+                    .header("Content-Type", contentType)
+                    .PUT(HttpRequest.BodyPublishers.ofFile(file))
+                    .build();
+            HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+            if (response.statusCode() / 100 != 2) {
+                throw new IllegalStateException("presigned URL 업로드 실패: status=" + response.statusCode());
+            }
+            System.out.println("[VIDEO] 원본 영상 업로드 완료: status=" + response.statusCode());
+        } catch (IOException e) {
+            throw new UncheckedIOException("원본 영상 업로드 중 IO 오류가 발생했습니다.", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("원본 영상 업로드가 중단되었습니다.", e);
+        }
+    }
+
+    private static String awaitCompositeReady(Long sessionId, InterviewVideoQueryUseCase interviewVideoQueryUseCase) {
+        Instant deadline = Instant.now().plusSeconds(120);
+        while (Instant.now().isBefore(deadline)) {
+            InterviewVideoPlaybackResult playback = interviewVideoQueryUseCase.getPlayback(sessionId);
+            if (playback.playbackUrl() != null) {
+                System.out.println("[VIDEO] 합성 완료: sessionId=" + sessionId);
+                return playback.playbackUrl();
+            }
+            sleep(3000);
+        }
+        throw new IllegalStateException("영상 합성 대기 시간 초과: sessionId=" + sessionId);
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // 임시 파일 정리 실패는 CLI 결과에 영향을 주지 않는다.
+        }
     }
 
     private static void sleep(long millis) {
