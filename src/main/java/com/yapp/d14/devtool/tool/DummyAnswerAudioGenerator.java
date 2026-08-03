@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit;
  * 답변 제출 파이프라인(STT→LLM 채점)을 실제로 태우기 위해, 실제 TTS로 답변 텍스트를 발화시킨 뒤
  * Whisper 어댑터가 요구하는 m4a(AAC) 컨테이너로 트랜스코딩한다.
  * OpenAiSpeechToTextTranscriberAdapter가 파일명을 answer.m4a로 고정하므로 원본 포맷(mp3)을 그대로 넘기면 인식에 실패한다.
+ *
+ * TextToSpeechSynthesizer(Port-out)를 devtool이 직접 호출하는 것은 이 클래스에 한정된 예외다 —
+ * 프로덕션에는 "답변을 TTS로 합성"하는 유스케이스 자체가 없어(실제 면접자는 육성으로 답변) 대응되는 in-port가 존재하지 않는다.
+ * Application Service는 Port-out을 이렇게 바깥에서 직접 꺼내 쓰지 않고 항상 자신의 생성자로 주입받아야 한다 — 이 패턴을 따라 하지 말 것.
  */
 final class DummyAnswerAudioGenerator {
 
