@@ -5,6 +5,7 @@ import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.TestType;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface LiveTurnAnalyzer {
@@ -17,6 +18,7 @@ public interface LiveTurnAnalyzer {
             TestType currentAxis,
             JobType jobRole,
             List<PriorTurn> priorQa,
-            List<QuestionCandidate> openProbesForAxis
+            List<QuestionCandidate> openProbesForAxis,
+            Set<TestType> exhaustedAxes
     );
 }

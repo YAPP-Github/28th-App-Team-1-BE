@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -76,7 +77,7 @@ class FirstTurnQuestionGenerationLlmE2eTest {
 
         // 1. run_live_turn: 첫 턴이라 current_axis=null, prior_qa=[]로 호출
         LiveTurnResult liveTurnResult = liveTurnAnalyzer.analyze(
-                1L, null, summaryQuestion, selfIntroduction, null, JobType.BACKEND, List.of(), List.of()
+                1L, null, summaryQuestion, selfIntroduction, null, JobType.BACKEND, List.of(), List.of(), Set.of()
         );
 
         log.info("========== [LLM E2E] run_live_turn 결과 ==========");

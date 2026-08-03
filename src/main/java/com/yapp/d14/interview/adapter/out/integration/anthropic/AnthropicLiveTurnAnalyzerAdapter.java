@@ -15,6 +15,9 @@ import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
+import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -38,6 +41,9 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     private static final String AXES_YAML_PATH = "interview-rubric/axes.yaml";
     private static final String PRINCIPLES_YAML_PATH = "interview-rubric/principles.yaml";
     private static final String CEILING_FEWSHOT_PATH = "interview-rubric/ceiling-fewshot.md";
+    // AnthropicProbeCandidateExtractorAdapter.MAX_CANDIDATES 와 동일한 취지 — 한 턴에서 뽑히는 캐물지점 후보가
+    // 과도하게 쌓이는 것을 막는 상한이다.
+    private static final int MAX_NEW_PROBES = 3;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             당신은 AI 면접관입니다. 지원자의 방금 답변을 분석해 아래 세 가지를 판단합니다.
@@ -62,7 +68,10 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             - probeText는 "무엇을 캐물을지"에 대한 내부 메모(질문 문장 아님), echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
             - strength는 반드시 high/mid/low 중 하나로만 답합니다(medium 등 다른 표현 금지).
               신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
-            - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑습니다.
+            - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑되, 최대 %d개까지만 반환하세요.
+              그보다 많이 나올 수 있다면 신호 강도(strength)가 가장 강한 순으로 추리세요.
+            - 사용자 메시지의 [제외 axis] 목록에 있는 axis는 이미 끝났거나 이번 세션에서 아예 다루지 않는 항목이라
+              더 이상 후보가 필요 없습니다. 그 axis로는 new_probes를 만들지 마세요.
 
             ceiling 규칙:
             - current_axis가 없으면 reached=false, kind=null, reason="current_axis 없음 - 판별 대상 아님"으로 고정합니다.
@@ -93,6 +102,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
 
     private final ChatClient chatClient;
     private final String systemPrompt;
+    private final AnthropicChatOptions cachedChatOptions;
     private final PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
     private final PriorQaCache priorQaCache;
 
@@ -103,8 +113,15 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
-                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH)
+                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH), MAX_NEW_PROBES
         );
+        // 이 시스템 프롬프트(axes.yaml+principles.yaml+ceiling-fewshot.md)는 매 턴 동일하게 재사용되는데도
+        // 캐싱 없이 매번 전체가 재처리되어 run_live_turn 지연시간의 절반 이상을 차지했다 — SYSTEM_ONLY로 캐싱한다.
+        // AnthropicChatModelConfig가 구성한 기본 옵션(model/maxTokens/thinking=DISABLED)은 그대로 유지해야 하므로
+        // 복사본에 cacheOptions만 얹는다.
+        AnthropicChatOptions cachedOptions = AnthropicChatOptions.fromOptions((AnthropicChatOptions) chatModel.getDefaultOptions());
+        cachedOptions.setCacheOptions(AnthropicCacheOptions.builder().strategy(AnthropicCacheStrategy.SYSTEM_ONLY).build());
+        this.cachedChatOptions = cachedOptions;
         this.portfolioChunkSearchUseCase = portfolioChunkSearchUseCase;
         this.priorQaCache = priorQaCache;
     }
@@ -118,9 +135,10 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             TestType currentAxis,
             JobType jobRole,
             List<PriorTurn> priorQa,
-            List<QuestionCandidate> openProbesForAxis
+            List<QuestionCandidate> openProbesForAxis,
+            Set<TestType> exhaustedAxes
     ) {
-        String userMessage = buildUserMessage(lastQuestion, lastAnswer, currentAxis, jobRole, priorQa, openProbesForAxis);
+        String userMessage = buildUserMessage(lastQuestion, lastAnswer, currentAxis, jobRole, priorQa, openProbesForAxis, exhaustedAxes);
         // 어댑터는 싱글턴이라 세션별 상태를 필드로 못 둔다 — tool 묶음은 호출마다 새로 만든다.
         LiveTurnTools tools = new LiveTurnTools(portfolioChunkSearchUseCase, priorQaCache, sessionId, portfolioId);
 
@@ -129,10 +147,17 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
                     .system(systemPrompt)
                     .user(userMessage)
                     .tools(tools)
+                    .options(cachedChatOptions)
                     .call()
                     .entity(LiveTurnLlmResponse.class);
 
-            List<ProbeCandidateDraft> newProbes = response.newProbes().stream().map(this::toDraft).toList();
+            // 프롬프트로도 exhaustedAxes/상한을 지시하지만, 모델이 지키지 않을 수 있어 코드에서도 강제한다
+            // (AnthropicProbeCandidateExtractorAdapter의 MAX_CANDIDATES와 동일한 원칙).
+            List<ProbeCandidateDraft> newProbes = response.newProbes().stream()
+                    .map(this::toDraft)
+                    .filter(draft -> !exhaustedAxes.contains(draft.testType()))
+                    .limit(MAX_NEW_PROBES)
+                    .toList();
             CeilingAssessment ceiling = toCeilingAssessment(currentAxis, response.ceiling());
             List<StaleProbeUpdate> staleUpdates = toStaleUpdates(response.staleUpdates(), openProbesForAxis);
 
@@ -143,14 +168,15 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         }
     }
 
-    // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes 컨텍스트를 채워넣는다.
+    // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes·제외 axis(완료됐거나 예산 없는 axis) 컨텍스트를 채워넣는다.
     private String buildUserMessage(
             String lastQuestion,
             String lastAnswer,
             TestType currentAxis,
             JobType jobRole,
             List<PriorTurn> priorQa,
-            List<QuestionCandidate> openProbesForAxis
+            List<QuestionCandidate> openProbesForAxis,
+            Set<TestType> exhaustedAxes
     ) {
         String currentAxisText = currentAxis == null ? "없음 (첫 턴 요약 답변)" : currentAxis.name().toLowerCase();
         String priorQaText = priorQa.isEmpty() ? "없음" : priorQa.stream()
@@ -161,17 +187,21 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
                 .map(probe -> "- probeId=%d probeText=%s echoQuote=%s"
                         .formatted(probe.getId(), probe.getProbeText(), probe.getEchoQuote()))
                 .collect(Collectors.joining("\n"));
+        String exhaustedAxesText = exhaustedAxes.isEmpty() ? "없음" : exhaustedAxes.stream()
+                .map(axis -> axis.name().toLowerCase())
+                .collect(Collectors.joining(", "));
 
         return """
                 [직무] %s
                 [current_axis] %s
+                [제외 axis] %s
                 [방금 질문] %s
                 [방금 답변] %s
                 [prior_qa]
                 %s
                 [open_probes]
                 %s
-                """.formatted(jobRole, currentAxisText, lastQuestion, lastAnswer, priorQaText, openProbesText);
+                """.formatted(jobRole, currentAxisText, exhaustedAxesText, lastQuestion, lastAnswer, priorQaText, openProbesText);
     }
 
     // LLM 응답 1건을 ProbeCandidateDraft로 변환한다.

@@ -17,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -95,13 +97,19 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, Q={}, A={}",
                 session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(),
                 singleLine(summaryQuestion.getContent()), singleLine(sttText));
-        LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText); // 캐물지점 추출
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        Set<TestType> exhaustedAxes = axisPlans.stream()
+                .filter(plan -> plan.getBudget() == 0)
+                .map(InterviewAxisPlan::getTestType)
+                .collect(Collectors.toSet()); // 이번 세션에서 예산이 없는(SKIP tier) axis — 절대 선택되지 않으니 후보를 만들 필요가 없다. 첫 턴이라 완료된 axis는 아직 없다.
+
+        LiveTurnResult liveTurnResult = analyzeFirstTurn(session, summaryQuestion, sttText, exhaustedAxes); // 캐물지점 추출
         logLiveTurnResult(session.getId(), null, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates = toQuestionCandidates(
                 session.getId(), liveTurnResult, summaryQuestion.getTurnLevel()
         ); // 새 후보 변환 — 축 선택 전에 만들어 이번 턴에 추출한 후보도 선택 대상에 포함시킨다
 
-        InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session); // 다음 axis 선택
+        InterviewAxisPlan nextAxisPlan = selectFirstCoreAxisPlan(session, axisPlans); // 다음 axis 선택
         TestType nextAxis = nextAxisPlan.getTestType(); // axis 값 추출
         Optional<QuestionCandidate> selectedProbe = selectNextProbe(session.getId(), nextAxis, newProbeCandidates); // 기존 OPEN 후보 + 신규 후보를 병합해 한 번만 선택
         String nextQuestionText = generateNextQuestionText(selectedProbe, nextAxis, session); // 질문 문장 생성
@@ -169,7 +177,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
         markQuestionPlayed(question, command);
 
-        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of(), null);
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        // SKIP은 답변을 분석하지 않으니 천장 판정 자체가 불가능하다 — ceilingReached=false로 넘겨
+        // NextAxisSelector가 예산 소진 여부만으로 축 전환을 판단하게 한다(예산이 남았으면 같은 축 유지).
+        NextQuestionPlan plan = planNextQuestion(session, question, command, false, false, false, List.of(), null, axisPlans);
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persistSkipped(
                 answer, question, plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         );
@@ -196,10 +207,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         List<PriorTurn> priorQa = priorQaCache.get(session.getId(), currentAxis); // 이전 이력
         List<QuestionCandidate> openProbesForAxis =
                 questionCandidateRepository.findOpenBySessionIdAndTestType(session.getId(), currentAxis); // 열린 후보
+        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+        Set<TestType> exhaustedAxes = axisPlans.stream()
+                .filter(plan -> plan.isCompleted() || plan.getBudget() == 0)
+                .map(InterviewAxisPlan::getTestType)
+                .collect(Collectors.toSet()); // 이미 끝났거나(completed) 이번 세션에 예산이 없는(SKIP tier) axis — 이 축으로는 새 후보를 만들 필요가 없다
 
         LiveTurnResult liveTurnResult = retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(), session.getPortfolioId(), question.getContent(), transcription.text(),
-                currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis
+                currentAxis, session.getSnapshotJobType(), priorQa, openProbesForAxis, exhaustedAxes
         )); // 답변 분석
         logLiveTurnResult(session.getId(), currentAxis, liveTurnResult);
         List<QuestionCandidate> newProbeCandidates =
@@ -223,7 +239,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
         NextQuestionPlan plan = planNextQuestion(
                 session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific,
-                newProbeCandidates, openProbesForAxis
+                newProbeCandidates, openProbesForAxis, axisPlans
         ); // 다음 질문 계획
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
@@ -434,7 +450,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
-    private LiveTurnResult analyzeFirstTurn(InterviewSession session, Question summaryQuestion, String sttText) {
+    private LiveTurnResult analyzeFirstTurn(
+            InterviewSession session, Question summaryQuestion, String sttText, Set<TestType> exhaustedAxes
+    ) {
         return retryAiCall(() -> liveTurnAnalyzer.analyze(
                 session.getId(),
                 session.getPortfolioId(),
@@ -443,12 +461,12 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 null,
                 session.getSnapshotJobType(),
                 List.of(),
-                List.of()
+                List.of(),
+                exhaustedAxes
         ));
     }
 
-    private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session) {
-        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
+    private InterviewAxisPlan selectFirstCoreAxisPlan(InterviewSession session, List<InterviewAxisPlan> axisPlans) {
         TestType nextAxis = FirstCoreAxisSelector.select(axisPlans, session.getWeights())
                 .orElseThrow(() -> new IllegalStateException("CORE tier 항목이 없어요. sessionId=" + session.getId()));
         log.info("[AXIS TRANSITION] sessionId={}, 첫 축 선택: {}", session.getId(), nextAxis);
@@ -477,13 +495,13 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             boolean hasRedFlag,
             boolean isUnusuallySpecific,
             List<QuestionCandidate> newProbeCandidates,
-            List<QuestionCandidate> openProbesForCurrentAxis
+            List<QuestionCandidate> openProbesForCurrentAxis,
+            List<InterviewAxisPlan> axisPlans
     ) {
         TestType currentAxis = question.getTestType(); // 현재 축
         boolean isWrapUpForced = Boolean.TRUE.equals(command.isWrapUp()); // 랩업 강제
         int nextTurnLevel = question.getTurnLevel() + 1; // 다음 턴
 
-        List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId()); // 축 계획 조회
         TestType nextAxis = isWrapUpForced
                 ? currentAxis // 축 유지
                 : NextAxisSelector.select(axisPlans, session.getWeights(), currentAxis, ceilingReached, hasRedFlag, isUnusuallySpecific); // 축 결정
