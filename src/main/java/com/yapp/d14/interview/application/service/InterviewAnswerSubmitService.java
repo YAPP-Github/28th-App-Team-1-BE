@@ -172,7 +172,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         markQuestionPlayed(question, command);
 
         List<InterviewAxisPlan> axisPlans = interviewAxisPlanRepository.findAllBySessionId(session.getId());
-        NextQuestionPlan plan = planNextQuestion(session, question, command, true, false, false, List.of(), null, axisPlans);
+        // SKIP은 답변을 분석하지 않으니 천장 판정 자체가 불가능하다 — ceilingReached=false로 넘겨
+        // NextAxisSelector가 예산 소진 여부만으로 축 전환을 판단하게 한다(예산이 남았으면 같은 축 유지).
+        NextQuestionPlan plan = planNextQuestion(session, question, command, false, false, false, List.of(), null, axisPlans);
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persistSkipped(
                 answer, question, plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         );

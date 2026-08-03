@@ -937,10 +937,42 @@ class InterviewAnswerSubmitServiceTest {
     }
 
     @Test
-    void endType이_SKIP이면_분석_없이_해당_axis_사용량만_소모하고_예산_소진이면_다음_axis로_전환한다() {
+    void endType이_SKIP이고_예산이_남았으면_같은_axis를_유지한다() {
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithTradeoffWeighted()));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
-        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans());
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlans()); // DEPTH usedCount=0/3, 예산 안 씀
+        given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.DEPTH)).willReturn(List.of());
+        given(questionTextGenerator.generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of()))
+                .willReturn("여는 질문");
+        Question savedNextQuestion = Question.of(
+                14L, sessionId, "여는 질문", 2, 1, TestType.DEPTH, null, null, null, null, false, LocalDateTime.now()
+        );
+        given(interviewAnswerAnalyzePersister.persistSkipped(any(), any(), isNull(), eq(2), any(), isNull(), any()))
+                .willReturn(new InterviewAnswerAnalyzePersister.PersistResult(16L, savedNextQuestion));
+
+        InterviewAnswerSubmitResult result = service.submit(userId, regularTurnCommand(InterviewEndType.SKIP, null));
+
+        assertThat(result.answerId()).isEqualTo(16L);
+        assertThat(result.nextQuestion().questionId()).isEqualTo(14L);
+        verify(interviewAnswerAnalyzePersister).persistSkipped(any(), any(), isNull(), eq(2), any(), isNull(), any());
+        verify(questionTextGenerator, never()).generate(any(), any(), any(), any());
+        verify(questionTextGenerator).generateOpener(TestType.DEPTH, JobType.BACKEND, 3, List.of(), List.of());
+        verifyNoInteractions(speechToTextTranscriber, liveTurnAnalyzer, priorQaCache, interviewSttResetPersister);
+    }
+
+    @Test
+    void endType이_SKIP이고_예산이_소진됐으면_다음_axis로_전환한다() {
+        given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithTradeoffWeighted()));
+        given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(regularQuestion(false)));
+        List<InterviewAxisPlan> axisPlansWithDepthExhausted = axisPlans();
+        InterviewAxisPlan depthPlan = axisPlansWithDepthExhausted.stream()
+                .filter(plan -> plan.getTestType() == TestType.DEPTH)
+                .findFirst()
+                .orElseThrow();
+        depthPlan.incrementUsedCount();
+        depthPlan.incrementUsedCount();
+        depthPlan.incrementUsedCount(); // usedCount=3/3, 예산 소진
+        given(interviewAxisPlanRepository.findAllBySessionId(sessionId)).willReturn(axisPlansWithDepthExhausted);
         given(questionCandidateRepository.findOpenBySessionIdAndTestType(sessionId, TestType.TRADEOFF)).willReturn(List.of());
         given(questionTextGenerator.generateOpener(TestType.TRADEOFF, JobType.BACKEND, 3, List.of(), List.of()))
                 .willReturn("여는 질문");
