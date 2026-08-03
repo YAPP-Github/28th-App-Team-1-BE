@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -200,19 +201,34 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     }
 
     // 모델이 open_probes에 없는 id를 지어낼 수 있으니, 실제로 넘겨준 id만 신뢰해 필터링 후 변환한다.
-    private List<StaleProbeUpdate> toStaleUpdates(List<StaleUpdateLlmEntry> entries, List<QuestionCandidate> openProbesForAxis) {
+    // reason도 스키마(contradicted/corrected) 밖의 값을 반환할 수 있어, 알 수 없는 값은 해당 항목만 건너뛴다.
+    static List<StaleProbeUpdate> toStaleUpdates(List<StaleUpdateLlmEntry> entries, List<QuestionCandidate> openProbesForAxis) {
         if (entries == null || entries.isEmpty() || openProbesForAxis.isEmpty()) {
             return List.of();
         }
         Set<Long> openProbeIds = openProbesForAxis.stream().map(QuestionCandidate::getId).collect(Collectors.toSet());
         return entries.stream()
                 .filter(entry -> openProbeIds.contains(entry.probeId()))
-                .map(entry -> new StaleProbeUpdate(
-                        entry.probeId(),
-                        QuestionCandidateStaleReason.valueOf(entry.reason().toUpperCase()),
-                        entry.flagRef()
-                ))
+                .map(AnthropicLiveTurnAnalyzerAdapter::toStaleUpdate)
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private static StaleProbeUpdate toStaleUpdate(StaleUpdateLlmEntry entry) {
+        QuestionCandidateStaleReason reason = parseStaleReason(entry.reason());
+        if (reason == null) {
+            log.warn("[LIVE TURN ANALYZE] 알 수 없는 stale reason 값 - probeId={}, reason={}", entry.probeId(), entry.reason());
+            return null;
+        }
+        return new StaleProbeUpdate(entry.probeId(), reason, entry.flagRef());
+    }
+
+    private static QuestionCandidateStaleReason parseStaleReason(String reason) {
+        try {
+            return QuestionCandidateStaleReason.valueOf(reason.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     // 클래스패스 리소스를 문자열로 읽어온다.
