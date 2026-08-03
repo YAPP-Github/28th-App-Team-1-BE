@@ -179,12 +179,16 @@ async function apiBlob(path) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function playBase64Mp3(b64) { return playAudioUrl("data:audio/mp3;base64," + b64); }
-// resolve(played): played=true면 실제로 끝까지 재생됨, false면 자동재생 차단/재생 오류로 중단됨.
+// resolve({played, startSec}): played=true면 실제로 끝까지 재생됨, false면 자동재생 차단/재생 오류로 중단됨.
+// startSec은 실제로 재생이 시작된(=디코딩 끝나고 소리가 나오기 시작한) 시각이며, played=false면 null이다.
 function playAudioUrl(url) {
   return new Promise((resolve) => {
     const a = $("qAudio"); a.src = url;
     let done = false;
-    const finish = (played) => { if (!done) { done = true; resolve(!!played); } };
+    let startSec = null;
+    const finish = (played) => { if (!done) { done = true; resolve({ played: !!played, startSec }); } };
+    // playing은 버퍼링/디코딩이 끝나고 실제로 소리가 나오기 시작하는 시점에 발생한다 — play() 호출 시점보다 늦을 수 있다.
+    a.onplaying = () => { if (startSec == null) startSec = nowSec(); };
     a.onended = () => finish(true);
     // play() 성공 후 디코드/소스 오류가 나면 onended가 발생하지 않아 Promise가 멈추므로 별도 처리한다.
     a.onerror = () => { log("오디오 재생 오류 — 다음 단계로 진행합니다"); finish(false); };
@@ -527,9 +531,10 @@ async function finishInterview(r) {
   state.wrapUpStartSec = state.wrapUpEndSec = null;
   if (r.wrapUpMessage && r.wrapUpMessage.ttsAudio) {
     log("마무리 멘트 재생");
-    const wrapUpStartSec = nowSec();
     // 자동재생 차단/재생 오류로 즉시 resolve된 경우(played=false) 구간이 0초에 가까워 합성에 못 쓰므로 보고를 생략한다.
-    const played = await playBase64Mp3(r.wrapUpMessage.ttsAudio);
+    // startSec은 재생 시작 전이 아니라 실제 재생이 시작된 시점(playing 이벤트)을 쓴다 — 그래야 디코딩 지연으로
+    // 인한 선행 무음이 마무리 멘트 구간에 섞여 들어가지 않는다.
+    const { played, startSec: wrapUpStartSec } = await playBase64Mp3(r.wrapUpMessage.ttsAudio);
     const wrapUpEndSec = nowSec();
     if (played) {
       state.wrapUpStartSec = wrapUpStartSec;
