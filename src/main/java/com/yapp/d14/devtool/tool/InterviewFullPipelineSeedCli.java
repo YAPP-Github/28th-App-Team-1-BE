@@ -1,6 +1,12 @@
 package com.yapp.d14.devtool.tool;
 
 import com.yapp.d14.D14Application;
+import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
+import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
+import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
+import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
+import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -10,6 +16,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,14 +50,55 @@ public class InterviewFullPipelineSeedCli {
                 .run();
 
         try {
+            UUID portfolioId = registerPortfolio(userId, context.getBean(PortfolioRegisterUseCase.class));
+            awaitPortfolioReady(userId, portfolioId, context.getBean(PortfolioStatusUseCase.class));
+
             System.out.println("==============================================");
-            System.out.println("userId    : " + userId);
-            System.out.println("userName  : " + userName);
-            System.out.println("turnCount : " + turnCount);
-            System.out.println("애플리케이션 컨텍스트 기동 완료. 이후 단계는 순차적으로 추가될 예정입니다.");
+            System.out.println("userId      : " + userId);
+            System.out.println("userName    : " + userName);
+            System.out.println("turnCount   : " + turnCount);
+            System.out.println("portfolioId : " + portfolioId);
+            System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
             System.out.println("==============================================");
         } finally {
             SpringApplication.exit(context);
+        }
+    }
+
+    private static UUID registerPortfolio(UUID userId, PortfolioRegisterUseCase portfolioRegisterUseCase) {
+        byte[] fileContent = DummyPdfGenerator.generate();
+        PortfolioRegisterCommand command = new PortfolioRegisterCommand(
+                userId, fileContent, "dummy-resume.pdf", fileContent.length, 1, "application/pdf"
+        );
+        PortfolioRegisterResult result = portfolioRegisterUseCase.register(command);
+        System.out.println("[PORTFOLIO] 등록 완료: portfolioId=" + result.portfolioId() + ", status=" + result.status());
+        return result.portfolioId();
+    }
+
+    private static void awaitPortfolioReady(UUID userId, UUID portfolioId, PortfolioStatusUseCase portfolioStatusUseCase) {
+        Instant deadline = Instant.now().plusSeconds(60);
+        while (Instant.now().isBefore(deadline)) {
+            PortfolioStatusResult status = portfolioStatusUseCase.getStatus(userId, portfolioId);
+            if (status.status() == PortfolioStatus.READY) {
+                System.out.println("[PORTFOLIO] 처리 완료: portfolioId=" + portfolioId);
+                return;
+            }
+            if (status.status() == PortfolioStatus.FAILED_FILE || status.status() == PortfolioStatus.FAILED_SYSTEM) {
+                throw new IllegalStateException(
+                        "포트폴리오 처리 실패: portfolioId=" + portfolioId + ", status=" + status.status() + ", message=" + status.message()
+                );
+            }
+            sleep(2000);
+        }
+        throw new IllegalStateException("포트폴리오 처리 대기 시간 초과: portfolioId=" + portfolioId);
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         }
     }
 
