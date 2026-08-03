@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -224,8 +225,11 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     }
 
     private static QuestionCandidateStaleReason parseStaleReason(String reason) {
+        if (!StringUtils.hasText(reason)) {
+            return null;
+        }
         try {
-            return QuestionCandidateStaleReason.valueOf(reason.toUpperCase());
+            return QuestionCandidateStaleReason.valueOf(reason.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             return null;
         }
