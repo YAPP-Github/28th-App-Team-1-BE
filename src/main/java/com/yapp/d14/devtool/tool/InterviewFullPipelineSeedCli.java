@@ -1,6 +1,13 @@
 package com.yapp.d14.devtool.tool;
 
 import com.yapp.d14.D14Application;
+import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
+import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
+import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
@@ -33,6 +40,19 @@ public class InterviewFullPipelineSeedCli {
     private static final String DEFAULT_USER_NAME = "더미유저";
     private static final int DEFAULT_TURN_COUNT = 3;
 
+    private static final String JD_TEXT = """
+            [백엔드 엔지니어 채용]
+            - Spring Boot 기반 백엔드 서비스 설계 및 운영 경험
+            - RESTful API 설계, 데이터베이스 스키마 설계·운영 경험
+            - 대용량 트래픽 환경에서의 성능 최적화 경험 우대
+            - PostgreSQL, Redis 등 데이터 저장소 운영 경험 우대
+            """;
+
+    private static final String FREE_TEXT = """
+            3년차 백엔드 엔지니어입니다. Spring Boot로 API 서버를 설계·운영해왔고,
+            트래픽 증가에 따른 성능 이슈를 데이터베이스 인덱스 튜닝과 캐싱으로 해결한 경험이 있습니다.
+            """;
+
     public static void main(String[] args) {
         Map<String, String> options = parseArgs(args);
         UUID userId = options.containsKey("userId")
@@ -53,11 +73,20 @@ public class InterviewFullPipelineSeedCli {
             UUID portfolioId = registerPortfolio(userId, context.getBean(PortfolioRegisterUseCase.class));
             awaitPortfolioReady(userId, portfolioId, context.getBean(PortfolioStatusUseCase.class));
 
+            Long sessionId = createSession(userId, portfolioId, context.getBean(InterviewSessionCreateUseCase.class));
+            InterviewSessionStatusResult.SummaryQuestion summaryQuestion = preloadAndAwaitReady(
+                    userId, sessionId,
+                    context.getBean(InterviewSessionPreloadUseCase.class),
+                    context.getBean(InterviewSessionStatusUseCase.class)
+            );
+
             System.out.println("==============================================");
-            System.out.println("userId      : " + userId);
-            System.out.println("userName    : " + userName);
-            System.out.println("turnCount   : " + turnCount);
-            System.out.println("portfolioId : " + portfolioId);
+            System.out.println("userId       : " + userId);
+            System.out.println("userName     : " + userName);
+            System.out.println("turnCount    : " + turnCount);
+            System.out.println("portfolioId  : " + portfolioId);
+            System.out.println("sessionId    : " + sessionId);
+            System.out.println("questionId   : " + summaryQuestion.questionId());
             System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
             System.out.println("==============================================");
         } finally {
@@ -91,6 +120,36 @@ public class InterviewFullPipelineSeedCli {
             sleep(2000);
         }
         throw new IllegalStateException("포트폴리오 처리 대기 시간 초과: portfolioId=" + portfolioId);
+    }
+
+    private static Long createSession(UUID userId, UUID portfolioId, InterviewSessionCreateUseCase interviewSessionCreateUseCase) {
+        InterviewSessionCreateCommand command = new InterviewSessionCreateCommand(userId, portfolioId, null, JD_TEXT, FREE_TEXT);
+        InterviewSessionCreateResult result = interviewSessionCreateUseCase.create(command);
+        System.out.println("[SESSION] 생성 완료: sessionId=" + result.sessionId() + ", status=" + result.status());
+        return result.sessionId();
+    }
+
+    private static InterviewSessionStatusResult.SummaryQuestion preloadAndAwaitReady(
+            UUID userId,
+            Long sessionId,
+            InterviewSessionPreloadUseCase interviewSessionPreloadUseCase,
+            InterviewSessionStatusUseCase interviewSessionStatusUseCase
+    ) {
+        interviewSessionPreloadUseCase.preload(sessionId);
+
+        Instant deadline = Instant.now().plusSeconds(90);
+        while (Instant.now().isBefore(deadline)) {
+            InterviewSessionStatusResult status = interviewSessionStatusUseCase.getStatus(userId, sessionId);
+            if (status.status() == InterviewSessionPollStatus.READY) {
+                System.out.println("[SESSION] preload 완료: sessionId=" + sessionId + ", questionId=" + status.summaryQuestion().questionId());
+                return status.summaryQuestion();
+            }
+            if (status.status() == InterviewSessionPollStatus.FAILED) {
+                throw new IllegalStateException("세션 preload 실패: sessionId=" + sessionId);
+            }
+            sleep(2000);
+        }
+        throw new IllegalStateException("세션 preload 대기 시간 초과: sessionId=" + sessionId);
     }
 
     private static void sleep(long millis) {
