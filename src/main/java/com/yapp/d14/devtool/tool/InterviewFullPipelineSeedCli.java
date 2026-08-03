@@ -1,13 +1,19 @@
 package com.yapp.d14.devtool.tool;
 
 import com.yapp.d14.D14Application;
+import com.yapp.d14.devtool.tool.DummyAnswerAudioGenerator.AnswerAudio;
+import com.yapp.d14.interview.application.command.InterviewAnswerSubmitCommand;
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
+import com.yapp.d14.interview.application.port.in.AudioStreamUseCase;
+import com.yapp.d14.interview.application.port.in.InterviewAnswerSubmitUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionCreateUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionPreloadUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewSessionStatusUseCase;
+import com.yapp.d14.interview.application.port.in.result.InterviewAnswerSubmitResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionCreateResult;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionPollStatus;
 import com.yapp.d14.interview.application.port.in.result.InterviewSessionStatusResult;
+import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
@@ -53,6 +59,9 @@ public class InterviewFullPipelineSeedCli {
             트래픽 증가에 따른 성능 이슈를 데이터베이스 인덱스 튜닝과 캐싱으로 해결한 경험이 있습니다.
             """;
 
+    private static final float QUESTION_AUDIO_DURATION_SEC = 4f;
+    private static final String MANUAL_END_TYPE = "MANUAL_END";
+
     public static void main(String[] args) {
         Map<String, String> options = parseArgs(args);
         UUID userId = options.containsKey("userId")
@@ -80,13 +89,20 @@ public class InterviewFullPipelineSeedCli {
                     context.getBean(InterviewSessionStatusUseCase.class)
             );
 
+            float totalTimelineSec = runAnswerTurns(
+                    userId, sessionId, summaryQuestion, turnCount,
+                    context.getBean(AudioStreamUseCase.class),
+                    context.getBean(TextToSpeechSynthesizer.class),
+                    context.getBean(InterviewAnswerSubmitUseCase.class)
+            );
+
             System.out.println("==============================================");
-            System.out.println("userId       : " + userId);
-            System.out.println("userName     : " + userName);
-            System.out.println("turnCount    : " + turnCount);
-            System.out.println("portfolioId  : " + portfolioId);
-            System.out.println("sessionId    : " + sessionId);
-            System.out.println("questionId   : " + summaryQuestion.questionId());
+            System.out.println("userId          : " + userId);
+            System.out.println("userName        : " + userName);
+            System.out.println("turnCount       : " + turnCount);
+            System.out.println("portfolioId     : " + portfolioId);
+            System.out.println("sessionId       : " + sessionId);
+            System.out.println("totalTimelineSec: " + totalTimelineSec);
             System.out.println("이후 단계는 순차적으로 추가될 예정입니다.");
             System.out.println("==============================================");
         } finally {
@@ -150,6 +166,54 @@ public class InterviewFullPipelineSeedCli {
             sleep(2000);
         }
         throw new IllegalStateException("세션 preload 대기 시간 초과: sessionId=" + sessionId);
+    }
+
+    private static float runAnswerTurns(
+            UUID userId,
+            Long sessionId,
+            InterviewSessionStatusResult.SummaryQuestion summaryQuestion,
+            int turnCount,
+            AudioStreamUseCase audioStreamUseCase,
+            TextToSpeechSynthesizer textToSpeechSynthesizer,
+            InterviewAnswerSubmitUseCase interviewAnswerSubmitUseCase
+    ) {
+        Long questionId = summaryQuestion.questionId();
+        int turnLevel = summaryQuestion.turnLevel();
+        float timelineCursorSec = 0f;
+
+        for (int turnIndex = 0; turnIndex < turnCount; turnIndex++) {
+            if (turnLevel >= 1) {
+                audioStreamUseCase.stream(userId, sessionId, questionId).collectList().block();
+            }
+            float questionAudioStartSec = timelineCursorSec;
+            timelineCursorSec += QUESTION_AUDIO_DURATION_SEC;
+            float questionAudioEndSec = timelineCursorSec;
+
+            AnswerAudio answerAudio = DummyAnswerAudioGenerator.synthesizeAnswerAudio(textToSpeechSynthesizer, turnIndex);
+            float answerStartSec = timelineCursorSec;
+            timelineCursorSec += answerAudio.durationSec();
+            float answerEndSec = timelineCursorSec;
+
+            boolean isLastTurn = turnIndex == turnCount - 1;
+            String endType = isLastTurn ? MANUAL_END_TYPE : null;
+
+            InterviewAnswerSubmitCommand command = InterviewAnswerSubmitCommand.of(
+                    sessionId, questionId, answerAudio.content(),
+                    questionAudioStartSec, questionAudioEndSec,
+                    answerStartSec, answerEndSec, answerAudio.durationSec(),
+                    endType, null
+            );
+            InterviewAnswerSubmitResult result = interviewAnswerSubmitUseCase.submit(userId, command);
+            System.out.println("[ANSWER] turn=" + turnIndex + ", questionId=" + questionId
+                    + ", sessionEnded=" + result.sessionEnded() + ", endType=" + result.endType());
+
+            if (result.nextQuestion() != null) {
+                questionId = result.nextQuestion().questionId();
+                turnLevel = result.nextQuestion().turnLevel();
+            }
+        }
+
+        return timelineCursorSec;
     }
 
     private static void sleep(long millis) {
