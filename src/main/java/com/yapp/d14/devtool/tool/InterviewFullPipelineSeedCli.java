@@ -78,10 +78,18 @@ public class InterviewFullPipelineSeedCli {
 
     private static final String JD_TEXT = """
             [백엔드 엔지니어 채용]
-            - Spring Boot 기반 백엔드 서비스 설계 및 운영 경험
-            - RESTful API 설계, 데이터베이스 스키마 설계·운영 경험
-            - 대용량 트래픽 환경에서의 성능 최적화 경험 우대
-            - PostgreSQL, Redis 등 데이터 저장소 운영 경험 우대
+            저희 팀은 Spring Boot 기반의 B2C 플랫폼 백엔드를 함께 만들어갈 백엔드 엔지니어를 찾고 있습니다.
+            주요 업무는 RESTful API 설계·구현, 데이터베이스 스키마 설계·운영, 서비스 안정성 확보입니다.
+
+            자격 요건
+            - Java, Spring Boot 기반 백엔드 서비스 설계 및 운영 경험
+            - RESTful API 설계, 데이터베이스(PostgreSQL 등) 스키마 설계·운영 경험
+            - Git을 활용한 협업 및 코드 리뷰 경험
+
+            우대 사항
+            - 대용량 트래픽 환경에서의 성능 최적화(인덱스 튜닝, 캐싱 등) 경험
+            - Redis, AWS 등 클라우드 인프라 운영 경험
+            - 헥사고날 아키텍처 등 관심사 분리를 고려한 설계 경험
             """;
 
     private static final String FREE_TEXT = """
@@ -408,8 +416,8 @@ public class InterviewFullPipelineSeedCli {
 
             String providerId = "interview-full-pipeline-fixture-" + UUID.randomUUID();
             try (PreparedStatement insert = connection.prepareStatement(
-                    "INSERT INTO users (id, created_at, updated_at, email, name, provider, provider_id) " +
-                            "VALUES (?, ?, ?, ?, ?, 'KAKAO', ?)"
+                    "INSERT INTO users (id, created_at, updated_at, email, name, provider, provider_id, job_role, career_years) " +
+                            "VALUES (?, ?, ?, ?, ?, 'KAKAO', ?, 'BACKEND', 1)"
             )) {
                 LocalDateTime now = LocalDateTime.now();
                 insert.setObject(1, userId);
