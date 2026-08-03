@@ -462,34 +462,52 @@ public class InterviewFullPipelineSeedCli {
         try (Connection connection = DriverManager.getConnection(url, requireEnv("POSTGRES_USER"), requireEnv("POSTGRES_PASSWORD"))) {
             connection.setAutoCommit(false);
 
+            boolean userExists;
             try (PreparedStatement select = connection.prepareStatement("SELECT 1 FROM users WHERE id = ?")) {
                 select.setObject(1, userId);
                 try (ResultSet rs = select.executeQuery()) {
-                    if (rs.next()) {
-                        connection.commit();
-                        return;
-                    }
+                    userExists = rs.next();
                 }
             }
 
-            String providerId = "interview-full-pipeline-fixture-" + UUID.randomUUID();
-            try (PreparedStatement insert = connection.prepareStatement(
-                    "INSERT INTO users (id, created_at, updated_at, email, name, provider, provider_id, job_role, career_years) " +
-                            "VALUES (?, ?, ?, ?, ?, 'KAKAO', ?, 'BACKEND', 1)"
-            )) {
-                LocalDateTime now = LocalDateTime.now();
-                insert.setObject(1, userId);
-                insert.setObject(2, now);
-                insert.setObject(3, now);
-                insert.setString(4, "interview-full-pipeline-fixture@example.com");
-                insert.setString(5, userName);
-                insert.setString(6, providerId);
-                insert.executeUpdate();
+            if (!userExists) {
+                String providerId = "interview-full-pipeline-fixture-" + UUID.randomUUID();
+                try (PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO users (id, created_at, updated_at, email, name, provider, provider_id, job_role, career_years) " +
+                                "VALUES (?, ?, ?, ?, ?, 'KAKAO', ?, 'BACKEND', 1)"
+                )) {
+                    LocalDateTime now = LocalDateTime.now();
+                    insert.setObject(1, userId);
+                    insert.setObject(2, now);
+                    insert.setObject(3, now);
+                    insert.setString(4, "interview-full-pipeline-fixture@example.com");
+                    insert.setString(5, userName);
+                    insert.setString(6, providerId);
+                    insert.executeUpdate();
+                }
             }
 
+            ensureTicket(connection, userId);
             connection.commit();
         } catch (Exception e) {
             throw new RuntimeException("유저 픽스처 생성에 실패했습니다.", e);
+        }
+    }
+
+    // 실제 이용권 발급은 결제/증정 플로우를 거치므로 CLI가 재현할 in-port가 없다 — ensureUser처럼
+    // devtool 전용 raw SQL 예외로 세션 생성이 항상 성공할 만큼(최소 1장)만 채워준다.
+    private static void ensureTicket(Connection connection, UUID userId) throws Exception {
+        try (PreparedStatement upsert = connection.prepareStatement("""
+                INSERT INTO user_ticket (user_id, remaining, updated_at)
+                VALUES (?, 1, ?)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    remaining = GREATEST(user_ticket.remaining, 1),
+                    updated_at = EXCLUDED.updated_at
+                """
+        )) {
+            upsert.setObject(1, userId);
+            upsert.setObject(2, LocalDateTime.now());
+            upsert.executeUpdate();
         }
     }
 
