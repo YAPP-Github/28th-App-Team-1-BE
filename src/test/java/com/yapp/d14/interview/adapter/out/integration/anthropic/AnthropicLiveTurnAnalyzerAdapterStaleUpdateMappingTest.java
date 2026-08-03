@@ -77,4 +77,17 @@ class AnthropicLiveTurnAnalyzerAdapterStaleUpdateMappingTest {
 
         assertThat(updates).isEmpty();
     }
+
+    @Test
+    void reason이_null이거나_공백이면_예외_없이_해당_항목만_제외한다() {
+        List<QuestionCandidate> openProbes = List.of(openProbe(1L), openProbe(2L));
+        List<StaleUpdateLlmEntry> entries = List.of(
+                new StaleUpdateLlmEntry(1L, null, null),
+                new StaleUpdateLlmEntry(2L, "   ", null)
+        );
+
+        List<StaleProbeUpdate> updates = AnthropicLiveTurnAnalyzerAdapter.toStaleUpdates(entries, openProbes);
+
+        assertThat(updates).isEmpty();
+    }
 }
