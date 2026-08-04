@@ -51,17 +51,17 @@ public interface InterviewControllerDocs {
             summary = "면접 세션 생성",
             description = "포트폴리오(및 선택적으로 JD·집중 프로젝트 설명)를 받아 면접 세션을 생성합니다.\n\n" +
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
-                    "- 이용권 확인 → 입력 검증 → 항목별 가중치·질문 예산 계산까지 동기로 처리한 뒤, `PROCESSING` 상태로 202를 즉시 반환합니다.\n" +
+                    "- 계정 정지 확인 → 필수 동의 최신 여부 확인 → 입력 검증 → 이용권 확인 → 항목별 가중치·질문 예산 계산까지 동기로 처리한 뒤, `PROCESSING` 상태로 202를 즉시 반환합니다.\n" +
                     "- 질문 후보 풀 생성(Preload) 등 이후 단계는 비동기로 처리되며, `statusUrl`로 상태를 폴링합니다.\n" +
+                    "- 정지된 계정은 `ACCOUNT_SUSPENDED`(403)로 차단됩니다. 면접 시작만 막히고 로그인·레포트 열람·마이페이지·탈퇴는 그대로 사용할 수 있습니다.\n" +
+                    "- 필수 약관 동의가 최신이 아니면 `CONSENT_VERSION_STALE`(403)로 차단됩니다. 재동의 화면으로 보낸 뒤 다시 시도하세요.\n" +
                     "- `portfolioId`로 지정한 포트폴리오는 반드시 `READY` 상태여야 합니다.\n" +
                     "- 직군·연차는 요청으로 받지 않고, `PATCH /api/v1/users/me/profile`로 등록한 회원 프로필 값을 생성 시점 스냅샷으로 사용합니다. " +
                     "직군 또는 연차가 아직 등록되어 있지 않으면 `USER_PROFILE_NOT_REGISTERED`로 거부됩니다.\n" +
                     "- `jdUrl`과 `jdText`는 상호 배타적입니다(동시 입력 시 `JD_URL_AND_TEXT_BOTH_PROVIDED`). `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱, 6시간 TTL)돼 있어야 하며, " +
                     "검증 후 캐시가 만료된 채로 세션을 생성하면 `JD_CONTENT_NOT_FOUND`로 거부됩니다(재검증 필요).\n" +
                     "- `freeText`(집중 프로젝트 설명)를 입력하면 포트폴리오와의 연관성을 임베딩 유사도로 검사합니다.\n" +
-                    "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다.\n" +
-                    "- 정지된 계정은 `ACCOUNT_SUSPENDED`(403)로 차단됩니다. 면접 시작만 막히고 로그인·레포트 열람·마이페이지·탈퇴는 그대로 사용할 수 있습니다.\n" +
-                    "- 필수 약관 동의가 최신이 아니면 `CONSENT_VERSION_STALE`(403)로 차단됩니다. 재동의 화면으로 보낸 뒤 다시 시도하세요."
+                    "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
