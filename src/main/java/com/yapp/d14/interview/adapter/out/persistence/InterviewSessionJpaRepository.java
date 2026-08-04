@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.adapter.out.persistence;
 
 import com.yapp.d14.interview.adapter.out.persistence.entity.InterviewSessionJpaEntity;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,4 +22,6 @@ interface InterviewSessionJpaRepository extends JpaRepository<InterviewSessionJp
     Optional<InterviewSessionJpaEntity> findByIdForUpdate(@Param("id") Long id);
 
     boolean existsByPortfolioIdAndStatus(UUID portfolioId, InterviewSessionStatus status);
+
+    long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
 }

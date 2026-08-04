@@ -2,6 +2,7 @@ package com.yapp.d14.interview.adapter.out.persistence;
 
 import com.yapp.d14.interview.adapter.out.persistence.entity.InterviewSessionJpaEntity;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import lombok.RequiredArgsConstructor;
@@ -42,5 +43,10 @@ class InterviewSessionPersistenceAdapter implements InterviewSessionRepository {
     @Override
     public boolean existsByPortfolioIdAndStatus(UUID portfolioId, InterviewSessionStatus status) {
         return interviewSessionJpaRepository.existsByPortfolioIdAndStatus(portfolioId, status);
+    }
+
+    @Override
+    public long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause) {
+        return interviewSessionJpaRepository.countByUserIdAndAbandonCause(userId, abandonCause);
     }
 }

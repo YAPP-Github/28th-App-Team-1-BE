@@ -42,6 +42,9 @@ class InterviewAbandonPersisterTest {
     @Mock
     private InterviewReportFailureHandler interviewReportFailureHandler;
 
+    @Mock
+    private AccountReviewThresholdReporter accountReviewThresholdReporter;
+
     @InjectMocks
     private InterviewAbandonPersister persister;
 
@@ -84,6 +87,17 @@ class InterviewAbandonPersisterTest {
         assertThat(result.reportGenerating()).isFalse();
         verify(ticketReleaseUseCase).release(sessionId, "NETWORK_DISCONNECT");
         verify(interviewReportGenerateUseCase, never()).generate(any());
+        verify(accountReviewThresholdReporter).reportIfThresholdReached(session.getUserId());
+    }
+
+    @Test
+    void USER_EXIT는_운영_검토_집계_대상이_아니다() {
+        InterviewSession session = session();
+        given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(session));
+
+        persister.persist(session, AbandonCause.USER_EXIT);
+
+        verify(accountReviewThresholdReporter, never()).reportIfThresholdReached(any());
     }
 
     @Test

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 
 @Component
@@ -24,6 +25,7 @@ class InterviewAbandonPersister {
     private final TicketReleaseUseCase ticketReleaseUseCase;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
+    private final AccountReviewThresholdReporter accountReviewThresholdReporter;
 
     record PersistResult(LocalDateTime endedAt, String ticketOutcome, boolean reportGenerating) {
     }
@@ -49,6 +51,13 @@ class InterviewAbandonPersister {
         }
 
         ticketReleaseUseCase.release(current.getId(), cause.name());
+
+        // 커밋된 뒤에 세어야 방금 저장한 중단이 집계에 포함되고, 롤백된 중단을 잘못 집계하지도 않는다.
+        if (cause == AbandonCause.NETWORK_DISCONNECT) {
+            UUID userId = current.getUserId();
+            AfterCommitExecutor.runAfterCommit(() -> accountReviewThresholdReporter.reportIfThresholdReached(userId));
+        }
+
         return new PersistResult(current.getEndedAt(), "RELEASED", false);
     }
 

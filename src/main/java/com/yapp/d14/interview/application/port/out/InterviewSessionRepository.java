@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.port.out;
 
+import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 
@@ -18,4 +19,6 @@ public interface InterviewSessionRepository {
     List<InterviewSession> findAllByUserId(UUID userId);
 
     boolean existsByPortfolioIdAndStatus(UUID portfolioId, InterviewSessionStatus status);
+
+    long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
 }
