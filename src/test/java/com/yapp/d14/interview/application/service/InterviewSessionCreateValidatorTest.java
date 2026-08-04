@@ -1,5 +1,8 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.consent.application.port.in.ConsentUpToDateCheckUseCase;
+import com.yapp.d14.consent.exception.ConsentErrorCode;
+import com.yapp.d14.consent.exception.ConsentException;
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
@@ -11,10 +14,13 @@ import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
+import com.yapp.d14.user.application.port.in.AccountStatusCheckUseCase;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
 import com.yapp.d14.user.domain.User;
+import com.yapp.d14.user.exception.UserErrorCode;
+import com.yapp.d14.user.exception.UserException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class InterviewSessionCreateValidatorTest {
@@ -43,6 +51,12 @@ class InterviewSessionCreateValidatorTest {
 
     @Mock
     private FindUserUseCase findUserUseCase;
+
+    @Mock
+    private AccountStatusCheckUseCase accountStatusCheckUseCase;
+
+    @Mock
+    private ConsentUpToDateCheckUseCase consentUpToDateCheckUseCase;
 
     @InjectMocks
     private InterviewSessionCreateValidator validator;
@@ -286,5 +300,60 @@ class InterviewSessionCreateValidatorTest {
                 .isInstanceOf(PortfolioException.class)
                 .extracting(e -> ((PortfolioException) e).getErrorCode())
                 .isEqualTo(PortfolioErrorCode.PORTFOLIO_NOT_FOUND);
+    }
+
+    @Test
+    void 정지된_계정이면_ACCOUNT_SUSPENDED로_면접_시작이_차단된다() {
+        givenSuspendedAccount();
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(UserException.class)
+                .extracting(e -> ((UserException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.ACCOUNT_SUSPENDED);
+    }
+
+    @Test
+    void 게이트1_정지_검증이_나머지_모든_검증보다_먼저_실행된다() {
+        // 포트폴리오도 없고 동의도 구버전인 계정이라도 정지가 먼저 걸려 A4를 띄운다(PRD Part7 5장).
+        givenSuspendedAccount();
+
+        assertThatThrownBy(() -> validator.validate(command("https://example.com/jd", "가".repeat(1), null)))
+                .isInstanceOf(UserException.class)
+                .extracting(e -> ((UserException) e).getErrorCode())
+                .isEqualTo(UserErrorCode.ACCOUNT_SUSPENDED);
+
+        verifyNoInteractions(consentUpToDateCheckUseCase, portfolioStatusUseCase, jdValidationCheckUseCase, findUserUseCase);
+    }
+
+    @Test
+    void 동의가_구버전이면_CONSENT_VERSION_STALE로_면접_시작이_차단된다() {
+        givenStaleConsent();
+
+        assertThatThrownBy(() -> validator.validate(command(null, null, null)))
+                .isInstanceOf(ConsentException.class)
+                .extracting(e -> ((ConsentException) e).getErrorCode())
+                .isEqualTo(ConsentErrorCode.CONSENT_VERSION_STALE);
+    }
+
+    @Test
+    void 게이트3_동의_검증이_입력_검증보다_먼저_실행된다() {
+        givenStaleConsent();
+
+        assertThatThrownBy(() -> validator.validate(command(null, "가".repeat(1), null)))
+                .isInstanceOf(ConsentException.class)
+                .extracting(e -> ((ConsentException) e).getErrorCode())
+                .isEqualTo(ConsentErrorCode.CONSENT_VERSION_STALE);
+
+        verifyNoInteractions(portfolioStatusUseCase, jdValidationCheckUseCase, findUserUseCase);
+    }
+
+    private void givenSuspendedAccount() {
+        willThrow(new UserException(UserErrorCode.ACCOUNT_SUSPENDED))
+                .given(accountStatusCheckUseCase).checkNotSuspended(userId);
+    }
+
+    private void givenStaleConsent() {
+        willThrow(new ConsentException(ConsentErrorCode.CONSENT_VERSION_STALE))
+                .given(consentUpToDateCheckUseCase).checkUpToDate(userId);
     }
 }

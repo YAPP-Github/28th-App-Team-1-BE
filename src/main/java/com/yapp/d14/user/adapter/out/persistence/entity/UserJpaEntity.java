@@ -1,8 +1,10 @@
 package com.yapp.d14.user.adapter.out.persistence.entity;
 
 import com.yapp.d14.common.crypto.EncryptedStringConverter;
+import com.yapp.d14.user.domain.AccountStatus;
 import com.yapp.d14.user.domain.JobRole;
 import com.yapp.d14.user.domain.Provider;
+import com.yapp.d14.user.domain.SuspensionReason;
 import com.yapp.d14.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -55,6 +57,17 @@ public class UserJpaEntity {
     @Column(columnDefinition = "text")
     private String appleRefreshToken;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'ACTIVE'")
+    private AccountStatus accountStatus;
+
+    @Enumerated(EnumType.STRING)
+    private SuspensionReason suspensionReason;
+
+    private LocalDateTime suspendedAt;
+
+    private LocalDateTime scheduledReleaseAt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -72,6 +85,10 @@ public class UserJpaEntity {
         entity.jobRole = user.getJobRole();
         entity.careerYears = user.getCareerYears();
         entity.appleRefreshToken = user.getAppleRefreshToken();
+        entity.accountStatus = user.getAccountStatus();
+        entity.suspensionReason = user.getSuspensionReason();
+        entity.suspendedAt = user.getSuspendedAt();
+        entity.scheduledReleaseAt = user.getScheduledReleaseAt();
         entity.createdAt = user.getCreatedAt();
         entity.updatedAt = user.getUpdatedAt();
         return entity;
@@ -80,7 +97,8 @@ public class UserJpaEntity {
     public User toDomain() {
         return User.of(
                 id, email, name, profileRegistered, provider, providerId, jobRole, careerYears,
-                appleRefreshToken, createdAt, updatedAt
+                appleRefreshToken, accountStatus, suspensionReason, suspendedAt, scheduledReleaseAt,
+                createdAt, updatedAt
         );
     }
 }

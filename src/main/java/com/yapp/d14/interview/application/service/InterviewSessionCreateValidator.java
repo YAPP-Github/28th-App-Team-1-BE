@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.consent.application.port.in.ConsentUpToDateCheckUseCase;
 import com.yapp.d14.interview.application.command.InterviewSessionCreateCommand;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.exception.InterviewErrorCode;
@@ -10,6 +11,7 @@ import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.exception.PortfolioErrorCode;
 import com.yapp.d14.portfolio.exception.PortfolioException;
+import com.yapp.d14.user.application.port.in.AccountStatusCheckUseCase;
 import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import com.yapp.d14.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +34,16 @@ class InterviewSessionCreateValidator {
     private final JdValidationCheckUseCase jdValidationCheckUseCase;
     private final PortfolioSimilarityCheckUseCase portfolioSimilarityCheckUseCase;
     private final FindUserUseCase findUserUseCase;
+    private final AccountStatusCheckUseCase accountStatusCheckUseCase;
+    private final ConsentUpToDateCheckUseCase consentUpToDateCheckUseCase;
 
+    // 면접 시작 게이트는 이용권 PRD의 번호 순서대로 통과시킨다. 정지와 동의 구버전이 겹치면
+    // 게이트1이 먼저 걸려 A4(이용 제한)가 뜬다 — PRD Part7 5장 엣지 케이스.
+    // 게이트4(NO_REMAINING)는 이 검증을 통과한 뒤 InterviewSessionCreateService가 이용권 모듈에 위임한다.
     InterviewSessionCreateContext validate(InterviewSessionCreateCommand command) {
+        accountStatusCheckUseCase.checkNotSuspended(command.userId());
+        consentUpToDateCheckUseCase.checkUpToDate(command.userId());
+
         String portfolioFileName = validatePortfolio(command);
         validateJd(command);
         validateFreeText(command);
