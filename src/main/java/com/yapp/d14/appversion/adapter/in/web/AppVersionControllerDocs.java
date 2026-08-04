@@ -45,7 +45,9 @@ public interface AppVersionControllerDocs {
                                                         "updateType": "FORCE",
                                                         "latestVersion": "1.4.0",
                                                         "minSupportedVersion": "1.3.0",
-                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX"
+                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX",
+                                                        "title": "업데이트가 필요해요",
+                                                        "body": "지금 버전에서는 앱을 이용할 수 없어요. 최신 버전으로 업데이트해 주세요."
                                                       }
                                                     }"""
                                     ),
@@ -58,7 +60,9 @@ public interface AppVersionControllerDocs {
                                                         "updateType": "OPTIONAL",
                                                         "latestVersion": "1.4.0",
                                                         "minSupportedVersion": "1.3.0",
-                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX"
+                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX",
+                                                        "title": "새 버전이 나왔어요",
+                                                        "body": "면접 연습 화면이 더 빨라졌어요. 지금 업데이트할까요?"
                                                       }
                                                     }"""
                                     ),
@@ -71,7 +75,9 @@ public interface AppVersionControllerDocs {
                                                         "updateType": "NONE",
                                                         "latestVersion": "1.4.0",
                                                         "minSupportedVersion": "1.3.0",
-                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX"
+                                                        "storeUrl": "https://apps.apple.com/app/idXXXXXXXXX",
+                                                        "title": null,
+                                                        "body": null
                                                       }
                                                     }"""
                                     )

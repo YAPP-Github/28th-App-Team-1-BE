@@ -32,7 +32,9 @@ class AppVersionCheckService implements AppVersionCheckUseCase {
                 updateType,
                 policy.getLatestVersion().value(),
                 policy.getMinSupportedVersion().value(),
-                policy.getStoreUrl()
+                policy.getStoreUrl(),
+                policy.resolveTitle(updateType),
+                policy.resolveBody(updateType)
         );
     }
 }
