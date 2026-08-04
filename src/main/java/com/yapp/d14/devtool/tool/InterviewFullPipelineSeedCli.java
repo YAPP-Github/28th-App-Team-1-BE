@@ -32,11 +32,9 @@ import com.yapp.d14.interview.application.port.in.result.InterviewVideoUploadUrl
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.command.PortfolioRegisterCommand;
-import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioListUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioRegisterUseCase;
 import com.yapp.d14.portfolio.application.port.in.PortfolioStatusUseCase;
-import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioRegisterResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
@@ -96,15 +94,6 @@ public class InterviewFullPipelineSeedCli {
             - 헥사고날 아키텍처 등 관심사 분리를 고려한 설계 경험
             """;
 
-    private static final String FREE_TEXT_FALLBACK = """
-            3년차 백엔드 엔지니어입니다. Spring Boot로 API 서버를 설계·운영해왔고,
-            트래픽 증가에 따른 성능 이슈를 데이터베이스 인덱스 튜닝과 캐싱으로 해결한 경험이 있습니다.
-            """;
-    private static final int MIN_FREE_TEXT_LENGTH = 10;
-    // 검증 로직(InterviewSessionCreateValidator)은 300자까지 허용하지만, freeText는 그대로 InterviewSession.focusProject로
-    // 저장되고 그 컬럼은 Hibernate 기본 varchar(255)라서 실제로는 255자를 넘으면 insert가 실패한다. 여유를 두고 240자로 자른다.
-    private static final int MAX_FREE_TEXT_LENGTH = 240;
-
     // 질문 음성 길이는 실제 합성된 오디오를 ffprobe로 측정해서 쓴다(고정값을 쓰면 답변 타임라인과 어긋나
     // 합성 영상에서 질문·답변 발화가 겹친다). 이 값은 오디오를 못 구했을 때만 쓰는 대체값이다.
     private static final float QUESTION_AUDIO_FALLBACK_DURATION_SEC = 4f;
@@ -134,8 +123,7 @@ public class InterviewFullPipelineSeedCli {
 
             Long sessionId = createSession(
                     userId, portfolioId,
-                    context.getBean(InterviewSessionCreateUseCase.class),
-                    context.getBean(PortfolioChunkSearchUseCase.class)
+                    context.getBean(InterviewSessionCreateUseCase.class)
             );
             InterviewSessionStatusResult.SummaryQuestion summaryQuestion = preloadAndAwaitReady(
                     userId, sessionId,
@@ -226,31 +214,14 @@ public class InterviewFullPipelineSeedCli {
     private static Long createSession(
             UUID userId,
             UUID portfolioId,
-            InterviewSessionCreateUseCase interviewSessionCreateUseCase,
-            PortfolioChunkSearchUseCase portfolioChunkSearchUseCase
+            InterviewSessionCreateUseCase interviewSessionCreateUseCase
     ) {
-        String freeText = buildFreeTextFromPortfolio(portfolioId, portfolioChunkSearchUseCase);
-        InterviewSessionCreateCommand command = new InterviewSessionCreateCommand(userId, portfolioId, null, JD_TEXT, freeText);
+        // freeText(집중 프로젝트)는 선택 입력이라 시딩에서는 채우지 않는다 — 값을 넣으려면
+        // 포트폴리오 청크와의 유사도 검증(InterviewSessionCreateValidator)까지 통과해야 해서 비워둔다.
+        InterviewSessionCreateCommand command = new InterviewSessionCreateCommand(userId, portfolioId, null, JD_TEXT, null);
         InterviewSessionCreateResult result = interviewSessionCreateUseCase.create(command);
         System.out.println("[SESSION] 생성 완료: sessionId=" + result.sessionId() + ", status=" + result.status());
         return result.sessionId();
-    }
-
-    private static String buildFreeTextFromPortfolio(UUID portfolioId, PortfolioChunkSearchUseCase portfolioChunkSearchUseCase) {
-        List<PortfolioChunkResult> chunks = portfolioChunkSearchUseCase.searchChunksWithoutThreshold(
-                portfolioId, "경력 프로젝트 경험 기술 스택", 1
-        );
-        if (chunks.isEmpty()) {
-            return FREE_TEXT_FALLBACK;
-        }
-        String text = chunks.get(0).text().trim();
-        if (text.length() > MAX_FREE_TEXT_LENGTH) {
-            text = text.substring(0, MAX_FREE_TEXT_LENGTH);
-        }
-        if (text.length() < MIN_FREE_TEXT_LENGTH) {
-            return FREE_TEXT_FALLBACK;
-        }
-        return text;
     }
 
     private static InterviewSessionStatusResult.SummaryQuestion preloadAndAwaitReady(
