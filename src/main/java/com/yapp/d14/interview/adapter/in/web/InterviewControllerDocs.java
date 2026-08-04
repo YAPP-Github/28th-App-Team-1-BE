@@ -59,7 +59,9 @@ public interface InterviewControllerDocs {
                     "- `jdUrl`과 `jdText`는 상호 배타적입니다(동시 입력 시 `JD_URL_AND_TEXT_BOTH_PROVIDED`). `jdUrl`은 `/api/v1/jd/validate`로 먼저 검증(캐싱, 6시간 TTL)돼 있어야 하며, " +
                     "검증 후 캐시가 만료된 채로 세션을 생성하면 `JD_CONTENT_NOT_FOUND`로 거부됩니다(재검증 필요).\n" +
                     "- `freeText`(집중 프로젝트 설명)를 입력하면 포트폴리오와의 연관성을 임베딩 유사도로 검사합니다.\n" +
-                    "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다."
+                    "- 계정당 이용권(무료 3회)이 소진되면 세션을 생성할 수 없습니다.\n" +
+                    "- 정지된 계정은 `ACCOUNT_SUSPENDED`(403)로 차단됩니다. 면접 시작만 막히고 로그인·레포트 열람·마이페이지·탈퇴는 그대로 사용할 수 있습니다.\n" +
+                    "- 필수 약관 동의가 최신이 아니면 `CONSENT_VERSION_STALE`(403)로 차단됩니다. 재동의 화면으로 보낸 뒤 다시 시도하세요."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -161,16 +163,32 @@ public interface InterviewControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "403",
-                    description = "남은 이용권 없음",
+                    description = "면접 시작 게이트 차단 — 게이트1(계정 정지) → 게이트3(재동의) → 이용권 순으로 검사하며, 여러 개가 겹치면 앞선 게이트의 코드가 반환됩니다.",
                     content = @Content(
                             mediaType = "application/json",
-                            examples = @ExampleObject(value = """
-                                    {
-                                      "success": false,
-                                      "code": "NO_REMAINING_TICKET",
-                                      "message": "남은 이용권이 없어요."
-                                    }
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "게이트1 — 계정 정지", value = """
+                                            {
+                                              "success": false,
+                                              "code": "ACCOUNT_SUSPENDED",
+                                              "message": "비정상적인 이용 패턴이 반복 확인되어 면접 시작이 제한되었어요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "게이트3 — 재동의 필요", value = """
+                                            {
+                                              "success": false,
+                                              "code": "CONSENT_VERSION_STALE",
+                                              "message": "약관이 바뀌어 다시 동의가 필요해요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "남은 이용권 없음", value = """
+                                            {
+                                              "success": false,
+                                              "code": "NO_REMAINING_TICKET",
+                                              "message": "남은 이용권이 없어요."
+                                            }
+                                            """)
+                            }
                     )
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
