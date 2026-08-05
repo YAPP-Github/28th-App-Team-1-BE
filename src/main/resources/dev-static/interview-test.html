@@ -756,10 +756,16 @@ function renderReport(rep) {
     aWrap.appendChild(el("label", null, "답변 (하이라이트 클릭 시 재생)"));
     aWrap.appendChild(highlightedTranscript(card.transcript, card.highlightSpans));
     c.appendChild(aWrap);
-    if (card.resolutionNotice) c.appendChild(el("div", "margin:6px 0;font-size:12px;",
-      `<span class="pill">해상도 낮음</span> ${esc(card.resolutionNotice)}`));
-    (card.cardRedFlagNotices || []).forEach((m) =>
-      c.appendChild(el("div", "margin:4px 0;font-size:12px;color:#dc2626;", "⚑ " + esc(m))));
+    // 해상도 안내와 레드플래그 안내는 프론트에서 같은 UI 리스트에 함께 나열되므로, 관리도구에서도 하나의 블록에 통합해 보여준다.
+    const notices = [];
+    if (card.resolutionNotice) notices.push(card.resolutionNotice);
+    (card.cardRedFlagNotices || []).forEach((m) => notices.push(m));
+    if (notices.length) {
+      const nWrap = el("div", "margin:6px 0;");
+      notices.forEach((m) => nWrap.appendChild(
+        el("div", "font-size:12px;margin:3px 0;", "• " + esc(m))));
+      c.appendChild(nWrap);
+    }
     const spans = card.highlightSpans || [];
     if (spans.length) {
       c.appendChild(el("label", null, `하이라이트 (${spans.length})`));
