@@ -68,6 +68,33 @@ class NextAxisSelectorTest {
     }
 
     @Test
+    void 위험_신호가_있어도_예산_상한_한번더까지_넘겼으면_다음_CORE_axis로_전환한다() {
+        // budget=3 + OVERRIDE_EXTRA_BUDGET(1) = 4. usedCount가 4에 닿으면 신호가 있어도 더는 유지하지 않는다.
+        List<InterviewAxisPlan> axisPlans = List.of(
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 4, false),
+                plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false),
+                plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
+        );
+
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, true, false);
+
+        assertThat(next).isEqualTo(TestType.BOUNDARY);
+    }
+
+    @Test
+    void 유독_구체적인_답변이어도_예산_상한_한번더까지_넘겼으면_다음_CORE_axis로_전환한다() {
+        List<InterviewAxisPlan> axisPlans = List.of(
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 4, false),
+                plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false),
+                plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
+        );
+
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, true);
+
+        assertThat(next).isEqualTo(TestType.BOUNDARY);
+    }
+
+    @Test
     void 천장에_닿으면_예산이_남아도_다음_CORE_axis로_전환한다() {
         List<InterviewAxisPlan> axisPlans = List.of(
                 plan(TestType.DEPTH, AxisTier.CORE, 3, 1, false),
