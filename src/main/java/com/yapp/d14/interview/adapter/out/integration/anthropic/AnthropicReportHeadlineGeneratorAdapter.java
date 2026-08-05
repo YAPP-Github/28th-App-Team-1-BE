@@ -65,11 +65,40 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
                     .user(userMessage)
                     .call()
                     .content();
-            return content == null ? "" : content.strip();
+            return sanitize(content);
         } catch (Exception e) {
             log.error("[REPORT HEADLINE GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("한 줄 요약 생성에 실패했어요.", e);
         }
+    }
+
+    // 헤드라인은 항상 한 줄이어야 하지만, LLM이 "한 문장만 반환" 지시를 어기고 본문 아래에 별도 문단(⚠️ 경고 블록 등)을
+    // 덧붙여 반환하는 경우가 있다. DB headline 컬럼에 다중 문단이 그대로 저장되는 걸 막기 위해, 첫 번째 비어있지 않은
+    // 줄만 취하고 감싸는 따옴표를 제거한다.
+    static String sanitize(String content) {
+        if (content == null) {
+            return "";
+        }
+        String firstLine = content.lines()
+                .map(String::strip)
+                .filter(line -> !line.isEmpty())
+                .findFirst()
+                .orElse("");
+        return stripWrappingQuotes(firstLine);
+    }
+
+    private static String stripWrappingQuotes(String line) {
+        if (line.length() >= 2) {
+            char first = line.charAt(0);
+            char last = line.charAt(line.length() - 1);
+            boolean doubleQuoted = first == '"' && last == '"';
+            boolean singleQuoted = first == '\'' && last == '\'';
+            boolean cornerQuoted = first == '「' && last == '」';
+            if (doubleQuoted || singleQuoted || cornerQuoted) {
+                return line.substring(1, line.length() - 1).strip();
+            }
+        }
+        return line;
     }
 
     private String buildUserMessage(HeadlineContext context) {
