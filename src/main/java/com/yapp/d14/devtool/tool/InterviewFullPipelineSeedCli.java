@@ -71,12 +71,12 @@ import java.util.UUID;
  * 특정 userId에 대해 완료된 면접 세션 → 생성된 리포트 → 지인 피드백(+영상)까지
  * 실제 애플리케이션 파이프라인을 그대로 호출해 만든다. 실제 Anthropic/OpenAI/ffmpeg 호출이 발생하므로
  * 로컬 Postgres/Redis, ANTHROPIC_API_KEY, OPENAI_API_KEY, AWS S3 자격증명, ffmpeg가 필요하다.
- * ./gradlew seedInterviewFullPipeline [-PuserId=<uuid>] [-PuserName=<name>] [-PturnCount=3]
+ * ./gradlew seedInterviewFullPipeline [-PuserId=<uuid>] [-PuserName=<name>] [-PturnCount=6]
  */
 public class InterviewFullPipelineSeedCli {
 
     private static final String DEFAULT_USER_NAME = "더미유저";
-    private static final int DEFAULT_TURN_COUNT = 3;
+    private static final int DEFAULT_TURN_COUNT = 6;
 
     private static final String JD_TEXT = """
             [백엔드 엔지니어 채용]
