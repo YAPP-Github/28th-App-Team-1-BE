@@ -191,6 +191,31 @@ tasks.register('seedFeedbackFixture', JavaExec) {
     args = cliArgs
 }
 
+tasks.register('seedReportShowcase', JavaExec) {
+    group = 'application'
+    description = '리포트 조회 API의 모든 응답 케이스(카드/하이라이트/레드플래그/해상도/스크립트/지인/상태값)를 한 유저에게 심습니다. (-PuserId, 기본=00000000-...-0001)'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.yapp.d14.interview.tool.ReportShowcaseSeedCli'
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+
+    def envFile = file('.env')
+    if (envFile.exists()) {
+        def envVars = [:]
+        envFile.eachLine { line ->
+            line = line.trim()
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def (key, value) = line.split('=', 2)
+                envVars[key.trim()] = value.trim().replaceAll(/^["']|["']$/, '')
+            }
+        }
+        environment envVars
+    }
+
+    def cliArgs = []
+    if (project.hasProperty('userId')) cliArgs << "--userId=${project.property('userId')}"
+    args = cliArgs
+}
+
 tasks.register('seedInterviewFullPipeline', JavaExec) {
     group = 'application'
     description = '면접 세션→리포트→지인 피드백(+영상)까지 실제 파이프라인을 그대로 호출해 더미 데이터를 만듭니다. (-PuserId, -PuserName, -PturnCount)'
