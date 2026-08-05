@@ -52,7 +52,8 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
                 portfolioDeleted,
                 session.getJdUrl(),
                 report.getStatus(),
-                feedbackAvailable
+                feedbackAvailable,
+                report.getHeadline()
         );
     }
 

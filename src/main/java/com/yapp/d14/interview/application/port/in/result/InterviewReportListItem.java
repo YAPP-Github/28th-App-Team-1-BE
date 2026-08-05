@@ -14,6 +14,7 @@ public record InterviewReportListItem(
         boolean portfolioDeleted,
         String jdUrl,
         ReportStatus reportStatus,
-        boolean feedbackAvailable
+        boolean feedbackAvailable,
+        String title
 ) {
 }
