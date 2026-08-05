@@ -12,7 +12,7 @@ import java.util.Map;
 public final class AxisWeightCalculator {
 
     private static final int TOTAL_WEIGHT = 100;
-    private static final int CORE_COUNT = 3;
+    private static final int CORE_COUNT = 2;
     private static final int CORE_BUDGET = 3;
     private static final int SUPPORT_COUNT = 1;
     private static final int SUPPORT_BUDGET = 1;

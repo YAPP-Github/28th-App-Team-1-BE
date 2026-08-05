@@ -48,21 +48,21 @@ class AxisWeightCalculatorTest {
     }
 
     @Test
-    void 시니어_백엔드는_상위_3개가_CORE_4번째가_SUPPORT_나머지가_SKIP이다() {
+    void 시니어_백엔드는_상위_2개가_CORE_3번째가_SUPPORT_나머지가_SKIP이다() {
         Map<TestType, Integer> weights = AxisWeightCalculator.compute(JobType.BACKEND, 8);
 
         Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
 
         assertThat(assignments.get(TestType.TRADEOFF)).isEqualTo(new AxisAssignment(AxisTier.CORE, 3));
         assertThat(assignments.get(TestType.DEPTH)).isEqualTo(new AxisAssignment(AxisTier.CORE, 3));
-        assertThat(assignments.get(TestType.BOUNDARY)).isEqualTo(new AxisAssignment(AxisTier.CORE, 3));
-        assertThat(assignments.get(TestType.CONNECTION)).isEqualTo(new AxisAssignment(AxisTier.SUPPORT, 1));
+        assertThat(assignments.get(TestType.BOUNDARY)).isEqualTo(new AxisAssignment(AxisTier.SUPPORT, 1));
+        assertThat(assignments.get(TestType.CONNECTION)).isEqualTo(new AxisAssignment(AxisTier.SKIP, 0));
         assertThat(assignments.get(TestType.CONFLICT)).isEqualTo(new AxisAssignment(AxisTier.SKIP, 0));
         assertThat(assignments.get(TestType.RESILIENCE)).isEqualTo(new AxisAssignment(AxisTier.SKIP, 0));
     }
 
     @Test
-    void tier_배정은_항상_CORE_3개_SUPPORT_1개_SKIP_2개다() {
+    void tier_배정은_항상_CORE_2개_SUPPORT_1개_SKIP_3개다() {
         for (JobType jobType : JobType.values()) {
             Map<TestType, Integer> weights = AxisWeightCalculator.compute(jobType, 3);
             Map<TestType, AxisAssignment> assignments = AxisWeightCalculator.assignTierAndBudget(weights);
@@ -71,9 +71,9 @@ class AxisWeightCalculatorTest {
             long supportCount = assignments.values().stream().filter(a -> a.tier() == AxisTier.SUPPORT).count();
             long skipCount = assignments.values().stream().filter(a -> a.tier() == AxisTier.SKIP).count();
 
-            assertThat(coreCount).as("%s CORE 개수", jobType).isEqualTo(3);
+            assertThat(coreCount).as("%s CORE 개수", jobType).isEqualTo(2);
             assertThat(supportCount).as("%s SUPPORT 개수", jobType).isEqualTo(1);
-            assertThat(skipCount).as("%s SKIP 개수", jobType).isEqualTo(2);
+            assertThat(skipCount).as("%s SKIP 개수", jobType).isEqualTo(3);
         }
     }
 }

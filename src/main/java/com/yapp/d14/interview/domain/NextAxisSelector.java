@@ -11,12 +11,6 @@ import java.util.Optional;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class NextAxisSelector {
 
-    // 레드플래그·유독 구체적인 답변이면 예산을 넘겨 "한 번 더" 캐묻지만(PRD Part2 §4.4-4·§4.6),
-    // 그것도 넘을 수 없는 절대 상한이다. budget + 1(핵심 축이면 3→최대 4, §4.5 "항목당 4개까지")을 넘으면
-    // 신호가 있어도 다음 축으로 넘긴다 — 한 축을 무한정 파고들어 나머지 핵심 축을 못 캐고
-    // 종합점수 미산출(§6.7 분석 부족)로 빠지는 걸 막기 위해서다.
-    private static final int OVERRIDE_EXTRA_BUDGET = 1;
-
     public static TestType select(
             List<InterviewAxisPlan> axisPlans,
             Map<TestType, Integer> weights,
@@ -26,14 +20,14 @@ public final class NextAxisSelector {
             boolean isUnusuallySpecific
     ) {
         InterviewAxisPlan currentPlan = findPlan(axisPlans, currentAxis);
-        int usedCount = currentPlan.getUsedCount();
+        boolean budgetExhausted = currentPlan.getUsedCount() >= currentPlan.getBudget();
 
-        boolean overrideCapReached = usedCount >= currentPlan.getBudget() + OVERRIDE_EXTRA_BUDGET;
-        if ((hasRedFlag || isUnusuallySpecific) && !overrideCapReached) {
+        // 축별 질문 예산(budget)은 하드 상한이다. 레드플래그·유독 구체적인 답변이면 천장에 닿았어도
+        // 예산이 남아 있는 한 축을 유지해 한 번 더 캐묻지만, 예산을 소진하면 신호가 있어도 다음 축으로 넘긴다.
+        // 한 축을 무한정 파고들어 나머지 핵심 축을 못 캐고 종합점수 미산출(분석 부족)로 빠지는 걸 막기 위해서다.
+        if ((hasRedFlag || isUnusuallySpecific) && !budgetExhausted) {
             return currentAxis;
         }
-
-        boolean budgetExhausted = usedCount >= currentPlan.getBudget();
         if (!ceilingReached && !budgetExhausted) {
             return currentAxis;
         }
