@@ -383,6 +383,8 @@ class InterviewReportGenerateServiceTest {
         ArgumentCaptor<HeadlineContext> headlineCtxCaptor = ArgumentCaptor.forClass(HeadlineContext.class);
         verify(reportHeadlineGenerator).generate(headlineCtxCaptor.capture());
         assertThat(headlineCtxCaptor.getValue().severeRedFlagPresent()).isTrue();
+        // CORE 축(DEPTH)이 모두 채점됐으므로 커버리지는 완전하다.
+        assertThat(headlineCtxCaptor.getValue().coverageIncomplete()).isFalse();
 
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         verify(interviewReportPersister).persist(eq(1L), reportCaptor.capture(), any(), any(), any());
@@ -394,7 +396,7 @@ class InterviewReportGenerateServiceTest {
     }
 
     @Test
-    void 핵심_축이_채점되지_않으면_턴이_있어도_분석_부족으로_처리한다() {
+    void 핵심_축_커버리지가_미달이어도_축_평가가_있으면_커버리지_신호와_함께_실제_헤드라인을_생성하고_status는_미흡을_유지한다() {
         given(interviewSessionRepository.findById(1L)).willReturn(Optional.of(session()));
         given(questionRepository.findAllBySessionId(1L)).willReturn(List.of(question(1L, 1, TestType.DEPTH)));
         given(answerRepository.findAllBySessionId(1L)).willReturn(List.of(answer(1L, 1L, TestType.DEPTH, "깊이 답변")));
@@ -408,15 +410,27 @@ class InterviewReportGenerateServiceTest {
         given(reportCardContentGenerator.generate(any())).willReturn(List.of(
                 new ReportCardDraft(1L, 1, TestType.DEPTH, "제목", "질문의도", List.of())
         ));
+        given(reportHeadlineGenerator.generate(any())).willReturn("이번 면접은 짧게 진행돼 한 주제만 다뤘어요");
 
         service.generate(1L);
 
-        verify(reportHeadlineGenerator, never()).generate(any());
+        // 고정 문구 대신 실제 LLM 헤드라인을 생성하되, 커버리지 미달 신호(CORE 2개 중 1개만)를 전달한다.
+        ArgumentCaptor<HeadlineContext> headlineCtxCaptor = ArgumentCaptor.forClass(HeadlineContext.class);
+        verify(reportHeadlineGenerator).generate(headlineCtxCaptor.capture());
+        HeadlineContext ctx = headlineCtxCaptor.getValue();
+        assertThat(ctx.totalCoreAxisCount()).isEqualTo(2);
+        assertThat(ctx.coveredCoreAxisCount()).isEqualTo(1);
+        assertThat(ctx.coverageIncomplete()).isTrue();
 
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         verify(interviewReportPersister).persist(eq(1L), reportCaptor.capture(), any(), any(), any());
-        assertThat(reportCaptor.getValue().getStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
-        assertThat(reportCaptor.getValue().getHeadlineBranch()).isEqualTo(HeadlineBranch.INSUFFICIENT_ANALYSIS);
+        Report report = reportCaptor.getValue();
+        // headline은 실제 생성값, status/branch는 현행대로 미흡 유지, 점수·등급은 없음
+        assertThat(report.getHeadline()).isEqualTo("이번 면접은 짧게 진행돼 한 주제만 다뤘어요");
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
+        assertThat(report.getHeadlineBranch()).isEqualTo(HeadlineBranch.INSUFFICIENT_ANALYSIS);
+        assertThat(report.getCompositeScore()).isNull();
+        assertThat(report.getInternalGrade()).isNull();
     }
 
     @Test

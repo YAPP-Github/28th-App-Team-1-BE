@@ -38,6 +38,13 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
               자기모순처럼 읽히므로, 특히 무결점 서사가 잡힌 경우 성과를 칭찬하는 표현은
               무결점 서사를 승인해주는 꼴이 되니 반드시 피하세요.
 
+            커버리지가 부족할 때(coverageIncomplete=true):
+            - 이 면접은 원래 다뤄야 할 핵심 주제(CORE 축) 중 일부만 다룬 채로 짧게 끝났습니다.
+              다뤄진 주제 하나가 잘 진행됐더라도, 면접 전체가 정상적으로 완결된 것처럼
+              자신 있게 쓰면 안 됩니다.
+            - 면접이 짧게/일부만 진행됐다는 뉘앙스를 반드시 포함해 다룬 주제만 사실대로 요약합니다.
+              예: "이번 면접은 짧게 진행돼 결제 응답 속도 개선 경험만 다뤘어요."
+
             금지 표현 예: "자신감 있게 안정적으로 마무리했어요!"(인상 표현),
             "완벽한 성과 설명이었어요"(무결점 서사 승인)
 
@@ -103,7 +110,10 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
 
     private String buildUserMessage(HeadlineContext context) {
         StringBuilder sb = new StringBuilder();
-        sb.append("severeRedFlagPresent: ").append(context.severeRedFlagPresent()).append("\n\n");
+        sb.append("severeRedFlagPresent: ").append(context.severeRedFlagPresent()).append("\n");
+        sb.append("coverageIncomplete: ").append(context.coverageIncomplete())
+                .append(" (핵심 주제 ").append(context.totalCoreAxisCount())
+                .append("개 중 ").append(context.coveredCoreAxisCount()).append("개만 다룸)\n\n");
         sb.append("<axisEvidence>\n");
         for (AxisTopic topic : context.axisTopics()) {
             sb.append("  <axis name=\"").append(topic.testType().name().toLowerCase())
