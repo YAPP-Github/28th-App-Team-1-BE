@@ -131,7 +131,7 @@ public class InterviewFullPipelineSeedCli {
                     context.getBean(InterviewSessionStatusUseCase.class)
             );
 
-            float totalTimelineSec = runAnswerTurns(
+            TurnTimeline timeline = runAnswerTurns(
                     userId, sessionId, summaryQuestion, turnCount,
                     context.getBean(AudioStreamUseCase.class),
                     context.getBean(TextToSpeechSynthesizer.class),
@@ -141,7 +141,7 @@ public class InterviewFullPipelineSeedCli {
             ReportStatus reportStatus = awaitReportReady(userId, sessionId, context.getBean(InterviewReportQueryUseCase.class));
 
             String playbackUrl = uploadAndCompositeVideo(
-                    userId, sessionId, totalTimelineSec,
+                    userId, sessionId, timeline,
                     context.getBean(InterviewVideoUploadUrlIssueUseCase.class),
                     context.getBean(InterviewVideoUploadCompleteUseCase.class),
                     context.getBean(InterviewVideoQueryUseCase.class)
@@ -159,7 +159,8 @@ public class InterviewFullPipelineSeedCli {
             System.out.println("turnCount           : " + turnCount);
             System.out.println("portfolioId         : " + portfolioId);
             System.out.println("sessionId           : " + sessionId);
-            System.out.println("totalTimelineSec    : " + totalTimelineSec);
+            System.out.println("totalTimelineSec    : " + timeline.totalTimelineSec());
+            System.out.println("wrapUp(start,end)   : " + timeline.wrapUpStartSec() + ", " + timeline.wrapUpEndSec());
             System.out.println("reportStatus        : " + reportStatus);
             System.out.println("playbackUrl         : " + playbackUrl);
             System.out.println("feedbackSubmissionId: " + feedbackSubmissionId);
@@ -247,7 +248,11 @@ public class InterviewFullPipelineSeedCli {
         throw new IllegalStateException("세션 preload 대기 시간 초과: sessionId=" + sessionId);
     }
 
-    private static float runAnswerTurns(
+    // 답변 턴 진행 결과: 전체 타임라인 길이와 마무리 멘트 재생 구간(없으면 null).
+    private record TurnTimeline(float totalTimelineSec, Float wrapUpStartSec, Float wrapUpEndSec) {
+    }
+
+    private static TurnTimeline runAnswerTurns(
             UUID userId,
             Long sessionId,
             InterviewSessionStatusResult.SummaryQuestion summaryQuestion,
@@ -262,6 +267,7 @@ public class InterviewFullPipelineSeedCli {
                 ? Base64.getDecoder().decode(summaryQuestion.ttsAudio())
                 : null;
         float timelineCursorSec = 0f;
+        InterviewAnswerSubmitResult lastResult = null;
 
         for (int turnIndex = 0; turnIndex < turnCount; turnIndex++) {
             byte[] questionAudio = turnLevel == 0
@@ -290,6 +296,7 @@ public class InterviewFullPipelineSeedCli {
                     endType, null
             );
             InterviewAnswerSubmitResult result = interviewAnswerSubmitUseCase.submit(userId, command);
+            lastResult = result;
             System.out.println("[ANSWER] turn=" + turnIndex + ", questionId=" + questionId
                     + ", sessionEnded=" + result.sessionEnded() + ", endType=" + result.endType());
 
@@ -299,7 +306,20 @@ public class InterviewFullPipelineSeedCli {
             }
         }
 
-        return timelineCursorSec;
+        // 마지막 턴(MANUAL_END) 응답에 마무리 멘트 오디오가 실려오면, 마지막 답변 뒤에 이어붙여 대본·합성에
+        // 포함시킨다. wrapUpStartSec은 마지막 답변 종료 시각이고, 실제 멘트 음성 길이만큼 타임라인을 늘린다.
+        Float wrapUpStartSec = null;
+        Float wrapUpEndSec = null;
+        if (lastResult != null && lastResult.wrapUpMessage() != null && lastResult.wrapUpMessage().ttsAudio() != null) {
+            byte[] wrapUpAudio = Base64.getDecoder().decode(lastResult.wrapUpMessage().ttsAudio());
+            float wrapUpDurationSec = DummyAnswerAudioGenerator.probeDurationSec(wrapUpAudio, ".mp3");
+            wrapUpStartSec = timelineCursorSec;
+            timelineCursorSec += wrapUpDurationSec;
+            wrapUpEndSec = timelineCursorSec;
+            System.out.println("[WRAP-UP] 마무리 멘트 포함: startSec=" + wrapUpStartSec + ", endSec=" + wrapUpEndSec);
+        }
+
+        return new TurnTimeline(timelineCursorSec, wrapUpStartSec, wrapUpEndSec);
     }
 
     private static byte[] concatenate(List<byte[]> chunks) {
@@ -334,21 +354,23 @@ public class InterviewFullPipelineSeedCli {
     private static String uploadAndCompositeVideo(
             UUID userId,
             Long sessionId,
-            float totalTimelineSec,
+            TurnTimeline timeline,
             InterviewVideoUploadUrlIssueUseCase interviewVideoUploadUrlIssueUseCase,
             InterviewVideoUploadCompleteUseCase interviewVideoUploadCompleteUseCase,
             InterviewVideoQueryUseCase interviewVideoQueryUseCase
     ) {
         InterviewVideoUploadUrlResult uploadUrlResult = interviewVideoUploadUrlIssueUseCase.issue(userId, sessionId);
 
-        Path rawVideoFile = DummyRawVideoGenerator.generate(totalTimelineSec);
+        // totalTimelineSec는 마무리 멘트 구간까지 포함하므로, 더미 원본 영상도 그 길이로 만들어 마무리 멘트가 잘리지 않게 한다.
+        Path rawVideoFile = DummyRawVideoGenerator.generate(timeline.totalTimelineSec());
         try {
             putToPresignedUrl(uploadUrlResult.uploadUrl(), uploadUrlResult.contentType(), rawVideoFile);
         } finally {
             deleteQuietly(rawVideoFile);
         }
 
-        interviewVideoUploadCompleteUseCase.complete(new InterviewVideoUploadCompleteCommand(userId, sessionId, null, null));
+        interviewVideoUploadCompleteUseCase.complete(new InterviewVideoUploadCompleteCommand(
+                userId, sessionId, timeline.wrapUpStartSec(), timeline.wrapUpEndSec()));
         System.out.println("[VIDEO] 업로드 완료 처리, 합성 대기 시작: sessionId=" + sessionId);
 
         return awaitCompositeReady(sessionId, interviewVideoQueryUseCase);
