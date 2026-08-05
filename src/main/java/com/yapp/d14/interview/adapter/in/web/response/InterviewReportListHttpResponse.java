@@ -44,7 +44,7 @@ public record InterviewReportListHttpResponse(
             @Schema(description = "레포트 상태 — GENERATING/READY/INSUFFICIENT_ANALYSIS/FAILED", example = "READY")
             String reportStatus,
 
-            @Schema(description = "지인 피드백 요청 가능 여부. 레포트가 READY이고 아직 공유 링크를 만들지 않았을 때 true", example = "true")
+            @Schema(description = "지인 피드백 요청 가능 여부. 레포트 채점이 끝났고(READY 또는 INSUFFICIENT_ANALYSIS) 아직 공유 링크를 만들지 않았을 때 true", example = "true")
             boolean feedbackAvailable,
 
             @Schema(description = "레포트 한 줄 요약(headline). 아직 생성 전(GENERATING)이거나 생성 실패(FAILED)면 null", example = "캐시 도입 결정의 이유와 한계까지 구체적인 수치로 설명해주셨어요.", nullable = true)

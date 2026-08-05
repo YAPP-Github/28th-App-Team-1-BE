@@ -137,6 +137,21 @@ class InterviewReportListQueryServiceTest {
     }
 
     @Test
+    void 레포트가_INSUFFICIENT_ANALYSIS여도_READY와_동일하게_feedbackAvailable이_true다() {
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L))
+                .willReturn(Optional.of(Report.of(10L, 1L, null, null, "headline", null, ReportStatus.INSUFFICIENT_ANALYSIS, target.getCreatedAt())));
+        given(feedbackShareExistsUseCase.existsForSession(1L)).willReturn(false);
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).reportStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
+        assertThat(result.get(0).feedbackAvailable()).isTrue();
+    }
+
+    @Test
     void 레포트가_생성실패면_feedbackAvailable이_false다() {
         InterviewSession target = session(1L, null, LocalDateTime.now());
 
