@@ -49,7 +49,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     private static final String CEILING_FEWSHOT_PATH = "interview-rubric/ceiling-fewshot.md";
     // AnthropicProbeCandidateExtractorAdapter.MAX_CANDIDATES 와 동일한 취지 — 한 턴에서 뽑히는 캐물지점 후보가
     // 과도하게 쌓이는 것을 막는 상한이다.
-    private static final int MAX_NEW_PROBES = 3;
+    private static final int MAX_NEW_PROBES = 2;
+    private static final int MAX_PROBE_TEXT_CHARS = 60;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             당신은 AI 면접관입니다. 지원자의 방금 답변을 분석해 아래 세 가지를 판단합니다.
@@ -71,7 +72,10 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
 
             new_probes 규칙:
             - 캐물지점은 반드시 방금 답변 내용에 근거해야 합니다.
-            - probeText는 "무엇을 캐물을지"에 대한 내부 메모(질문 문장 아님), echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
+            - probeText는 "무엇을 캐물을지"만 적는 내부 메모입니다. %d자 이내로, 물음표 없이 명사구로 씁니다.
+              (예: "블루그린 트래픽 전환 방식과 롤백 트리거 기준")
+              실제 질문 문장은 이후 단계에서 따로 생성하므로, 여기서 질문을 완성하면 그 작업은 버려집니다.
+            - echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
             - strength는 반드시 high/mid/low 중 하나로만 답합니다(medium 등 다른 표현 금지).
               신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑되, 최대 %d개까지만 반환하세요.
@@ -119,7 +123,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
-                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH), MAX_NEW_PROBES
+                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH),
+                MAX_PROBE_TEXT_CHARS, MAX_NEW_PROBES
         );
         // 이 시스템 프롬프트(axes.yaml+principles.yaml+ceiling-fewshot.md)는 매 턴 동일하게 재사용되는데도
         // 캐싱 없이 매번 전체가 재처리되어 run_live_turn 지연시간의 절반 이상을 차지했다 — SYSTEM_ONLY로 캐싱한다.
