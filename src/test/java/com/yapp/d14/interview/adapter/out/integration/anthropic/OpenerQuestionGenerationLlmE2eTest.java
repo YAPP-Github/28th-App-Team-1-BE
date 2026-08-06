@@ -43,7 +43,7 @@ class OpenerQuestionGenerationLlmE2eTest {
         log.info("========== [LLM E2E] 여는 질문(opener) 직군×axis 조합 ==========");
         for (JobType jobType : jobTypes) {
             for (TestType axis : axes) {
-                String opener = questionTextGenerator.generateOpener(axis, jobType, yearsOfExperience, List.of(), List.of());
+                String opener = questionTextGenerator.generateOpener(axis, jobType, yearsOfExperience, List.of(), List.of(), List.of());
                 log.info("[직무={} / 연차={}년 / axis={}] {}", jobType.getLabel(), yearsOfExperience, axis.getLabel(), opener);
                 assertThat(opener).isNotBlank();
             }
@@ -65,13 +65,13 @@ class OpenerQuestionGenerationLlmE2eTest {
                         "응답 지연을 800ms에서 200ms로 줄였다."
         );
         String groundedOpener = questionTextGenerator.generateOpener(
-                TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, groundedChunks
+                TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, groundedChunks, List.of()
         );
         log.info("[근거 있음] {}", groundedOpener);
         assertThat(groundedOpener).isNotBlank();
 
         String ungroundedOpener = questionTextGenerator.generateOpener(
-                TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, List.of()
+                TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, List.of(), List.of()
         );
         log.info("[근거 없음(포폴 청크 미제공)] {}", ungroundedOpener);
         assertThat(ungroundedOpener).isNotBlank();
@@ -127,13 +127,13 @@ class OpenerQuestionGenerationLlmE2eTest {
         log.info("========== [LLM E2E] 직군별 조건부 오프너: 포폴 근거 있음/없음 비교 ==========");
         for (JobTypeFixture fixture : fixtures) {
             String grounded = questionTextGenerator.generateOpener(
-                    TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of(fixture.groundedChunk())
+                    TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of(fixture.groundedChunk()), List.of()
             );
             log.info("[{} / 근거 있음] {}", fixture.jobType().getLabel(), grounded);
             assertThat(grounded).isNotBlank();
 
             String ungrounded = questionTextGenerator.generateOpener(
-                    TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of()
+                    TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of(), List.of()
             );
             log.info("[{} / 근거 없음] {}", fixture.jobType().getLabel(), ungrounded);
             assertThat(ungrounded).isNotBlank();

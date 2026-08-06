@@ -6,6 +6,8 @@ import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import com.yapp.d14.interview.application.port.out.JdOpenerContext;
 import com.yapp.d14.interview.application.port.out.JdOpenerContextCache;
+import com.yapp.d14.interview.application.port.out.PriorQuestionCache;
+import com.yapp.d14.interview.application.port.out.PriorQuestionReader;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
@@ -41,6 +43,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
     private final JdKeywordExtractor jdKeywordExtractor;
     private final JdOpenerContextCache jdOpenerContextCache;
     private final ProbeCandidateExtractor probeCandidateExtractor;
+    private final PriorQuestionReader priorQuestionReader;
+    private final PriorQuestionCache priorQuestionCache;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
     private final InterviewPreloadResultPersister interviewPreloadResultPersister;
@@ -61,7 +65,8 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
 
             List<String> chunks = searchPortfolioChunks(session);
             List<String> jdKeywords = extractJdKeywords(session);
-            List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords);
+            List<String> priorQuestions = readPriorQuestionsSafely(session);
+            List<QuestionCandidate> candidates = buildQuestionCandidates(session, chunks, jdKeywords, priorQuestions);
             saveJdOpenerContextSafely(session, jdKeywords);
 
             String questionText = buildSummaryQuestionText(session.getFocusProject());
@@ -149,14 +154,32 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         }
     }
 
-    private List<QuestionCandidate> buildQuestionCandidates(InterviewSession session, List<String> chunks, List<String> jdKeywords) {
-        log.info("[INTERVIEW PRELOAD] 캐물지점 추출 시작: sessionId={}, chunkCount={}, jdKeywordCount={}",
-                session.getId(), chunks.size(), jdKeywords.size());
+    // 이전 면접 질문 이력은 중복 회피용 부가 정보다. 조회에 실패해도 preload 전체를 실패시키지 않고
+    // 빈 이력으로 진행한다(기존 동작과 동일). 여는 질문 생성이 라이브 턴마다 이 값을 쓰므로 캐시에 담아둔다.
+    private List<String> readPriorQuestionsSafely(InterviewSession session) {
+        try {
+            List<String> priorQuestions = priorQuestionReader.readRecentQuestions(session.getUserId(), session.getId());
+            priorQuestionCache.save(session.getId(), priorQuestions);
+            log.info("[INTERVIEW PRELOAD] 이전 면접 질문 이력 조회 완료: sessionId={}, priorQuestionCount={}",
+                    session.getId(), priorQuestions.size());
+            return priorQuestions;
+        } catch (Exception e) {
+            log.warn("[INTERVIEW PRELOAD] 이전 면접 질문 이력 조회 실패, 중복 회피 없이 진행합니다: sessionId={}", session.getId(), e);
+            return List.of();
+        }
+    }
+
+    private List<QuestionCandidate> buildQuestionCandidates(
+            InterviewSession session, List<String> chunks, List<String> jdKeywords, List<String> priorQuestions
+    ) {
+        log.info("[INTERVIEW PRELOAD] 캐물지점 추출 시작: sessionId={}, chunkCount={}, jdKeywordCount={}, priorQuestionCount={}",
+                session.getId(), chunks.size(), jdKeywords.size(), priorQuestions.size());
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 입력값: sessionId={}, chunks={}, jdKeywords={}",
                 session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
         List<ProbeCandidateDraft> drafts = LlmCallRetrySupport.retry(
-                () -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+                () -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords, priorQuestions),
+                MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
         );
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",
                 session.getId(), drafts.size(), elapsedSeconds(startedAt));
