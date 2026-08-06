@@ -47,6 +47,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final InterviewSttResetPersister interviewSttResetPersister;
     private final PriorQaCache priorQaCache;
     private final JdOpenerContextCache jdOpenerContextCache;
+    private final PriorQuestionCache priorQuestionCache;
     private final InterviewReportGenerateUseCase interviewReportGenerateUseCase;
     private final InterviewReportFailureHandler interviewReportFailureHandler;
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
@@ -270,6 +271,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         InterviewSttResetPersister.PersistResult persisted = interviewSttResetPersister.persist(session, question, answer);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
+        priorQuestionCache.clear(session.getId());
 
         return new InterviewAnswerSubmitResult(persisted.answerId(), null, true, null, InterviewEndType.STT_RESET);
     }
@@ -357,6 +359,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType);
         priorQaCache.clear(session.getId());
         jdOpenerContextCache.clear(session.getId());
+        priorQuestionCache.clear(session.getId());
         if (termination.transcription() != null) {
             persistAnswerSegmentsSafely(session.getId(), question, command, termination.transcription()); // 마지막 면접자 멘트 문장 발화 시각 저장
         }
@@ -628,9 +631,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
 
     private String generateOpenerText(TestType axis, InterviewSession session) {
         JdOpenerContext context = jdOpenerContextCache.get(session.getId()).orElse(EMPTY_JD_OPENER_CONTEXT);
+        List<String> priorQuestions = priorQuestionCache.get(session.getId()).orElseGet(List::of);
         return retryAiCall(() -> questionTextGenerator.generateOpener(
                 axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
-                context.jdKeywords(), context.relatedPortfolioChunks()
+                context.jdKeywords(), context.relatedPortfolioChunks(), priorQuestions
         ));
     }
 

@@ -68,6 +68,8 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
               무시합니다.
             - 지원자가 이미 한 말이나 채용 공고(JD) 문구를 그대로 인용하지 않습니다. 소재만
               참고하고 질문 문장은 새로 만듭니다.
+            - [이전 면접에서 이미 물어본 질문]이 주어지면, 그 질문들과 같은 소재·같은 표현을 피해 다른 각도로
+              여는 질문을 만드세요. 항목(axis) 자체는 바꾸지 않습니다.
             - 실제 면접관이 대화하듯 묻는 자연스러운 구어체 한 문장으로 답합니다.
             - 한 번에 하나의 질문만 합니다.
 
@@ -111,9 +113,11 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
     @Override
     public String generateOpener(
             TestType axis, JobType jobType, Integer yearsOfExperience,
-            List<String> jdKeywords, List<String> relatedPortfolioChunks
+            List<String> jdKeywords, List<String> relatedPortfolioChunks, List<String> priorQuestions
     ) {
-        String userMessage = buildOpenerUserMessage(axis, jobType, yearsOfExperience, jdKeywords, relatedPortfolioChunks);
+        String userMessage = buildOpenerUserMessage(
+                axis, jobType, yearsOfExperience, jdKeywords, relatedPortfolioChunks, priorQuestions
+        );
 
         try {
             String content = chatClient.prompt()
@@ -131,9 +135,9 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
         }
     }
 
-    private String buildOpenerUserMessage(
+    static String buildOpenerUserMessage(
             TestType axis, JobType jobType, Integer yearsOfExperience,
-            List<String> jdKeywords, List<String> relatedPortfolioChunks
+            List<String> jdKeywords, List<String> relatedPortfolioChunks, List<String> priorQuestions
     ) {
         StringBuilder sb = new StringBuilder();
         sb.append("[여는 질문을 만들 항목] ").append(axis.getLabel()).append("\n");
@@ -146,6 +150,12 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
             sb.append("[관련 포트폴리오 내용]\n");
             for (String chunk : relatedPortfolioChunks) {
                 sb.append("- ").append(chunk).append("\n");
+            }
+        }
+        if (priorQuestions != null && !priorQuestions.isEmpty()) {
+            sb.append("[이전 면접에서 이미 물어본 질문]\n");
+            for (String question : priorQuestions) {
+                sb.append("- ").append(PromptQuoting.quoted(question)).append("\n");
             }
         }
         return sb.toString();

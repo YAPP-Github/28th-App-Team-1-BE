@@ -45,6 +45,9 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
               신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 최대 %d개까지만 반환하세요. [집중 프로젝트]와의 관련성과 신호 강도(strength)가 가장 강한 캐물지점 순으로
               고르세요. 포트폴리오 분량이 적어 그보다 적게 나올 수도 있지만, 개수를 채우려고 억지로 만들지는 마세요.
+            - [이전 면접에서 이미 물어본 질문]이 주어지면, 그 질문들이 다룬 지점은 피하고 아직 안 물어본 지점을
+              우선해서 고르세요. 다만 포트폴리오에 남은 지점이 부족하면 억지로 피하지 말고, 같은 소재라도 다른
+              각도로 파고드는 캐물지점을 만드세요.
 
             출력은 다른 설명 없이 JSON 배열 하나만 반환하세요. 각 원소는 다음 필드를 가집니다:
             axis(depth/boundary/connection/tradeoff/conflict/resilience 중 하나),
@@ -61,8 +64,10 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
     }
 
     @Override
-    public List<ProbeCandidateDraft> extract(String focusProject, List<String> portfolioChunks, List<String> jdKeywords) {
-        String userMessage = buildUserMessage(focusProject, portfolioChunks, jdKeywords);
+    public List<ProbeCandidateDraft> extract(
+            String focusProject, List<String> portfolioChunks, List<String> jdKeywords, List<String> priorQuestions
+    ) {
+        String userMessage = buildUserMessage(focusProject, portfolioChunks, jdKeywords, priorQuestions);
 
         try {
             List<ProbeCandidateLlmEntry> entries = chatClient.prompt()
@@ -78,7 +83,9 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
         }
     }
 
-    private String buildUserMessage(String focusProject, List<String> portfolioChunks, List<String> jdKeywords) {
+    static String buildUserMessage(
+            String focusProject, List<String> portfolioChunks, List<String> jdKeywords, List<String> priorQuestions
+    ) {
         StringBuilder sb = new StringBuilder();
         if (StringUtils.hasText(focusProject)) {
             sb.append("[집중 프로젝트]\n").append(focusProject).append("\n\n");
@@ -89,6 +96,12 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
         }
         if (jdKeywords != null && !jdKeywords.isEmpty()) {
             sb.append("\n[JD 키워드 (참고용)]\n").append(String.join(", ", jdKeywords)).append("\n");
+        }
+        if (priorQuestions != null && !priorQuestions.isEmpty()) {
+            sb.append("\n[이전 면접에서 이미 물어본 질문]\n");
+            for (String question : priorQuestions) {
+                sb.append("- ").append(PromptQuoting.quoted(question)).append("\n");
+            }
         }
         return sb.toString();
     }
