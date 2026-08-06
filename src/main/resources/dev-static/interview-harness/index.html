@@ -209,7 +209,7 @@
   </div>
 </div>
 
-<script src="/interview-harness/lame.min.js"></script>
+<script src="/mp4-muxer.js"></script>
 <script>
 (() => {
   "use strict";
@@ -613,7 +613,10 @@
       return;
     }
     state.recordedChunks = [];
-    state.mediaRecorder = new MediaRecorder(state.mediaStream);
+    // Safari는 audio/mp4를 진짜 AAC로 녹음하므로 최우선으로 고른다. Chrome은 audio/mp4를 지원한다고 답해도
+    // 실제로는 Opus-in-MP4라 서버(mp4a 샘플 엔트리 요구)가 반려하므로, 제출 시 encodeToM4a로 변환한다.
+    const mime = pickMime(["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]);
+    state.mediaRecorder = new MediaRecorder(state.mediaStream, mime ? { mimeType: mime } : undefined);
     state.mediaRecorder.ondataavailable = (ev) => {
       if (ev.data && ev.data.size > 0) state.recordedChunks.push(ev.data);
     };
@@ -645,35 +648,71 @@
     state.mediaRecorder.stop();
   });
 
-  // ---- mp3 인코딩 ----
-  function floatTo16BitPCM(float32Array) {
-    const out = new Int16Array(float32Array.length);
-    for (let i = 0; i < float32Array.length; i++) {
-      const s = Math.max(-1, Math.min(1, float32Array[i]));
-      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  // ---- m4a 인코딩 ----
+  function pickMime(cands) {
+    for (const c of cands) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
     }
-    return out;
+    return null;
   }
 
-  async function encodeToMp3(recordedBlob) {
-    const arrayBuffer = await recordedBlob.arrayBuffer();
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioCtx();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    const sampleRate = audioBuffer.sampleRate;
-    const samples = floatTo16BitPCM(audioBuffer.getChannelData(0));
-    const encoder = new lamejs.Mp3Encoder(1, sampleRate, 128);
-    const blockSize = 1152;
-    const chunks = [];
-    for (let i = 0; i < samples.length; i += blockSize) {
-      const chunk = samples.subarray(i, i + blockSize);
-      const enc = encoder.encodeBuffer(chunk);
-      if (enc.length > 0) chunks.push(enc);
+  // Chrome은 "audio/mp4"라고 답해도 Opus를 담는 경우가 있어, mp4 포함 여부만으로는 부족하고
+  // opus 코덱이 명시돼 있지 않은지까지 본다.
+  function isAacInMp4(mimeType) {
+    const type = (mimeType || "").toLowerCase();
+    return type.includes("mp4") && !type.includes("opus");
+  }
+
+  // 녹음본(webm/opus 등)을 m4a(AAC-in-MP4)로 변환한다. WebCodecs AudioEncoder(AAC) + mp4-muxer 조합이며,
+  // AAC 인코더 미지원 브라우저에서는 null을 반환한다.
+  async function encodeToM4a(recordedBlob) {
+    try {
+      if (!("AudioEncoder" in window) || !("AudioData" in window) || !window.Mp4Muxer) return null;
+
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      let audioBuffer;
+      try {
+        audioBuffer = await audioCtx.decodeAudioData(await recordedBlob.arrayBuffer());
+      } finally {
+        await audioCtx.close();
+      }
+
+      const numberOfChannels = audioBuffer.numberOfChannels;
+      const sampleRate = audioBuffer.sampleRate;
+      const numberOfFrames = audioBuffer.length;
+
+      const support = await AudioEncoder.isConfigSupported({ codec: "mp4a.40.2", numberOfChannels, sampleRate, bitrate: 128000 });
+      if (!support || !support.supported) return null;
+
+      const muxer = new Mp4Muxer.Muxer({
+        target: new Mp4Muxer.ArrayBufferTarget(),
+        audio: { codec: "aac", numberOfChannels, sampleRate },
+        fastStart: "in-memory",
+      });
+      let encErr = null;
+      const encoder = new AudioEncoder({
+        output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+        error: (e) => { encErr = e; },
+      });
+      encoder.configure({ codec: "mp4a.40.2", numberOfChannels, sampleRate, bitrate: 128000 });
+
+      // planar f32 PCM 구성: [ch0 전체 샘플][ch1 전체 샘플]...
+      const data = new Float32Array(numberOfChannels * numberOfFrames);
+      for (let ch = 0; ch < numberOfChannels; ch++) data.set(audioBuffer.getChannelData(ch), ch * numberOfFrames);
+      const audioData = new AudioData({ format: "f32-planar", sampleRate, numberOfFrames, numberOfChannels, timestamp: 0, data });
+      encoder.encode(audioData);
+      audioData.close();
+      await encoder.flush();
+      encoder.close();
+      if (encErr) throw encErr;
+
+      muxer.finalize();
+      return new Blob([muxer.target.buffer], { type: "audio/mp4" });
+    } catch (e) {
+      log("m4a 변환 실패: " + (e && e.message ? e.message : e), "err");
+      return null;
     }
-    const end = encoder.flush();
-    if (end.length > 0) chunks.push(end);
-    audioCtx.close();
-    return new Blob(chunks, { type: "audio/mp3" });
   }
 
   // ---- 답변 제출 ----
@@ -708,10 +747,19 @@
 
     try {
       if (hasRecording && endType !== "SKIP") {
-        const webmBlob = new Blob(state.recordedChunks, { type: "audio/webm" });
-        const mp3Blob = await encodeToMp3(webmBlob);
-        form.append("audio", mp3Blob, "answer.mp3");
-        submitStateEl.textContent = `인코딩 완료 (${(mp3Blob.size / 1024).toFixed(1)}KB), 제출 중...`;
+        let blob = new Blob(state.recordedChunks, { type: state.recordedChunks[0]?.type || "audio/webm" });
+        let isM4a = isAacInMp4(blob.type);
+        if (!isM4a) {
+          const m4a = await encodeToM4a(blob);
+          if (m4a) {
+            blob = m4a;
+            isM4a = true;
+          } else {
+            log("m4a 변환 불가(AAC 인코더 미지원) — 서버가 400으로 반려해요. Safari나 실기기로 테스트하세요.", "warn");
+          }
+        }
+        form.append("audio", blob, "answer." + (isM4a ? "m4a" : "webm"));
+        submitStateEl.textContent = `인코딩 완료 (${(blob.size / 1024).toFixed(1)}KB), 제출 중...`;
       } else {
         submitStateEl.textContent = "제출 중...";
       }
