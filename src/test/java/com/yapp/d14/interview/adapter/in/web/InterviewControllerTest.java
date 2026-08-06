@@ -108,7 +108,7 @@ class InterviewControllerTest {
         LocalDateTime interviewedAt = LocalDateTime.of(2026, 7, 2, 14, 20);
         InterviewReportListItem item = new InterviewReportListItem(
                 1024L, JobType.IOS, 2, interviewedAt, "portfolio.pdf", true,
-                "careers.example.com/jobs/1024", ReportStatus.READY, true
+                "careers.example.com/jobs/1024", ReportStatus.READY, true, "한 줄 요약입니다."
         );
         given(interviewReportListQueryUseCase.getReportList(userId)).willReturn(List.of(item));
 
@@ -122,7 +122,8 @@ class InterviewControllerTest {
                 .andExpect(jsonPath("$.data.reports[0].portfolioDeleted").value(true))
                 .andExpect(jsonPath("$.data.reports[0].jdUrl").value("careers.example.com/jobs/1024"))
                 .andExpect(jsonPath("$.data.reports[0].reportStatus").value("READY"))
-                .andExpect(jsonPath("$.data.reports[0].feedbackAvailable").value(true));
+                .andExpect(jsonPath("$.data.reports[0].feedbackAvailable").value(true))
+                .andExpect(jsonPath("$.data.reports[0].title").value("한 줄 요약입니다."));
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.yapp.d14.common.web.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -116,6 +117,7 @@ public interface PortfolioControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = PortfolioStatusHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "PROCESSING — 분석 중", value = """
                                             {
@@ -247,6 +249,7 @@ public interface PortfolioControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = PortfolioListHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "등록된 포트폴리오 없음(재업로드·삭제 가능 여부는 계정 단위로 여전히 내려감)", value = """
                                             {

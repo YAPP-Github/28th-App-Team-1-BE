@@ -19,11 +19,15 @@ public final class NextAxisSelector {
             boolean hasRedFlag,
             boolean isUnusuallySpecific
     ) {
-        if (hasRedFlag || isUnusuallySpecific) {
-            return currentAxis;
-        }
         InterviewAxisPlan currentPlan = findPlan(axisPlans, currentAxis);
         boolean budgetExhausted = currentPlan.getUsedCount() >= currentPlan.getBudget();
+
+        // 축별 질문 예산(budget)은 하드 상한이다. 레드플래그·유독 구체적인 답변이면 천장에 닿았어도
+        // 예산이 남아 있는 한 축을 유지해 한 번 더 캐묻지만, 예산을 소진하면 신호가 있어도 다음 축으로 넘긴다.
+        // 한 축을 무한정 파고들어 나머지 핵심 축을 못 캐고 종합점수 미산출(분석 부족)로 빠지는 걸 막기 위해서다.
+        if ((hasRedFlag || isUnusuallySpecific) && !budgetExhausted) {
+            return currentAxis;
+        }
         if (!ceilingReached && !budgetExhausted) {
             return currentAxis;
         }

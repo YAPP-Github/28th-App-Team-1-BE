@@ -8,7 +8,8 @@ import java.util.List;
 
 public record InterviewReportHttpResponse(
         @Schema(description = "채점 파이프라인 진행 상태 — GENERATING(채점 중) / READY(생성 완료) / INSUFFICIENT_ANALYSIS(분석 부족) / FAILED(생성 실패). " +
-                "레드플래그는 전체 보고서 단위가 아니라 각 카드의 cardRedFlagNotices로만 노출되며, headline 톤에도 반영된다")
+                "레드플래그는 전체 보고서 단위가 아니라 각 카드의 cardRedFlagNotices로만 노출되며, headline 톤에도 반영된다",
+                allowableValues = {"GENERATING", "READY", "INSUFFICIENT_ANALYSIS", "FAILED"})
         String status,
 
         @Schema(description = "한 줄 요약(헤드라인). GENERATING일 때는 null")
@@ -108,7 +109,8 @@ public record InterviewReportHttpResponse(
     }
 
     public record ScriptSegment(
-            @Schema(description = "발화 주체 — INTERVIEWER(면접관 대본) / INTERVIEWEE(면접자 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다")
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 대본) / INTERVIEWEE(면접자 대본). startIndex/endIndex가 questionText 기준인지 transcript 기준인지도 구분한다",
+                    allowableValues = {"INTERVIEWER", "INTERVIEWEE"})
             String role,
 
             @Schema(description = "문장 텍스트")
@@ -135,7 +137,8 @@ public record InterviewReportHttpResponse(
     }
 
     public record ScriptLine(
-            @Schema(description = "발화 주체 — INTERVIEWER(면접관 발화) / INTERVIEWEE(면접자 발화)")
+            @Schema(description = "발화 주체 — INTERVIEWER(면접관 발화) / INTERVIEWEE(면접자 발화)",
+                    allowableValues = {"INTERVIEWER", "INTERVIEWEE"})
             String role,
 
             @Schema(description = "문장 텍스트")
@@ -160,12 +163,14 @@ public record InterviewReportHttpResponse(
             @Schema(description = "대본(transcript) 문자열 기준 하이라이트 종료 인덱스(미포함)")
             int endIndex,
 
-            @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)")
+            @Schema(description = "하이라이트 톤 — GOOD(잘함) / IMPROVE(개선)",
+                    allowableValues = {"GOOD", "IMPROVE"})
             String tone,
 
             @Schema(description = "개선유형 — PROBE_WORTHY(파고들 여지 있음, 꼬리질문 노출) / OFF_INTENT(딴 답, 질문 의도 리마인드) / " +
                     "SHALLOW(짧고 얕음) / SUFFICIENT(충분함). 이 값으로 카드 하단 안내(꼬리질문/의도 리마인드/코칭 한 줄)를 결정한다. " +
-                    "followUpQuestions는 PROBE_WORTHY일 때만 채워진다")
+                    "followUpQuestions는 PROBE_WORTHY일 때만 채워진다",
+                    allowableValues = {"PROBE_WORTHY", "OFF_INTENT", "SHALLOW", "SUFFICIENT"})
             String reason,
 
             @Schema(description = "하이라이트 한 줄 제목(명사구). GOOD은 잘한 점, IMPROVE는 핵심 문제/개선점")
@@ -237,7 +242,8 @@ public record InterviewReportHttpResponse(
     }
 
     public record AttitudeRating(
-            @Schema(description = "태도 항목 코드 — GAZE(시선) / EXPRESSION(표정) / POSTURE(자세) / GESTURE(손동작) / VOICE(목소리)")
+            @Schema(description = "태도 항목 코드 — GAZE(시선) / EXPRESSION(표정) / POSTURE(자세) / GESTURE(손동작) / VOICE(목소리)",
+                    allowableValues = {"GAZE", "EXPRESSION", "POSTURE", "GESTURE", "VOICE"})
             String axis,
 
             @Schema(description = "4단계 척도 값(1~4).")

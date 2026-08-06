@@ -74,6 +74,34 @@ class InterviewReportListQueryServiceTest {
         assertThat(result).hasSize(2);
         assertThat(result.get(0).sessionId()).isEqualTo(2L);
         assertThat(result.get(1).sessionId()).isEqualTo(1L);
+        assertThat(result.get(0).title()).isEqualTo("headline");
+    }
+
+    @Test
+    void title에_report의_headline을_그대로_노출한다() {
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L))
+                .willReturn(Optional.of(Report.of(10L, 1L, 80.0, null, "한 줄 요약입니다.", null, ReportStatus.READY, target.getCreatedAt())));
+        given(feedbackShareExistsUseCase.existsForSession(1L)).willReturn(false);
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).title()).isEqualTo("한 줄 요약입니다.");
+    }
+
+    @Test
+    void headline이_null이면_title도_null이다() {
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L))
+                .willReturn(Optional.of(Report.of(10L, 1L, null, null, null, null, ReportStatus.FAILED, target.getCreatedAt())));
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).title()).isNull();
     }
 
     @Test
@@ -106,6 +134,21 @@ class InterviewReportListQueryServiceTest {
         assertThat(result.get(0).feedbackAvailable()).isTrue();
         assertThat(result.get(0).portfolioDeleted()).isFalse();
         verify(portfolioActiveCheckUseCase, never()).isActive(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void 레포트가_INSUFFICIENT_ANALYSIS여도_READY와_동일하게_feedbackAvailable이_true다() {
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L))
+                .willReturn(Optional.of(Report.of(10L, 1L, null, null, "headline", null, ReportStatus.INSUFFICIENT_ANALYSIS, target.getCreatedAt())));
+        given(feedbackShareExistsUseCase.existsForSession(1L)).willReturn(false);
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).reportStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
+        assertThat(result.get(0).feedbackAvailable()).isTrue();
     }
 
     @Test

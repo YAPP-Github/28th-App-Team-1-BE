@@ -7,7 +7,6 @@ import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.Report;
-import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.port.in.PortfolioActiveCheckUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,7 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
     private InterviewReportListItem toItem(InterviewSession session, Report report) {
         UUID portfolioId = session.getPortfolioId();
         boolean portfolioDeleted = portfolioId != null && !portfolioActiveCheckUseCase.isActive(portfolioId);
-        boolean feedbackAvailable = report.getStatus() == ReportStatus.READY
+        boolean feedbackAvailable = report.getStatus().isComplete()
                 && !feedbackShareExistsUseCase.existsForSession(session.getId());
 
         return new InterviewReportListItem(
@@ -52,7 +51,8 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
                 portfolioDeleted,
                 session.getJdUrl(),
                 report.getStatus(),
-                feedbackAvailable
+                feedbackAvailable,
+                report.getHeadline()
         );
     }
 

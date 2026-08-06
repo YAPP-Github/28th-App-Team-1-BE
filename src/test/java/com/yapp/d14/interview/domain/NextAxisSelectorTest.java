@@ -44,9 +44,10 @@ class NextAxisSelectorTest {
     }
 
     @Test
-    void 위험_신호가_있으면_천장_예산과_무관하게_현재_axis를_유지한다() {
+    void 위험_신호가_있으면_예산이_남은_동안은_천장에_닿아도_현재_axis를_유지한다() {
+        // budget=3, usedCount=2 → 예산이 남아 있으므로 천장에 닿아도 한 번 더 캐묻는다.
         List<InterviewAxisPlan> axisPlans = List.of(
-                plan(TestType.DEPTH, AxisTier.CORE, 3, 3, false),
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 2, false),
                 plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false)
         );
 
@@ -56,15 +57,42 @@ class NextAxisSelectorTest {
     }
 
     @Test
-    void 유독_구체적인_답변이면_천장_예산과_무관하게_현재_axis를_유지한다() {
+    void 유독_구체적인_답변이면_예산이_남은_동안은_천장에_닿아도_현재_axis를_유지한다() {
         List<InterviewAxisPlan> axisPlans = List.of(
-                plan(TestType.DEPTH, AxisTier.CORE, 3, 3, false),
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 2, false),
                 plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false)
         );
 
         TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, true, false, true);
 
         assertThat(next).isEqualTo(TestType.DEPTH);
+    }
+
+    @Test
+    void 위험_신호가_있어도_예산이_소진되면_다음_CORE_axis로_전환한다() {
+        // budget=3, usedCount=3 → 예산 소진(하드 상한). 신호가 있어도 더는 유지하지 않는다.
+        List<InterviewAxisPlan> axisPlans = List.of(
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 3, false),
+                plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false),
+                plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
+        );
+
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, true, false);
+
+        assertThat(next).isEqualTo(TestType.BOUNDARY);
+    }
+
+    @Test
+    void 유독_구체적인_답변이어도_예산이_소진되면_다음_CORE_axis로_전환한다() {
+        List<InterviewAxisPlan> axisPlans = List.of(
+                plan(TestType.DEPTH, AxisTier.CORE, 3, 3, false),
+                plan(TestType.BOUNDARY, AxisTier.CORE, 3, 0, false),
+                plan(TestType.TRADEOFF, AxisTier.CORE, 3, 0, false)
+        );
+
+        TestType next = NextAxisSelector.select(axisPlans, WEIGHTS, TestType.DEPTH, false, false, true);
+
+        assertThat(next).isEqualTo(TestType.BOUNDARY);
     }
 
     @Test

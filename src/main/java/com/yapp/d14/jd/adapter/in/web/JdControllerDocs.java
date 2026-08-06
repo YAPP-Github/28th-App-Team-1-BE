@@ -33,6 +33,7 @@ public interface JdControllerDocs {
                     responseCode = "200",
                     description = "요청 처리 완료 (크롤링 성공 여부는 data.valid로 확인)",
                     content = @Content(
+                            mediaType = "application/json",
                             schema = @Schema(implementation = JdValidateHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "크롤링 성공", value = """

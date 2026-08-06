@@ -6,7 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 public record JdValidateHttpResponse(
         @Schema(description = "JD 크롤링 및 검증 성공 여부") boolean valid,
-        @Schema(description = "실패 사유 코드 (성공 시 null)", example = "CRAWLING_FAILED") String reason,
+        @Schema(description = "실패 사유 코드 (성공 시 null)", example = "CRAWLING_FAILED",
+                allowableValues = {"CRAWLING_FAILED", "CONTENT_TOO_SHORT", "EXTRACTION_FAILED"}) String reason,
         @Schema(description = "사용자 안내 메시지 (성공 시 null)") String message
 ) {
 

@@ -49,6 +49,7 @@ public interface InterviewReportControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewReportHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "로딩 중", value = """
                                             {

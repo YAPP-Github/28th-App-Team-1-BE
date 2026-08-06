@@ -102,8 +102,10 @@ class InterviewSessionPersisterTest {
                 .containsExactlyInAnyOrder(TestType.values());
         assertThat(plans).filteredOn(p -> p.getTestType() == TestType.TRADEOFF)
                 .extracting(InterviewAxisPlan::getTier).containsExactly(AxisTier.CORE);
-        assertThat(plans).filteredOn(p -> p.getTestType() == TestType.CONNECTION)
+        assertThat(plans).filteredOn(p -> p.getTestType() == TestType.BOUNDARY)
                 .extracting(InterviewAxisPlan::getTier).containsExactly(AxisTier.SUPPORT);
+        assertThat(plans).filteredOn(p -> p.getTestType() == TestType.CONNECTION)
+                .extracting(InterviewAxisPlan::getTier).containsExactly(AxisTier.SKIP);
         assertThat(plans).filteredOn(p -> p.getTestType() == TestType.RESILIENCE)
                 .extracting(InterviewAxisPlan::getTier).containsExactly(AxisTier.SKIP);
     }

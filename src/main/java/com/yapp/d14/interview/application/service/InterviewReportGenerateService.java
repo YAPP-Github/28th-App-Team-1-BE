@@ -128,7 +128,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
                     CompositeScoreCalculator.compute(cappedAxisEvaluations, weights, coreAxes, knockoutTriggered);
             boolean severeRedFlagPresent = redFlagVerdicts.stream().anyMatch(v -> v.type().isExposed());
 
-            Report report = buildReport(sessionId, result, severeRedFlagPresent, cappedAxisEvaluations);
+            Report report = buildReport(sessionId, result, severeRedFlagPresent, cappedAxisEvaluations, coreAxes);
             List<RedFlag> redFlags = toRedFlags(sessionId, redFlagVerdicts, turns);
             List<ReportCard> reportCards = generateReportCards(sessionId, cappedAxisEvaluations, turns);
 
@@ -310,32 +310,60 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
             Long sessionId,
             Optional<CompositeScoreCalculator.Result> result,
             boolean severeRedFlagPresent,
-            List<AxisEvaluation> axisEvaluations
+            List<AxisEvaluation> axisEvaluations,
+            Set<TestType> coreAxes
     ) {
-        if (result.isEmpty()) {
+        // 채점된 축 자체가 없으면 헤드라인을 만들 근거가 없으므로 고정 문구로 처리한다.
+        if (axisEvaluations.isEmpty()) {
             return Report.create(
                     sessionId, null, null, INSUFFICIENT_ANALYSIS_HEADLINE, HeadlineBranch.INSUFFICIENT_ANALYSIS, ReportStatus.INSUFFICIENT_ANALYSIS
             );
         }
 
-        HeadlineBranch branch = severeRedFlagPresent ? HeadlineBranch.SEVERE_RED_FLAG : HeadlineBranch.NORMAL;
-        String headline = generateHeadline(sessionId, severeRedFlagPresent, axisEvaluations);
+        int totalCoreAxisCount = coreAxes.size();
+        int coveredCoreAxisCount = (int) axisEvaluations.stream()
+                .map(AxisEvaluation::getTestType)
+                .filter(coreAxes::contains)
+                .distinct()
+                .count();
+        String headline = generateHeadline(
+                sessionId, severeRedFlagPresent, axisEvaluations, coveredCoreAxisCount, totalCoreAxisCount
+        );
 
+        // 축 평가는 있으나 종합점수 산출 불가(CORE 커버리지 미달/weightSum=0). 점수·등급은 없지만
+        // 고정 문구 대신 실제 축 근거 기반 헤드라인을 쓴다. status·branch는 현행대로 미흡 유지(단순화는 별도 검토).
+        if (result.isEmpty()) {
+            return Report.create(
+                    sessionId, null, null, headline, HeadlineBranch.INSUFFICIENT_ANALYSIS, ReportStatus.INSUFFICIENT_ANALYSIS
+            );
+        }
+
+        HeadlineBranch branch = severeRedFlagPresent ? HeadlineBranch.SEVERE_RED_FLAG : HeadlineBranch.NORMAL;
         return Report.create(
                 sessionId, result.get().compositeScore(), result.get().grade(), headline, branch, ReportStatus.READY
         );
     }
 
-    private String generateHeadline(Long sessionId, boolean severeRedFlagPresent, List<AxisEvaluation> axisEvaluations) {
+    private String generateHeadline(
+            Long sessionId,
+            boolean severeRedFlagPresent,
+            List<AxisEvaluation> axisEvaluations,
+            int coveredCoreAxisCount,
+            int totalCoreAxisCount
+    ) {
         List<HeadlineContext.AxisTopic> axisTopics = axisEvaluations.stream()
                 .map(axisEvaluation -> new HeadlineContext.AxisTopic(
                         axisEvaluation.getTestType(), axisEvaluation.getRationale(), axisEvaluation.getResolutionLevel()
                 ))
                 .toList();
 
-        log.info("[INTERVIEW REPORT] 한 줄 요약 생성 시작: sessionId={}, severeRedFlagPresent={}", sessionId, severeRedFlagPresent);
+        HeadlineContext context = new HeadlineContext(
+                severeRedFlagPresent, axisTopics, coveredCoreAxisCount, totalCoreAxisCount
+        );
+        log.info("[INTERVIEW REPORT] 한 줄 요약 생성 시작: sessionId={}, severeRedFlagPresent={}, coverageIncomplete={}",
+                sessionId, severeRedFlagPresent, context.coverageIncomplete());
         String headline = LlmCallRetrySupport.retry(
-                () -> reportHeadlineGenerator.generate(new HeadlineContext(severeRedFlagPresent, axisTopics)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+                () -> reportHeadlineGenerator.generate(context), MAX_LLM_RETRIES, "INTERVIEW REPORT"
         );
         log.info("[INTERVIEW REPORT] 한 줄 요약 생성 완료: sessionId={}", sessionId);
         return headline;

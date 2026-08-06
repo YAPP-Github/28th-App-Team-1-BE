@@ -35,7 +35,9 @@ public interface FeedbackShareControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "생성 성공",
-                    content = @Content(schema = @Schema(implementation = FeedbackShareCreateHttpResponse.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = FeedbackShareCreateHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -93,7 +95,9 @@ public interface FeedbackShareControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "조회 성공",
-                    content = @Content(schema = @Schema(implementation = FeedbackShareStatusHttpResponse.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = FeedbackShareStatusHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -121,7 +125,8 @@ public interface FeedbackShareControllerDocs {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "전환 성공(응답 본문 없음)"
+                    description = "전환 성공(data는 null인 공통 응답 봉투)",
+                    content = @Content(mediaType = "application/json")
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",

@@ -33,7 +33,9 @@ public interface GuestFeedbackControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "진입 성공(게이트 상태 포함)",
-                    content = @Content(schema = @Schema(implementation = GuestFeedbackEntryHttpResponse.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = GuestFeedbackEntryHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -74,7 +76,9 @@ public interface GuestFeedbackControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "201",
                     description = "제출 성공",
-                    content = @Content(schema = @Schema(implementation = GuestFeedbackSubmitHttpResponse.class))
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = GuestFeedbackSubmitHttpResponse.class))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",

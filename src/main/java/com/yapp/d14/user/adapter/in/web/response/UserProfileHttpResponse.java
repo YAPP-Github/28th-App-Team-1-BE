@@ -17,10 +17,12 @@ public record UserProfileHttpResponse(
         @Schema(description = "이메일. 소셜 계정에서 미제공 시 null", example = "jaewon@kakao.com", nullable = true)
         String email,
 
-        @Schema(description = "소셜 로그인 제공자 — KAKAO / APPLE", example = "KAKAO")
+        @Schema(description = "소셜 로그인 제공자 — KAKAO / APPLE", example = "KAKAO",
+                allowableValues = {"KAKAO", "APPLE"})
         String provider,
 
-        @Schema(description = "직무 Enum 값", example = "BACKEND")
+        @Schema(description = "직무 Enum 값", example = "BACKEND",
+                allowableValues = {"BACKEND", "FRONTEND", "IOS", "ANDROID", "DATA_ENGINEER", "INFRA_SRE"})
         String jobRole,
 
         @Schema(description = "직무 한글 표시명", example = "백엔드")
