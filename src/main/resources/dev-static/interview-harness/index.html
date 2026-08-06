@@ -569,6 +569,10 @@
   }
 
   async function playAudioAndTrackLatency({ base64, questionId, label }) {
+    // 턴마다 초기화하지 않으면, 이번 턴 재생이 끝나기 전에 제출할 때 이전 턴의 endSec이 남아
+    // start > end가 되어 서버가 INVALID_PLAYBACK_RANGE로 반려한다.
+    state.currentQuestionAudioStartSec = null;
+    state.currentQuestionAudioEndSec = null;
     let src;
     if (base64) {
       src = "data:audio/mp3;base64," + base64;
@@ -589,13 +593,12 @@
         recordLatency(label, playMs - state.pendingSubmitMs);
         state.pendingSubmitMs = null;
       }
-      questionAudioEl.removeEventListener("playing", onPlaying);
     };
-    questionAudioEl.addEventListener("playing", onPlaying);
-    questionAudioEl.addEventListener("ended", function onEnded() {
+    // 재생이 끝나지 않은 채 다음 턴으로 넘어가면 리스너가 계속 쌓이므로 once로 건다.
+    questionAudioEl.addEventListener("playing", onPlaying, { once: true });
+    questionAudioEl.addEventListener("ended", () => {
       state.currentQuestionAudioEndSec = nowSec();
-      questionAudioEl.removeEventListener("ended", onEnded);
-    });
+    }, { once: true });
 
     try {
       await questionAudioEl.play();
