@@ -226,6 +226,7 @@ public interface InterviewControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewSessionStatusHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "준비 중", value = """
                                             {
@@ -306,6 +307,7 @@ public interface InterviewControllerDocs {
                     description = "제출 성공 — 다음 질문 또는 세션 종료 결과 반환",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewAnswerSubmitHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "다음 질문 반환", value = """
                                             {

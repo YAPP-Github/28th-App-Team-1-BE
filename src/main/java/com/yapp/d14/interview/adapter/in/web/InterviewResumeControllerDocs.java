@@ -47,6 +47,7 @@ public interface InterviewResumeControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewSessionResumeHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "재개 가능", value = """
                                             {
@@ -134,6 +135,7 @@ public interface InterviewResumeControllerDocs {
                     description = "재개 확정 성공 — 다음 질문 또는 hold 만료 레이스로 인한 세션 종료",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewSessionResumeConfirmHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "다음 질문 반환", value = """
                                             {
@@ -241,6 +243,7 @@ public interface InterviewResumeControllerDocs {
                     description = "중단 처리 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewAbandonHttpResponse.class),
                             examples = {
                                     @ExampleObject(name = "네트워크 끊김 — 이용권 환급", value = """
                                             {

@@ -8,7 +8,8 @@ import java.util.List;
 public record GuestFeedbackEntryHttpResponse(
         @Schema(
                 description = "게이트 판정 — OPEN(정상) / PRIVATE(비공개·무효) / EXPIRED(영상 만료) / FULL(정원 마감) / ALREADY_SUBMITTED(이 기기 제출 완료)",
-                example = "OPEN"
+                example = "OPEN",
+                allowableValues = {"OPEN", "PRIVATE", "EXPIRED", "FULL", "ALREADY_SUBMITTED"}
         )
         String gate,
 
@@ -26,7 +27,8 @@ public record GuestFeedbackEntryHttpResponse(
 ) {
 
     public record Axis(
-            @Schema(description = "항목 코드", example = "GAZE")
+            @Schema(description = "항목 코드", example = "GAZE",
+                    allowableValues = {"GAZE", "EXPRESSION", "POSTURE", "GESTURE", "VOICE"})
             String code,
 
             @Schema(description = "항목 표시명", example = "시선")

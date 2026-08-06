@@ -2,6 +2,7 @@ package com.yapp.d14.feedback.adapter.in.web.response;
 
 import com.yapp.d14.feedback.application.port.in.result.FeedbackShareStatusResult;
 import com.yapp.d14.feedback.domain.AttitudeAxis;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -11,10 +12,13 @@ public record FeedbackShareStatusHttpResponse(
         @Schema(description = "공유 토큰. 클라이언트가 이 토큰으로 공유 딥링크를 조립한다.")
         String token,
 
-        @Schema(description = "링크 상태 — ACTIVE(활성) / INVALIDATED(무효) / PRIVATE(비공개)", example = "ACTIVE")
+        @Schema(description = "링크 상태 — ACTIVE(활성) / INVALIDATED(무효) / PRIVATE(비공개)", example = "ACTIVE",
+                allowableValues = {"ACTIVE", "INVALIDATED", "PRIVATE"})
         String status,
 
-        @Schema(description = "지정된 태도 항목", example = "[\"GAZE\", \"EXPRESSION\"]")
+        @ArraySchema(
+                arraySchema = @Schema(description = "지정된 태도 항목", example = "[\"GAZE\", \"EXPRESSION\"]"),
+                schema = @Schema(allowableValues = {"GAZE", "EXPRESSION", "POSTURE", "GESTURE", "VOICE"}))
         List<String> axes,
 
         @Schema(description = "제출한 지인 수(참고치, 최대 4)", example = "2")

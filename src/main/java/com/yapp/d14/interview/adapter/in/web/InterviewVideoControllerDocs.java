@@ -8,6 +8,7 @@ import com.yapp.d14.interview.adapter.in.web.response.InterviewVideoUploadUrlHtt
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +37,7 @@ public interface InterviewVideoControllerDocs {
                     description = "발급 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewVideoUploadUrlHttpResponse.class),
                             examples = @ExampleObject(value = """
                                     {
                                       "success": true,
@@ -125,6 +127,7 @@ public interface InterviewVideoControllerDocs {
                     description = "조회 성공",
                     content = @Content(
                             mediaType = "application/json",
+                            schema = @Schema(implementation = InterviewVideoExpiryHttpResponse.class),
                             examples = @ExampleObject(value = """
                                     {
                                       "success": true,
