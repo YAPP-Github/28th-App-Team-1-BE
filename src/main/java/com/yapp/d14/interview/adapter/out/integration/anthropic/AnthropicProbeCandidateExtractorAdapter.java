@@ -100,7 +100,7 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
         if (priorQuestions != null && !priorQuestions.isEmpty()) {
             sb.append("\n[이전 면접에서 이미 물어본 질문]\n");
             for (String question : priorQuestions) {
-                sb.append("- ").append(question).append("\n");
+                sb.append("- ").append(PromptQuoting.quoted(question)).append("\n");
             }
         }
         return sb.toString();
