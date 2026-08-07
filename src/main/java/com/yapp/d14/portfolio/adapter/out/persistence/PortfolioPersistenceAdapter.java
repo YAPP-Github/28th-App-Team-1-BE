@@ -35,7 +35,12 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
 
     @Override
     public boolean existsActiveByUserId(UUID userId) {
-        return portfolioJpaRepository.existsByUserIdAndDeletedFalse(userId);
+        return portfolioJpaRepository.existsByUserIdAndDeletedFalseAndStatus(userId, PortfolioStatus.READY);
+    }
+
+    @Override
+    public boolean existsProcessingByUserId(UUID userId) {
+        return portfolioJpaRepository.existsByUserIdAndDeletedFalseAndStatus(userId, PortfolioStatus.PROCESSING);
     }
 
     @Override

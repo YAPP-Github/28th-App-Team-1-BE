@@ -20,7 +20,7 @@ interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID>
 
     List<PortfolioJpaEntity> findAllByUserIdAndDeletedFalse(UUID userId);
 
-    boolean existsByUserIdAndDeletedFalse(UUID userId);
+    boolean existsByUserIdAndDeletedFalseAndStatus(UUID userId, PortfolioStatus status);
 
     boolean existsByUserIdAndStatus(UUID userId, PortfolioStatus status);
 
