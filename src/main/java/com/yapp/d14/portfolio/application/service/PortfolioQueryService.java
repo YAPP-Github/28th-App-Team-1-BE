@@ -72,6 +72,7 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
         }
         return portfolioRepository.findLatestByUserId(userId)
                 .filter(Portfolio::isFailed)
+                .filter(portfolio -> !portfolio.isDeleted())
                 .map(List::of)
                 .orElseGet(List::of);
     }

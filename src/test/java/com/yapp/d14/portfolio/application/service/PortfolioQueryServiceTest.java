@@ -172,6 +172,17 @@ class PortfolioQueryServiceTest {
     }
 
     @Test
+    void 마지막_시도가_실패였어도_이미_삭제됐으면_노출하지_않는다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.of(deletedFailedPortfolio()));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).isEmpty();
+    }
+
+    @Test
     void 포트폴리오_이력이_아예_없으면_빈_목록이다() {
         given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
         given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.empty());
@@ -198,6 +209,14 @@ class PortfolioQueryServiceTest {
                 UUID.randomUUID(), userId, "broken.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
                 PortfolioStatus.FAILED_FILE, "파일이 손상되었어요.", LocalDateTime.now().minusMinutes(10), null,
                 false, false, null
+        );
+    }
+
+    private Portfolio deletedFailedPortfolio() {
+        return Portfolio.of(
+                UUID.randomUUID(), userId, "broken.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.FAILED_FILE, "파일이 손상되었어요.", LocalDateTime.now().minusMinutes(10), null,
+                false, true, LocalDateTime.now()
         );
     }
 
