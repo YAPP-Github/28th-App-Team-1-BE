@@ -26,6 +26,7 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
     private final PortfolioFileUploader portfolioFileUploader;
     private final PdfTextExtractor pdfTextExtractor;
     private final PortfolioEmbeddingStore portfolioEmbeddingStore;
+    private final PortfolioCompletionPersister portfolioCompletionPersister;
 
     @Override
     @Async("portfolioTaskExecutor")
@@ -47,14 +48,11 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             return;
         }
 
-        if (!isStillProcessing(portfolio.getId())) {
+        if (!portfolioCompletionPersister.completeIfStillProcessing(portfolio.getId())) {
             log.warn("[PORTFOLIO PROCESS] 처리 시간 초과로 이미 종료됨, 완료 처리를 생략하고 리소스를 정리함: portfolioId={}", portfolio.getId());
             portfolioEmbeddingStore.deleteByPortfolioId(portfolio.getId());
             portfolioFileUploader.delete(portfolio.getS3Key());
-            return;
         }
-        portfolio.ready();
-        portfolioRepository.save(portfolio);
     }
 
     private boolean uploadToS3(Portfolio portfolio, byte[] fileContent) {

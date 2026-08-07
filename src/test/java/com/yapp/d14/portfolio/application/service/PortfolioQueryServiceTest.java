@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -49,6 +50,9 @@ class PortfolioQueryServiceTest {
                 UUID.randomUUID(), userId, "resume.pdf", 1024, 5,
                 "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
         );
+        // 타임아웃이 아닌 경우 핸들러는 넘겨받은 포트폴리오를 그대로 돌려준다.
+        lenient().when(portfolioProcessingTimeoutHandler.failAndCleanup(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

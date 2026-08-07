@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,6 +46,9 @@ class PortfolioProcessServiceTest {
     @Mock
     private PortfolioEmbeddingStore portfolioEmbeddingStore;
 
+    @Mock
+    private PortfolioCompletionPersister portfolioCompletionPersister;
+
     @InjectMocks
     private PortfolioProcessService portfolioProcessService;
 
@@ -60,6 +64,8 @@ class PortfolioProcessServiceTest {
                 UUID.randomUUID(), userId, "resume.pdf", fileContent.length, 5,
                 "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
         );
+        // 완료 전환은 락을 잡는 PortfolioCompletionPersister가 전담한다. 기본은 "아직 PROCESSING이라 완료 성공".
+        lenient().when(portfolioCompletionPersister.completeIfStillProcessing(any())).thenReturn(true);
     }
 
     @Test
@@ -83,7 +89,7 @@ class PortfolioProcessServiceTest {
 
         portfolioProcessService.process(userId, portfolio.getId(), fileContent);
 
-        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.READY);
+        verify(portfolioCompletionPersister).completeIfStillProcessing(portfolio.getId());
         verify(portfolioFileUploader, times(2)).upload(any(), any(), any());
     }
 
@@ -164,7 +170,7 @@ class PortfolioProcessServiceTest {
 
         portfolioProcessService.process(userId, portfolio.getId(), fileContent);
 
-        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.READY);
+        verify(portfolioCompletionPersister).completeIfStillProcessing(portfolio.getId());
         verify(portfolioEmbeddingStore, times(2)).save(any(), any(), any(), any());
     }
 
@@ -203,43 +209,24 @@ class PortfolioProcessServiceTest {
     }
 
     @Test
-    void 임베딩까지_성공하면_READY로_전환한다() {
+    void 임베딩까지_성공하면_완료_전환을_위임한다() {
         String extractedText = VALID_EXTRACTED_TEXT;
         given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
         given(pdfTextExtractor.extractText(fileContent)).willReturn(extractedText);
 
         portfolioProcessService.process(userId, portfolio.getId(), fileContent);
 
-        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.READY);
         verify(portfolioEmbeddingStore).save(portfolio.getId(), userId, portfolio.getFileName(), extractedText);
-        verify(portfolioRepository).save(portfolio);
+        verify(portfolioCompletionPersister).completeIfStillProcessing(portfolio.getId());
         verify(portfolioFileUploader, never()).delete(any());
         verify(portfolioEmbeddingStore, never()).deleteByPortfolioId(any());
     }
 
     @Test
-    void 완료_저장_직전_처리시간_초과로_이미_종료됐으면_READY로_덮어쓰지_않고_S3와_임베딩을_정리한다() {
-        Portfolio timedOut = failedSystemCopyOf(portfolio);
-        given(portfolioRepository.findById(portfolio.getId()))
-                .willReturn(Optional.of(portfolio))
-                .willReturn(Optional.of(timedOut));
+    void 완료_전환이_거부되면_READY로_덮어쓰지_않고_S3와_임베딩을_정리한다() {
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
         given(pdfTextExtractor.extractText(fileContent)).willReturn(VALID_EXTRACTED_TEXT);
-
-        portfolioProcessService.process(userId, portfolio.getId(), fileContent);
-
-        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.PROCESSING);
-        verify(portfolioRepository, never()).save(any());
-        verify(portfolioEmbeddingStore).deleteByPortfolioId(portfolio.getId());
-        verify(portfolioFileUploader).delete(portfolio.getS3Key());
-    }
-
-    @Test
-    void 완료_저장_직전_사용자가_삭제했으면_READY로_덮어쓰지_않고_S3와_임베딩을_정리한다() {
-        Portfolio deleted = deletedCopyOf(portfolio);
-        given(portfolioRepository.findById(portfolio.getId()))
-                .willReturn(Optional.of(portfolio))
-                .willReturn(Optional.of(deleted));
-        given(pdfTextExtractor.extractText(fileContent)).willReturn(VALID_EXTRACTED_TEXT);
+        given(portfolioCompletionPersister.completeIfStillProcessing(portfolio.getId())).willReturn(false);
 
         portfolioProcessService.process(userId, portfolio.getId(), fileContent);
 
@@ -258,12 +245,4 @@ class PortfolioProcessServiceTest {
         );
     }
 
-    private Portfolio deletedCopyOf(Portfolio original) {
-        return Portfolio.of(
-                original.getId(), original.getUserId(), original.getFileName(), original.getFileSize(),
-                original.getPageCount(), original.getS3Key(), PortfolioStatus.PROCESSING,
-                null, original.getCreatedAt(), null,
-                original.isReplacement(), true, LocalDateTime.now()
-        );
-    }
 }

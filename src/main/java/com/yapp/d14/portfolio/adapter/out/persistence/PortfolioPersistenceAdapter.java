@@ -68,6 +68,11 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public Optional<Portfolio> findByIdForUpdate(UUID id) {
+        return portfolioJpaRepository.findByIdForUpdate(id).map(PortfolioJpaEntity::toDomain);
+    }
+
+    @Override
     public List<Portfolio> findAllActiveByUserId(UUID userId) {
         return portfolioJpaRepository.findAllByUserIdAndDeletedFalseAndStatusIn(
                 userId, List.of(PortfolioStatus.PROCESSING, PortfolioStatus.READY)

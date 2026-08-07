@@ -35,6 +35,10 @@ public interface PortfolioRepository {
 
     Optional<Portfolio> findById(UUID id);
 
+    // 처리 완료(READY)와 처리 타임아웃(FAILED_SYSTEM) 전환이 같은 행을 두고 경쟁하므로,
+    // 두 경로 모두 이 락으로 읽고 상태를 재확인한 뒤 저장한다.
+    Optional<Portfolio> findByIdForUpdate(UUID id);
+
     List<Portfolio> findAllActiveByUserId(UUID userId);
 
     Optional<Portfolio> findLatestByUserId(UUID userId);

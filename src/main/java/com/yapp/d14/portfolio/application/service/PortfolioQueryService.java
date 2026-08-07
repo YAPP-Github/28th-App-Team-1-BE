@@ -39,16 +39,16 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     @Transactional
     public PortfolioStatusResult getStatus(UUID userId, UUID portfolioId) {
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
-        portfolioProcessingTimeoutHandler.failAndCleanup(portfolio);
+        Portfolio current = portfolioProcessingTimeoutHandler.failAndCleanup(portfolio);
 
-        return new PortfolioStatusResult(portfolio.getId(), portfolio.getStatus(), portfolio.getMessage(), portfolio.getFileName());
+        return new PortfolioStatusResult(current.getId(), current.getStatus(), current.getMessage(), current.getFileName());
     }
 
     @Override
     @Transactional
     public PortfolioListResult getList(UUID userId) {
         List<PortfolioSummary> summaries = visiblePortfolios(userId).stream()
-                .peek(portfolioProcessingTimeoutHandler::failAndCleanup)
+                .map(portfolioProcessingTimeoutHandler::failAndCleanup)
                 .map(this::toSummary)
                 .toList();
 

@@ -131,15 +131,23 @@ public class Portfolio {
         return status == PortfolioStatus.FAILED_FILE || status == PortfolioStatus.FAILED_SYSTEM;
     }
 
+    // InterviewSession.isPreloadTimedOut()과 동일한 패턴 — 상태를 바꾸지 않는 순수 판별만 한다.
+    // 락 없이 미리 걸러내는 용도이고, 실제 전환은 행을 잠근 뒤 failIfProcessingTimedOut()으로 다시 판정한다.
+    public boolean isProcessingTimedOut() {
+        return status == PortfolioStatus.PROCESSING
+                && !createdAt.plus(PROCESSING_TIMEOUT).isAfter(LocalDateTime.now());
+    }
+
     public boolean failIfProcessingTimedOut() {
-        if (status != PortfolioStatus.PROCESSING) {
-            return false;
-        }
-        if (createdAt.plus(PROCESSING_TIMEOUT).isAfter(LocalDateTime.now())) {
+        if (!isProcessingTimedOut()) {
             return false;
         }
         failSystem("처리 시간이 초과되었어요. 다시 시도해 주세요.");
         return true;
+    }
+
+    public boolean isProcessing() {
+        return status == PortfolioStatus.PROCESSING;
     }
 
     // 완료(READY)까지 간 포트폴리오를 지울 때만 월 1회 삭제 기회를 소진한다.
