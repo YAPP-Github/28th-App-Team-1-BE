@@ -12,10 +12,13 @@ import com.yapp.d14.portfolio.exception.PortfolioException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -53,6 +56,17 @@ class PortfolioDeleteServiceTest {
         portfolio = Portfolio.create(
                 UUID.randomUUID(), userId, "resume.pdf", 1024, 5,
                 "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
+        );
+    }
+
+    private Portfolio portfolioWith(PortfolioStatus status) {
+        LocalDateTime now = LocalDateTime.now();
+        return Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 1024L, 5,
+                "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()),
+                status, "메시지", now,
+                status == PortfolioStatus.READY ? now : null,
+                false, false, null
         );
     }
 
@@ -98,11 +112,12 @@ class PortfolioDeleteServiceTest {
     }
 
     @Test
-    void 이번달_삭제_기회를_이미_썼으면_삭제하지_않는다() {
-        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+    void 이번달_삭제_기회를_이미_썼으면_완료된_포트폴리오를_삭제하지_않는다() {
+        Portfolio ready = portfolioWith(PortfolioStatus.READY);
+        given(portfolioRepository.findById(ready.getId())).willReturn(Optional.of(ready));
         given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(true);
 
-        assertThatThrownBy(() -> portfolioDeleteService.delete(userId, portfolio.getId()))
+        assertThatThrownBy(() -> portfolioDeleteService.delete(userId, ready.getId()))
                 .isInstanceOf(PortfolioException.class)
                 .extracting(e -> ((PortfolioException) e).getErrorCode())
                 .isEqualTo(PortfolioErrorCode.DELETE_LIMIT_EXCEEDED);
@@ -113,14 +128,44 @@ class PortfolioDeleteServiceTest {
 
     @Test
     void 삭제_가능_여부는_재업로드_이력과_무관하게_삭제_이력만_본다() {
-        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        Portfolio ready = portfolioWith(PortfolioStatus.READY);
+        given(portfolioRepository.findById(ready.getId())).willReturn(Optional.of(ready));
         given(portfolioRepository.existsDeletionSince(any(), any())).willReturn(false);
+        given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PortfolioDeleteResult result = portfolioDeleteService.delete(userId, ready.getId());
+
+        assertThat(result.portfolioId()).isEqualTo(ready.getId());
+        assertThat(ready.isDeleted()).isTrue();
+        verify(portfolioRepository).save(ready);
+    }
+
+    @Test
+    void 업로드_중_취소는_삭제_기회를_이미_썼어도_허용하고_기회를_소진하지_않는다() {
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
         given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         PortfolioDeleteResult result = portfolioDeleteService.delete(userId, portfolio.getId());
 
         assertThat(result.portfolioId()).isEqualTo(portfolio.getId());
-        assertThat(portfolio.isDeleted()).isTrue();
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.CANCELLED);
+        verify(portfolioRepository, never()).existsDeletionSince(any(), any());
         verify(portfolioRepository).save(portfolio);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PortfolioStatus.class, names = {"FAILED_FILE", "FAILED_SYSTEM"})
+    void 실패한_포트폴리오_삭제는_삭제_기회를_이미_썼어도_허용하고_기회를_소진하지_않는다(PortfolioStatus status) {
+        Portfolio failed = portfolioWith(status);
+        given(portfolioRepository.findById(failed.getId())).willReturn(Optional.of(failed));
+        given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        PortfolioDeleteResult result = portfolioDeleteService.delete(userId, failed.getId());
+
+        assertThat(result.portfolioId()).isEqualTo(failed.getId());
+        assertThat(failed.isDeleted()).isTrue();
+        assertThat(failed.getStatus()).isEqualTo(status);
+        verify(portfolioRepository, never()).existsDeletionSince(any(), any());
+        verify(portfolioRepository).save(failed);
     }
 }

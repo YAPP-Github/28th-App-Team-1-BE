@@ -37,7 +37,8 @@ class PortfolioDeleteService implements PortfolioDeleteUseCase {
         if (interviewSessionInProgressCheckUseCase.existsInProgress(portfolioId)) {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW);
         }
-        if (portfolioRepository.existsDeletionSince(userId, PortfolioReplacementPolicy.currentMonthStart())) {
+        if (portfolio.countsTowardDeletionLimit()
+                && portfolioRepository.existsDeletionSince(userId, PortfolioReplacementPolicy.currentMonthStart())) {
             throw new PortfolioException(PortfolioErrorCode.DELETE_LIMIT_EXCEEDED);
         }
 

@@ -22,11 +22,13 @@ interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID>
 
     boolean existsByUserIdAndDeletedFalse(UUID userId);
 
-    boolean existsByUserId(UUID userId);
+    boolean existsByUserIdAndStatus(UUID userId, PortfolioStatus status);
 
     boolean existsByUserIdAndReplacementTrueAndStatusAndUploadedAtGreaterThanEqual(
             UUID userId, PortfolioStatus status, LocalDateTime since
     );
 
-    boolean existsByUserIdAndDeletedTrueAndDeletedAtGreaterThanEqual(UUID userId, LocalDateTime since);
+    boolean existsByUserIdAndDeletedTrueAndStatusAndDeletedAtGreaterThanEqual(
+            UUID userId, PortfolioStatus status, LocalDateTime since
+    );
 }

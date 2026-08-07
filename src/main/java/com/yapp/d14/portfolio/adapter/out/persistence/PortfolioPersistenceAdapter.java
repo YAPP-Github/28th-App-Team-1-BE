@@ -39,8 +39,8 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
-    public boolean existsAnyByUserId(UUID userId) {
-        return portfolioJpaRepository.existsByUserId(userId);
+    public boolean existsCompletedByUserId(UUID userId) {
+        return portfolioJpaRepository.existsByUserIdAndStatus(userId, PortfolioStatus.READY);
     }
 
     @Override
@@ -52,7 +52,9 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
 
     @Override
     public boolean existsDeletionSince(UUID userId, LocalDateTime since) {
-        return portfolioJpaRepository.existsByUserIdAndDeletedTrueAndDeletedAtGreaterThanEqual(userId, since);
+        return portfolioJpaRepository.existsByUserIdAndDeletedTrueAndStatusAndDeletedAtGreaterThanEqual(
+                userId, PortfolioStatus.READY, since
+        );
     }
 
     @Override

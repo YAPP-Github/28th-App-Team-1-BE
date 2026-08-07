@@ -6,6 +6,8 @@ import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -84,5 +86,50 @@ class PortfolioPersistenceAdapterIntegrationTest {
         portfolioRepository.save(deletedInMonth);
 
         assertThat(portfolioRepository.existsDeletionSince(userId, monthStart)).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PortfolioStatus.class, names = {"CANCELLED", "FAILED_FILE", "FAILED_SYSTEM"})
+    void 완료되지_않은_건의_삭제는_해당_달_삭제_이력으로_잡히지_않는다(PortfolioStatus status) {
+        userId = UUID.randomUUID();
+        LocalDateTime monthStart = LocalDateTime.of(2024, 2, 1, 0, 0);
+        Portfolio notCompleted = Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 100L, 5, "s3-key",
+                status, "미완료",
+                monthStart.plusDays(1), null,
+                false, true, monthStart.plusDays(1)
+        );
+        portfolioRepository.save(notCompleted);
+
+        assertThat(portfolioRepository.existsDeletionSince(userId, monthStart)).isFalse();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PortfolioStatus.class, names = {"PROCESSING", "CANCELLED", "FAILED_FILE", "FAILED_SYSTEM"})
+    void 완료된_적_없는_유저의_다음_업로드는_재업로드로_잡히지_않는다(PortfolioStatus status) {
+        userId = UUID.randomUUID();
+        Portfolio notCompleted = Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 100L, 5, "s3-key",
+                status, "미완료",
+                LocalDateTime.now(), null,
+                false, status != PortfolioStatus.PROCESSING, LocalDateTime.now()
+        );
+        portfolioRepository.save(notCompleted);
+
+        assertThat(portfolioRepository.existsCompletedByUserId(userId)).isFalse();
+    }
+
+    @Test
+    void 완료됐다가_삭제된_포트폴리오가_있으면_다음_업로드는_재업로드로_잡힌다() {
+        userId = UUID.randomUUID();
+        Portfolio deletedReady = Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 100L, 5, "s3-key",
+                PortfolioStatus.READY, "완료",
+                LocalDateTime.now(), LocalDateTime.now(),
+                false, true, LocalDateTime.now()
+        );
+        portfolioRepository.save(deletedReady);
+
+        assertThat(portfolioRepository.existsCompletedByUserId(userId)).isTrue();
     }
 }

@@ -75,6 +75,27 @@ class PortfolioTest {
     }
 
     @Test
+    void 완료된_포트폴리오_삭제만_월_삭제_기회를_소진한다() {
+        Portfolio ready = Portfolio.of(
+                UUID.randomUUID(), UUID.randomUUID(), "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.READY, "완료", LocalDateTime.now(), LocalDateTime.now(),
+                false, false, null
+        );
+
+        assertThat(ready.countsTowardDeletionLimit()).isTrue();
+    }
+
+    @Test
+    void 완료되지_않은_포트폴리오_삭제는_월_삭제_기회를_소진하지_않는다() {
+        assertThat(portfolio.countsTowardDeletionLimit()).isFalse();
+
+        portfolio.softDelete();
+
+        assertThat(portfolio.getStatus()).isEqualTo(PortfolioStatus.CANCELLED);
+        assertThat(portfolio.countsTowardDeletionLimit()).isFalse();
+    }
+
+    @Test
     void PROCESSING_상태로_생성된지_15초가_지나면_FAILED_SYSTEM으로_전환한다() {
         Portfolio staleProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
 
