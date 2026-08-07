@@ -28,6 +28,8 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
             probeText와 echoQuote를 자연스러운 구어체 질문 문장 하나로 바꾸세요.
             - echoQuote를 질문 안에서 그대로 되받아 물어 지원자가 자기 말이 이어지고 있다고 느끼게 합니다.
             - probeText는 질문에 그대로 노출하지 말고, 그 의도를 자연스러운 질문으로 녹여냅니다.
+              다만 echoQuote만으로는 무엇에 대한 질문인지 알 수 없을 때, probeText에 있는 대상
+              (어떤 작업·기능·데이터인지)은 질문에 밝혀 줍니다.
             - 대본을 읽는 듯한 딱딱한 어투가 아니라 실제 면접관이 대화하듯 묻습니다.
             - 한 번에 하나의 질문만 합니다.
 
