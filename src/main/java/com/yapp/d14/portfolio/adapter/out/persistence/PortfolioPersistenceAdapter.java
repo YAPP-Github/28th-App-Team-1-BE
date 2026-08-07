@@ -35,7 +35,12 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
 
     @Override
     public boolean existsActiveByUserId(UUID userId) {
-        return portfolioJpaRepository.existsByUserIdAndDeletedFalse(userId);
+        return portfolioJpaRepository.existsByUserIdAndDeletedFalseAndStatus(userId, PortfolioStatus.READY);
+    }
+
+    @Override
+    public boolean existsProcessingByUserId(UUID userId) {
+        return portfolioJpaRepository.existsByUserIdAndDeletedFalseAndStatus(userId, PortfolioStatus.PROCESSING);
     }
 
     @Override
@@ -63,9 +68,20 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
     }
 
     @Override
+    public Optional<Portfolio> findByIdForUpdate(UUID id) {
+        return portfolioJpaRepository.findByIdForUpdate(id).map(PortfolioJpaEntity::toDomain);
+    }
+
+    @Override
     public List<Portfolio> findAllActiveByUserId(UUID userId) {
-        return portfolioJpaRepository.findAllByUserIdAndDeletedFalse(userId).stream()
-                .map(PortfolioJpaEntity::toDomain)
-                .toList();
+        return portfolioJpaRepository.findAllByUserIdAndDeletedFalseAndStatusIn(
+                userId, List.of(PortfolioStatus.PROCESSING, PortfolioStatus.READY)
+        ).stream().map(PortfolioJpaEntity::toDomain).toList();
+    }
+
+    @Override
+    public Optional<Portfolio> findLatestByUserId(UUID userId) {
+        return portfolioJpaRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+                .map(PortfolioJpaEntity::toDomain);
     }
 }

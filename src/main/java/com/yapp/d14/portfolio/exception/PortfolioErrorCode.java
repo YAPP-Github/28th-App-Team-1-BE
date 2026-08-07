@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 public enum PortfolioErrorCode implements ErrorCode {
 
     PORTFOLIO_ALREADY_EXISTS(HttpStatus.CONFLICT, "PORTFOLIO_ALREADY_EXISTS", "이미 등록된 포트폴리오가 있어요. 기존 포트폴리오를 삭제한 뒤 새로 올려주세요."),
+    PORTFOLIO_UPLOAD_IN_PROGRESS(HttpStatus.CONFLICT, "PORTFOLIO_UPLOAD_IN_PROGRESS", "이미 업로드 중인 포트폴리오가 있어요."),
     REPLACEMENT_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "REPLACEMENT_LIMIT_EXCEEDED", "포트폴리오 재업로드는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."),
     DELETE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "DELETE_LIMIT_EXCEEDED", "포트폴리오 삭제는 한 달에 한 번만 가능해요. 다음 달 1일부터 다시 시도해 주세요."),
     PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "PORTFOLIO_NOT_FOUND", "포트폴리오를 찾을 수 없어요."),

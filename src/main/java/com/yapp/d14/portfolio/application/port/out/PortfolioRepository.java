@@ -23,6 +23,8 @@ public interface PortfolioRepository {
 
     boolean existsActiveByUserId(UUID userId);
 
+    boolean existsProcessingByUserId(UUID userId);
+
     // 완료(READY)까지 간 포트폴리오를 가진 적이 있는지 — 다음 업로드가 최초인지 재업로드인지를 가른다.
     // 취소·실패 건만 남은 유저는 아직 최초 업로드로 취급한다.
     boolean existsCompletedByUserId(UUID userId);
@@ -33,5 +35,11 @@ public interface PortfolioRepository {
 
     Optional<Portfolio> findById(UUID id);
 
+    // 처리 완료(READY)와 처리 타임아웃(FAILED_SYSTEM) 전환이 같은 행을 두고 경쟁하므로,
+    // 두 경로 모두 이 락으로 읽고 상태를 재확인한 뒤 저장한다.
+    Optional<Portfolio> findByIdForUpdate(UUID id);
+
     List<Portfolio> findAllActiveByUserId(UUID userId);
+
+    Optional<Portfolio> findLatestByUserId(UUID userId);
 }

@@ -22,6 +22,9 @@ class PortfolioRegistrationPersister {
     Portfolio persist(PortfolioRegisterCommand command, int pageCount) {
         portfolioRepository.acquireRegistrationLock(command.userId());
 
+        if (portfolioRepository.existsProcessingByUserId(command.userId())) {
+            throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_UPLOAD_IN_PROGRESS);
+        }
         if (portfolioRepository.existsActiveByUserId(command.userId())) {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
         }

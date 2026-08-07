@@ -146,7 +146,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 
@@ -622,7 +622,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession completedSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(completedSession));
 
@@ -639,7 +639,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession invalidSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.INVALID, LocalDateTime.now(), LocalDateTime.now(), InterviewEndType.MANUAL_END,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(invalidSession));
 
@@ -656,7 +656,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession abandonedSession = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
-                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.USER_EXIT
+                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.USER_EXIT, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(abandonedSession));
 
@@ -714,7 +714,7 @@ class InterviewAnswerSubmitServiceTest {
         InterviewSession sessionWithBoundaryWeighted = InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 30, 10, 20, 10, 10, 0, 0, null
+                20, 30, 10, 20, 10, 10, 0, 0, null, null
         );
         given(interviewSessionRepository.findById(sessionId)).willReturn(Optional.of(sessionWithBoundaryWeighted));
         given(questionRepository.findById(summaryQuestionId)).willReturn(Optional.of(summaryQuestion()));
@@ -1050,7 +1050,7 @@ class InterviewAnswerSubmitServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                20, 15, 10, 30, 10, 15, 0, 0, null
+                20, 15, 10, 30, 10, 15, 0, 0, null, null
         );
     }
 

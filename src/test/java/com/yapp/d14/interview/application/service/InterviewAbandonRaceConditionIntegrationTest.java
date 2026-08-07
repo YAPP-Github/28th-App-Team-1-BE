@@ -68,7 +68,7 @@ class InterviewAbandonRaceConditionIntegrationTest {
         InterviewSession saved = interviewSessionRepository.save(InterviewSession.of(
                 null, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 LocalDateTime.now(), InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         ));
         return saved.getId();
     }

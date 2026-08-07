@@ -1,15 +1,18 @@
 package com.yapp.d14.interview.adapter.out.persistence;
 
 import com.yapp.d14.interview.adapter.out.persistence.entity.InterviewSessionJpaEntity;
+import com.yapp.d14.interview.application.port.out.FileCleanupTarget;
 import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,4 +39,24 @@ interface InterviewSessionJpaRepository extends JpaRepository<InterviewSessionJp
     );
 
     long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
+
+    @Query("SELECT new com.yapp.d14.interview.application.port.out.FileCleanupTarget(s.id, s.userId, s.status) "
+            + "FROM InterviewSessionJpaEntity s "
+            + "WHERE s.filesCleanedAt IS NULL "
+            + "AND (s.status IN :reportlessStatuses "
+            + "     OR (s.status = :abandoned AND (s.abandonCause IS NULL OR s.abandonCause <> :reportTriggeringCause))) "
+            + "AND COALESCE(s.endedAt, s.createdAt) < :endedBefore "
+            + "AND NOT EXISTS (SELECT 1 FROM InterviewVideoJpaEntity v WHERE v.sessionId = s.id) "
+            + "ORDER BY s.id")
+    List<FileCleanupTarget> findFileCleanupTargets(
+            @Param("reportlessStatuses") List<InterviewSessionStatus> reportlessStatuses,
+            @Param("abandoned") InterviewSessionStatus abandoned,
+            @Param("reportTriggeringCause") AbandonCause reportTriggeringCause,
+            @Param("endedBefore") LocalDateTime endedBefore,
+            Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE InterviewSessionJpaEntity s SET s.filesCleanedAt = :cleanedAt WHERE s.id IN :sessionIds")
+    void markFilesCleaned(@Param("sessionIds") List<Long> sessionIds, @Param("cleanedAt") LocalDateTime cleanedAt);
 }

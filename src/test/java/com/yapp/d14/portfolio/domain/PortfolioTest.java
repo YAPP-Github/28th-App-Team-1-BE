@@ -96,8 +96,8 @@ class PortfolioTest {
     }
 
     @Test
-    void PROCESSING_상태로_생성된지_15초가_지나면_FAILED_SYSTEM으로_전환한다() {
-        Portfolio staleProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+    void PROCESSING_상태로_생성된지_20초가_지나면_FAILED_SYSTEM으로_전환한다() {
+        Portfolio staleProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
 
         boolean timedOut = staleProcessing.failIfProcessingTimedOut();
 
@@ -106,7 +106,7 @@ class PortfolioTest {
     }
 
     @Test
-    void PROCESSING_상태로_생성된지_15초가_지나지_않았으면_상태를_유지한다() {
+    void PROCESSING_상태로_생성된지_20초가_지나지_않았으면_상태를_유지한다() {
         Portfolio freshProcessing = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(5));
 
         boolean timedOut = freshProcessing.failIfProcessingTimedOut();

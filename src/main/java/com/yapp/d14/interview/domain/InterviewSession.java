@@ -41,6 +41,8 @@ public class InterviewSession {
     private Integer sttFailedSegmentCount;
     private Integer sttTotalSegmentCount;
 
+    private LocalDateTime filesCleanedAt;
+
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewSession(
             Long id,
@@ -65,7 +67,8 @@ public class InterviewSession {
             Integer weightConflict,
             Integer weightResilience,
             Integer sttFailedSegmentCount,
-            Integer sttTotalSegmentCount
+            Integer sttTotalSegmentCount,
+            LocalDateTime filesCleanedAt
     ) {
         this.id = id;
         this.userId = userId;
@@ -90,6 +93,7 @@ public class InterviewSession {
         this.weightResilience = weightResilience;
         this.sttFailedSegmentCount = sttFailedSegmentCount;
         this.sttTotalSegmentCount = sttTotalSegmentCount;
+        this.filesCleanedAt = filesCleanedAt;
     }
 
     public static InterviewSession create(
@@ -214,7 +218,8 @@ public class InterviewSession {
             Integer weightResilience,
             Integer sttFailedSegmentCount,
             Integer sttTotalSegmentCount,
-            AbandonCause abandonCause
+            AbandonCause abandonCause,
+            LocalDateTime filesCleanedAt
     ) {
         return InterviewSession.builder()
                 .id(id)
@@ -240,6 +245,7 @@ public class InterviewSession {
                 .weightResilience(weightResilience)
                 .sttFailedSegmentCount(sttFailedSegmentCount)
                 .sttTotalSegmentCount(sttTotalSegmentCount)
+                .filesCleanedAt(filesCleanedAt)
                 .build();
     }
 }

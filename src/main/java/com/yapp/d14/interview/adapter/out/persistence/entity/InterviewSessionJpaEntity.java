@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -20,7 +21,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "interview_session")
+@Table(name = "interview_session", indexes = {
+        @Index(name = "idx_interview_session_file_cleanup", columnList = "status, files_cleaned_at, ended_at"),
+        @Index(name = "idx_interview_session_portfolio_status", columnList = "portfolio_id, status")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class InterviewSessionJpaEntity {
 
@@ -98,6 +102,9 @@ public class InterviewSessionJpaEntity {
     @Column(name = "stt_total_segment_count")
     private Integer sttTotalSegmentCount;
 
+    @Column(name = "files_cleaned_at")
+    private LocalDateTime filesCleanedAt;
+
     public static InterviewSessionJpaEntity from(InterviewSession interviewSession) {
         InterviewSessionJpaEntity entity = new InterviewSessionJpaEntity();
         entity.id = interviewSession.getId();
@@ -123,6 +130,7 @@ public class InterviewSessionJpaEntity {
         entity.weightResilience = interviewSession.getWeightResilience();
         entity.sttFailedSegmentCount = interviewSession.getSttFailedSegmentCount();
         entity.sttTotalSegmentCount = interviewSession.getSttTotalSegmentCount();
+        entity.filesCleanedAt = interviewSession.getFilesCleanedAt();
         return entity;
     }
 
@@ -150,7 +158,8 @@ public class InterviewSessionJpaEntity {
                 weightResilience,
                 sttFailedSegmentCount,
                 sttTotalSegmentCount,
-                abandonCause
+                abandonCause,
+                filesCleanedAt
         );
     }
 }

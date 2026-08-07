@@ -22,6 +22,7 @@ import java.util.UUID;
 class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseCase, PortfolioActiveCheckUseCase {
 
     private final PortfolioRepository portfolioRepository;
+    private final PortfolioProcessingTimeoutHandler portfolioProcessingTimeoutHandler;
     private final InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
 
     @Override
@@ -38,16 +39,16 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     @Transactional
     public PortfolioStatusResult getStatus(UUID userId, UUID portfolioId) {
         Portfolio portfolio = PortfolioAccessSupport.requireOwned(portfolioRepository, portfolioId, userId);
-        timeoutIfStale(portfolio);
+        Portfolio current = portfolioProcessingTimeoutHandler.failAndCleanup(portfolio);
 
-        return new PortfolioStatusResult(portfolio.getId(), portfolio.getStatus(), portfolio.getMessage(), portfolio.getFileName());
+        return new PortfolioStatusResult(current.getId(), current.getStatus(), current.getMessage(), current.getFileName());
     }
 
     @Override
     @Transactional
     public PortfolioListResult getList(UUID userId) {
-        List<PortfolioSummary> summaries = portfolioRepository.findAllActiveByUserId(userId).stream()
-                .peek(this::timeoutIfStale)
+        List<PortfolioSummary> summaries = visiblePortfolios(userId).stream()
+                .map(portfolioProcessingTimeoutHandler::failAndCleanup)
                 .map(this::toSummary)
                 .toList();
 
@@ -64,10 +65,16 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
         );
     }
 
-    private void timeoutIfStale(Portfolio portfolio) {
-        if (portfolio.failIfProcessingTimedOut()) {
-            portfolioRepository.save(portfolio);
+    private List<Portfolio> visiblePortfolios(UUID userId) {
+        List<Portfolio> active = portfolioRepository.findAllActiveByUserId(userId);
+        if (!active.isEmpty()) {
+            return active;
         }
+        return portfolioRepository.findLatestByUserId(userId)
+                .filter(Portfolio::isFailed)
+                .filter(portfolio -> !portfolio.isDeleted())
+                .map(List::of)
+                .orElseGet(List::of);
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {

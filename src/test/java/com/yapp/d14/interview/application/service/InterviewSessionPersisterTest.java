@@ -72,7 +72,7 @@ class InterviewSessionPersisterTest {
                     saved.getStatus(), saved.getStartedAt(), saved.getEndedAt(), saved.getEndType(),
                     saved.getWeightDepth(), saved.getWeightBoundary(), saved.getWeightConnection(),
                     saved.getWeightTradeoff(), saved.getWeightConflict(), saved.getWeightResilience(),
-                    saved.getSttFailedSegmentCount(), saved.getSttTotalSegmentCount(), saved.getAbandonCause()
+                    saved.getSttFailedSegmentCount(), saved.getSttTotalSegmentCount(), saved.getAbandonCause(), null
             );
         });
     }

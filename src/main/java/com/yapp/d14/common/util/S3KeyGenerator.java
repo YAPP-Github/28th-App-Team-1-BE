@@ -33,6 +33,10 @@ public final class S3KeyGenerator {
         return "users/%s/sessions/%s/composite/final.mp4".formatted(userId, sessionId);
     }
 
+    public static String interviewSessionPrefix(UUID userId, Long sessionId) {
+        return "users/%s/sessions/%s/".formatted(userId, sessionId);
+    }
+
     public static String wrapUpMessageKey(String variant) {
         return "system/interview/wrapup-messages/%s.mp3".formatted(variant);
     }

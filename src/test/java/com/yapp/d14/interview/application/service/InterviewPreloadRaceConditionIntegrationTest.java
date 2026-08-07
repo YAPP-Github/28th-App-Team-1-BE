@@ -79,7 +79,7 @@ class InterviewPreloadRaceConditionIntegrationTest {
                 null, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 LocalDateTime.now().minusSeconds(46),
                 InterviewSessionStatus.PREPARING, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         ));
         return saved.getId();
     }

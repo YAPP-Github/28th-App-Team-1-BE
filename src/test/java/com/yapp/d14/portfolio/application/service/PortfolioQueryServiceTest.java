@@ -2,7 +2,6 @@ package com.yapp.d14.portfolio.application.service;
 
 import com.yapp.d14.interview.application.port.in.InterviewSessionInProgressCheckUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioListResult;
-import com.yapp.d14.portfolio.application.port.in.result.PortfolioStatusResult;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioSummary;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
@@ -22,6 +21,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -30,6 +30,9 @@ class PortfolioQueryServiceTest {
 
     @Mock
     private PortfolioRepository portfolioRepository;
+
+    @Mock
+    private PortfolioProcessingTimeoutHandler portfolioProcessingTimeoutHandler;
 
     @Mock
     private InterviewSessionInProgressCheckUseCase interviewSessionInProgressCheckUseCase;
@@ -47,6 +50,9 @@ class PortfolioQueryServiceTest {
                 UUID.randomUUID(), userId, "resume.pdf", 1024, 5,
                 "users/%s/portfolios/%s/test.pdf".formatted(userId, UUID.randomUUID()), false
         );
+        // 타임아웃이 아닌 경우 핸들러는 넘겨받은 포트폴리오를 그대로 돌려준다.
+        lenient().when(portfolioProcessingTimeoutHandler.failAndCleanup(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -125,37 +131,105 @@ class PortfolioQueryServiceTest {
     }
 
     @Test
-    void 상태_조회_시_PROCESSING이_15초를_넘었으면_FAILED_SYSTEM으로_전환하고_저장한다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+    void 상태_조회_시_처리_시간_초과_여부를_확인한다() {
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findById(stale.getId())).willReturn(Optional.of(stale));
 
-        PortfolioStatusResult result = portfolioQueryService.getStatus(stale.getUserId(), stale.getId());
+        portfolioQueryService.getStatus(stale.getUserId(), stale.getId());
 
-        assertThat(result.status()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
-        verify(portfolioRepository).save(stale);
+        verify(portfolioProcessingTimeoutHandler).failAndCleanup(stale);
     }
 
     @Test
-    void 상태_조회_시_PROCESSING이_15초를_넘지_않았으면_상태를_유지하고_저장하지_않는다() {
-        Portfolio fresh = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(5));
-        given(portfolioRepository.findById(fresh.getId())).willReturn(Optional.of(fresh));
+    void 마지막_시도가_실패였으면_목록에_노출한다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.of(failedPortfolio()));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
 
-        PortfolioStatusResult result = portfolioQueryService.getStatus(fresh.getUserId(), fresh.getId());
+        PortfolioListResult result = portfolioQueryService.getList(userId);
 
-        assertThat(result.status()).isEqualTo(PortfolioStatus.PROCESSING);
-        verify(portfolioRepository, never()).save(any());
+        assertThat(result.portfolios()).hasSize(1);
+        assertThat(result.portfolios().get(0).status()).isEqualTo(PortfolioStatus.FAILED_FILE);
     }
 
     @Test
-    void 목록_조회_시_PROCESSING이_15초를_넘은_항목을_FAILED_SYSTEM으로_전환하고_저장한다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+    void 실재하는_포트폴리오가_있으면_지난_실패는_조회하지_않는다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of(portfolio));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).hasSize(1);
+        assertThat(result.portfolios().get(0).portfolioId()).isEqualTo(portfolio.getId());
+        verify(portfolioRepository, never()).findLatestByUserId(any());
+    }
+
+    @Test
+    void 마지막_시도가_삭제된_READY면_그_이전_실패는_되살아나지_않는다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.of(deletedReadyPortfolio()));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).isEmpty();
+    }
+
+    @Test
+    void 마지막_시도가_실패였어도_이미_삭제됐으면_노출하지_않는다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.of(deletedFailedPortfolio()));
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).isEmpty();
+    }
+
+    @Test
+    void 포트폴리오_이력이_아예_없으면_빈_목록이다() {
+        given(portfolioRepository.findAllActiveByUserId(userId)).willReturn(List.of());
+        given(portfolioRepository.findLatestByUserId(userId)).willReturn(Optional.empty());
+        given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
+
+        PortfolioListResult result = portfolioQueryService.getList(userId);
+
+        assertThat(result.portfolios()).isEmpty();
+    }
+
+    @Test
+    void 목록_조회_시_항목마다_처리_시간_초과_여부를_확인한다() {
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findAllActiveByUserId(stale.getUserId())).willReturn(List.of(stale));
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
 
-        PortfolioListResult result = portfolioQueryService.getList(stale.getUserId());
+        portfolioQueryService.getList(stale.getUserId());
 
-        assertThat(result.portfolios().get(0).status()).isEqualTo(PortfolioStatus.FAILED_SYSTEM);
-        verify(portfolioRepository).save(stale);
+        verify(portfolioProcessingTimeoutHandler).failAndCleanup(stale);
+    }
+
+    private Portfolio failedPortfolio() {
+        return Portfolio.of(
+                UUID.randomUUID(), userId, "broken.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.FAILED_FILE, "파일이 손상되었어요.", LocalDateTime.now().minusMinutes(10), null,
+                false, false, null
+        );
+    }
+
+    private Portfolio deletedFailedPortfolio() {
+        return Portfolio.of(
+                UUID.randomUUID(), userId, "broken.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.FAILED_FILE, "파일이 손상되었어요.", LocalDateTime.now().minusMinutes(10), null,
+                false, true, LocalDateTime.now()
+        );
+    }
+
+    private Portfolio deletedReadyPortfolio() {
+        return Portfolio.of(
+                UUID.randomUUID(), userId, "resume.pdf", 1024, 5, "users/x/portfolios/x/x.pdf",
+                PortfolioStatus.READY, "포트폴리오 처리가 완료되었습니다.", LocalDateTime.now().minusMinutes(5),
+                LocalDateTime.now().minusMinutes(4), false, true, LocalDateTime.now()
+        );
     }
 
     private Portfolio processingPortfolioCreatedAt(LocalDateTime createdAt) {
