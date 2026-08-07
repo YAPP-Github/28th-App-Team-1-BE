@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -192,7 +194,9 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleAnalysisTurn(
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
+        Instant sttStartedAt = Instant.now();
         TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        double sttSeconds = elapsedSeconds(sttStartedAt);
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, axis={}, Q={}, A={}",
                 session.getId(), question.getId(), question.getTurnLevel(), question.getTestType(),
                 singleLine(question.getContent()), singleLine(transcription.text()));
@@ -241,12 +245,15 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 session, question, command, liveTurnResult.ceiling().reached(), hasContradiction, isUnusuallySpecific,
                 newProbeCandidates, openProbesForAxis, axisPlans
         ); // 다음 질문 계획
+        Instant persistStartedAt = Instant.now();
         InterviewAnswerAnalyzePersister.PersistResult persisted = interviewAnswerAnalyzePersister.persist(
                 session, answer, question, newProbeCandidates, liveTurnResult.staleUpdates(), question.getTurnLevel(),
                 plan.selectedProbe(), plan.nextTurnLevel(), plan.nextAxisPlan(), plan.completedAxisPlan(), plan.nextQuestion()
         ); // 트랜잭션 반영
         appendPriorQaSafely(session.getId(), currentAxis, question, transcription.text()); // 이력 저장
         persistAnswerSegmentsSafely(session.getId(), question, command, transcription); // 문장 발화 시각 저장
+        log.info("[TURN TIMING] sessionId={}, questionId={}, sttSeconds={}, persistSeconds={}",
+                session.getId(), question.getId(), sttSeconds, elapsedSeconds(persistStartedAt));
 
         return buildNextQuestionResult(persisted, plan); // 응답 반환
     }
@@ -323,6 +330,10 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     // 세션 로그 수집 스크립트(collect-interview-log.ps1)가 Select-String으로 한 줄씩만 추출하므로 QA 로그는 줄바꿈 없이 한 줄로 남긴다.
     private String singleLine(String text) {
         return text == null ? null : text.replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ');
+    }
+
+    private double elapsedSeconds(Instant startedAt) {
+        return Duration.between(startedAt, Instant.now()).toMillis() / 1000.0;
     }
 
     private Float sttFailureRatio(TranscriptionResult transcription) {
