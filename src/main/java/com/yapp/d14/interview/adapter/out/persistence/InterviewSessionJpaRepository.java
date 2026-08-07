@@ -38,8 +38,6 @@ interface InterviewSessionJpaRepository extends JpaRepository<InterviewSessionJp
 
     long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
 
-    // 리포트 생성을 트리거하지 않고 끝난 세션 — interview_video row가 없어 만료·삭제 추적에서 빠진다.
-    // PRELOAD_FAILED는 endedAt을 남기지 않으므로 createdAt으로 대체해 유예 시간을 판정한다.
     @Query("SELECT s FROM InterviewSessionJpaEntity s "
             + "WHERE s.filesCleanedAt IS NULL "
             + "AND (s.status IN :endedStatuses "

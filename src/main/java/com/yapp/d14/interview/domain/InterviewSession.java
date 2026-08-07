@@ -41,7 +41,6 @@ public class InterviewSession {
     private Integer sttFailedSegmentCount;
     private Integer sttTotalSegmentCount;
 
-    // 정리 배치가 이 세션의 S3 잔여물을 지운 시각. 지운 뒤에도 세션 row는 남으므로, 이 값이 다음 실행의 재조회를 막는다.
     private LocalDateTime filesCleanedAt;
 
     @Builder(access = AccessLevel.PRIVATE)

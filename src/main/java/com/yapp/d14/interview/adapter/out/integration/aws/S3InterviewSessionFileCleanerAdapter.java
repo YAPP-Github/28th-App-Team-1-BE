@@ -33,7 +33,6 @@ class S3InterviewSessionFileCleanerAdapter implements InterviewSessionFileCleane
                 .build();
 
         int deleted = 0;
-        // 페이지당 최대 1000건이고 DeleteObjects도 1회 1000건이라, 페이지 단위로 그대로 넘긴다.
         for (ListObjectsV2Response page : s3Client.listObjectsV2Paginator(listRequest)) {
             List<ObjectIdentifier> keys = page.contents().stream()
                     .map(object -> ObjectIdentifier.builder().key(object.key()).build())
@@ -53,7 +52,6 @@ class S3InterviewSessionFileCleanerAdapter implements InterviewSessionFileCleane
                 .delete(Delete.builder().objects(keys).build())
                 .build());
 
-        // DeleteObjects는 일부만 실패해도 200을 주므로, 남은 게 있으면 정리 완료로 표시되지 않도록 예외로 올린다.
         if (response.hasErrors() && !response.errors().isEmpty()) {
             throw S3Exception.builder()
                     .message("세션 파일 일부를 삭제하지 못했어요: " + response.errors().getFirst().key())

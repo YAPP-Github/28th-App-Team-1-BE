@@ -17,8 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 class InterviewSessionFileCleanupService implements InterviewSessionFileCleanupUseCase {
 
-    // 종료 후에도 답변 음성 비동기 저장·지연된 preload TTS·이미 발급된 presigned PUT URL(10분)로
-    // 파일이 뒤늦게 도착할 수 있어, 그 창구가 모두 닫힌 뒤를 대상으로 삼는다.
     private static final Duration CLEANUP_GRACE = Duration.ofHours(1);
     private static final int BATCH_SIZE = 500;
 
@@ -44,7 +42,6 @@ class InterviewSessionFileCleanupService implements InterviewSessionFileCleanupU
         return cleaned;
     }
 
-    // 한 세션이 실패해도 나머지는 계속 처리하고, 실패한 세션은 마킹하지 않아 다음 실행에서 다시 시도한다.
     private boolean cleanup(InterviewSession session) {
         try {
             int deleted = interviewSessionFileCleaner.deleteSessionFiles(session.getUserId(), session.getId());

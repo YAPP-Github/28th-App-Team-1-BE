@@ -23,6 +23,5 @@ public interface InterviewSessionRepository {
 
     long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
 
-    // 리포트 없이 끝나 interview_video row가 없는 세션 — S3 잔여물을 추적할 주체가 없어 정리 배치가 직접 찾는다.
     List<InterviewSession> findFileCleanupTargets(LocalDateTime endedBefore, int limit);
 }

@@ -14,7 +14,6 @@ public class SchedulingConfig {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(2);
         scheduler.setThreadNamePrefix("cleanup-scheduler-");
-        // 종료 중 S3 삭제와 마킹 사이에서 끊겨도 다음 실행에서 다시 집히지만, 불필요한 중단은 줄인다.
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(30);
         scheduler.initialize();

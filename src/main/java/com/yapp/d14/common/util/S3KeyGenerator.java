@@ -33,7 +33,6 @@ public final class S3KeyGenerator {
         return "users/%s/sessions/%s/composite/final.mp4".formatted(userId, sessionId);
     }
 
-    // 세션이 남긴 모든 파일(questions/·answers/·recording/·composite/)의 공통 프리픽스.
     public static String interviewSessionPrefix(UUID userId, Long sessionId) {
         return "users/%s/sessions/%s/".formatted(userId, sessionId);
     }

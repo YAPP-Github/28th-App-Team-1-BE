@@ -21,12 +21,8 @@ public interface PortfolioRepository {
     // "확인 시점엔 살아있었는데 그 사이 삭제된 포트폴리오를 참조하는 세션이 생성되는" TOCTOU 경합을 막는다.
     void acquirePortfolioLock(UUID portfolioId);
 
-    // 실재하는 포트폴리오(READY이고 삭제되지 않음)가 있는지 — 신규 등록을 막는 기준.
-    // 실패(FAILED_FILE·FAILED_SYSTEM) 건은 실재하지 않는 것으로 보고 재업로드를 막지 않는다
-    // (s3-policy.md §4의 "취소·실패 건은 어느 쪽 기회도 소진하지 않는다"와 같은 기준).
     boolean existsActiveByUserId(UUID userId);
 
-    // 아직 분석 중인 포트폴리오가 있는지 — 동시에 두 건이 READY가 되는 것을 막기 위해 등록을 함께 차단한다.
     boolean existsProcessingByUserId(UUID userId);
 
     // 완료(READY)까지 간 포트폴리오를 가진 적이 있는지 — 다음 업로드가 최초인지 재업로드인지를 가른다.
