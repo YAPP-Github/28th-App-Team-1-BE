@@ -31,6 +31,10 @@ public interface PortfolioControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 등록 즉시 `PROCESSING` 상태로 202를 반환하고, S3 업로드·파싱·임베딩은 비동기로 처리됩니다.\n" +
                     "- 계정당 포트폴리오는 1개만 등록할 수 있습니다(기존 포트폴리오가 있으면 먼저 삭제해야 함).\n" +
+                    "- 등록이 막히는 경우는 두 가지이며 응답 코드가 다릅니다. " +
+                    "분석 중인 포트폴리오가 있으면 `PORTFOLIO_UPLOAD_IN_PROGRESS`(잠시 후 재시도하면 됨), " +
+                    "완료된(`READY`) 포트폴리오가 있으면 `PORTFOLIO_ALREADY_EXISTS`(먼저 삭제해야 함)입니다.\n" +
+                    "- 처리에 실패한(`FAILED_FILE`·`FAILED_SYSTEM`) 포트폴리오는 등록을 막지 않습니다. 따로 삭제하지 않고 바로 다시 업로드할 수 있습니다.\n" +
                     "- 삭제 후 재업로드(교체)는 캘린더 월 1회로 제한됩니다(매월 1일 0시 서버 시간 리셋). 최초 업로드는 이 제한과 무관합니다.\n" +
                     "- `READY`까지 완료된 업로드만 이 제한에 집계됩니다. 업로드 진행 중 취소했거나 처리에 실패한 건은 기회를 소진하지 않으며, " +
                     "그런 이력만 있는 계정의 다음 업로드는 여전히 최초 업로드로 취급됩니다."
@@ -79,11 +83,18 @@ public interface PortfolioControllerDocs {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "이미 포트폴리오가 존재하거나, 이번 달 재업로드 횟수를 이미 사용함",
+                    description = "분석 중이거나 이미 등록된 포트폴리오가 있음, 또는 이번 달 재업로드 횟수를 이미 사용함",
                     content = @Content(
                             mediaType = "application/json",
                             examples = {
-                                    @ExampleObject(name = "활성 포트폴리오 존재", value = """
+                                    @ExampleObject(name = "분석 중인 포트폴리오 존재", value = """
+                                            {
+                                              "success": false,
+                                              "code": "PORTFOLIO_UPLOAD_IN_PROGRESS",
+                                              "message": "이미 업로드 중인 포트폴리오가 있어요."
+                                            }
+                                            """),
+                                    @ExampleObject(name = "등록된 포트폴리오 존재", value = """
                                             {
                                               "success": false,
                                               "code": "PORTFOLIO_ALREADY_EXISTS",
@@ -230,6 +241,16 @@ public interface PortfolioControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- MVP는 계정당 1개로 제한되지만, `portfolios`는 향후 다건 확장을 고려해 배열로 내려갑니다.\n" +
                     "- 소프트 삭제된 포트폴리오는 `portfolios`에서 제외됩니다.\n" +
+                    "- `portfolios`에 담기는 기준은 다음과 같습니다.\n" +
+                    "  1. `PROCESSING`·`READY` 상태의 포트폴리오가 있으면 그것만 내려갑니다(둘은 동시에 존재할 수 없어 최대 1건).\n" +
+                    "  2. 그런 포트폴리오가 없을 때는, 계정의 **가장 마지막 업로드 시도** 1건만 확인해 그것이 " +
+                    "`FAILED_FILE`·`FAILED_SYSTEM`이고 아직 삭제되지 않았다면 그 1건을 내려보냅니다. " +
+                    "업로드 실패를 알릴 수 있는 곳이 목록뿐이기 때문입니다.\n" +
+                    "  3. 마지막 시도가 실패가 아니거나(취소·삭제된 완료 건 등) 이미 삭제한 실패 건이면 빈 배열입니다. " +
+                    "지난 실패 건이 뒤늦게 다시 노출되지 않습니다.\n" +
+                    "- 따라서 `portfolios[].status`로 `FAILED_FILE`·`FAILED_SYSTEM`이 내려올 수 있습니다. " +
+                    "이 경우 해당 포트폴리오로는 면접을 시작할 수 없고 파일 조회도 불가하며, 재업로드를 유도해야 합니다. " +
+                    "연속 실패해도 목록에는 항상 최근 1건만 나오므로 실패 건이 쌓여 보이지 않습니다.\n" +
                     "- `replaceAvailable`·`deleteAvailable`·`nextAvailableAt`·`nextDeleteAvailableAt`는 계정 단위로 결정되는 값이라 " +
                     "응답 최상위에 위치하며, `portfolios`가 빈 배열이어도(포트폴리오가 없어도) 항상 포함됩니다.\n" +
                     "- `replaceAvailable`: 이번 달 남은 재업로드(교체) 기회입니다. `true`면 1회 업로드 가능, " +
