@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID> {
@@ -19,6 +20,8 @@ interface PortfolioJpaRepository extends JpaRepository<PortfolioJpaEntity, UUID>
     void acquirePortfolioLock(@Param("lockKey") String lockKey);
 
     List<PortfolioJpaEntity> findAllByUserIdAndDeletedFalseAndStatusIn(UUID userId, List<PortfolioStatus> statuses);
+
+    Optional<PortfolioJpaEntity> findFirstByUserIdOrderByCreatedAtDesc(UUID userId);
 
     boolean existsByUserIdAndDeletedFalseAndStatus(UUID userId, PortfolioStatus status);
 

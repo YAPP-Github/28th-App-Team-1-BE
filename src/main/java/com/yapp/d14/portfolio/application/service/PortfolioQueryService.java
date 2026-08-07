@@ -47,7 +47,7 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
     @Override
     @Transactional
     public PortfolioListResult getList(UUID userId) {
-        List<PortfolioSummary> summaries = portfolioRepository.findAllActiveByUserId(userId).stream()
+        List<PortfolioSummary> summaries = visiblePortfolios(userId).stream()
                 .peek(portfolioProcessingTimeoutHandler::failAndCleanup)
                 .map(this::toSummary)
                 .toList();
@@ -63,6 +63,17 @@ class PortfolioQueryService implements PortfolioStatusUseCase, PortfolioListUseC
                 deleteBlocked ? PortfolioReplacementPolicy.nextMonthStart() : null,
                 summaries
         );
+    }
+
+    private List<Portfolio> visiblePortfolios(UUID userId) {
+        List<Portfolio> active = portfolioRepository.findAllActiveByUserId(userId);
+        if (!active.isEmpty()) {
+            return active;
+        }
+        return portfolioRepository.findLatestByUserId(userId)
+                .filter(Portfolio::isFailed)
+                .map(List::of)
+                .orElseGet(List::of);
     }
 
     private PortfolioSummary toSummary(Portfolio portfolio) {

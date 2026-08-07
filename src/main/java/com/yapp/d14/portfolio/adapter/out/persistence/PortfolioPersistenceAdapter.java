@@ -73,4 +73,10 @@ class PortfolioPersistenceAdapter implements PortfolioRepository {
                 userId, List.of(PortfolioStatus.PROCESSING, PortfolioStatus.READY)
         ).stream().map(PortfolioJpaEntity::toDomain).toList();
     }
+
+    @Override
+    public Optional<Portfolio> findLatestByUserId(UUID userId) {
+        return portfolioJpaRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+                .map(PortfolioJpaEntity::toDomain);
+    }
 }

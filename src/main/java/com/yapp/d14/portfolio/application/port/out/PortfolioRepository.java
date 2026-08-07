@@ -36,4 +36,6 @@ public interface PortfolioRepository {
     Optional<Portfolio> findById(UUID id);
 
     List<Portfolio> findAllActiveByUserId(UUID userId);
+
+    Optional<Portfolio> findLatestByUserId(UUID userId);
 }

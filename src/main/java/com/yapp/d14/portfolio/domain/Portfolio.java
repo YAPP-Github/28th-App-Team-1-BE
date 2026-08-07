@@ -127,6 +127,10 @@ public class Portfolio {
         this.message = message;
     }
 
+    public boolean isFailed() {
+        return status == PortfolioStatus.FAILED_FILE || status == PortfolioStatus.FAILED_SYSTEM;
+    }
+
     public boolean failIfProcessingTimedOut() {
         if (status != PortfolioStatus.PROCESSING) {
             return false;
