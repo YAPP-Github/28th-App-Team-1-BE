@@ -51,6 +51,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     // 과도하게 쌓이는 것을 막는 상한이다.
     private static final int MAX_NEW_PROBES = 2;
     private static final int MAX_PROBE_TEXT_CHARS = 60;
+    private static final int MAX_CEILING_REASON_CHARS = 40;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             당신은 AI 면접관입니다. 지원자의 방금 답변을 분석해 아래 세 가지를 판단합니다.
@@ -94,6 +95,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             - 첫 답이 추상적이어도 곧장 천장으로 판정하지 말고, 구체화를 유도하는 재질문을 최소 한 번 던진 뒤에만 판정하세요.
               (즉 prior_qa에 같은 axis로 구체화를 시도한 이력이 없다면 아직 천장 판정을 내리지 마세요 — reached=false)
             - kind는 topped_out(위로 닿아 멈춤) 또는 stuck(못 올라가서 멈춤) 중 하나입니다.
+            - reason은 판정 근거를 %d자 이내로 요약합니다. prior_qa 인용이나 답변 재서술 없이 결론만 적으세요.
+              (예: "구체화 재질문 1회 필요 - 아직 수치·근거 부재 단계")
 
             stale_updates 규칙:
             - 사용자 메시지의 open_probes 목록에 있는 항목만 참조할 수 있습니다(probeId는 목록에 있는 값 그대로 사용).
@@ -129,7 +132,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
                 loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH),
-                MAX_PROBE_TEXT_CHARS, MAX_NEW_PROBES
+                MAX_PROBE_TEXT_CHARS, MAX_NEW_PROBES, MAX_CEILING_REASON_CHARS
         );
         // 이 시스템 프롬프트(axes.yaml+principles.yaml+ceiling-fewshot.md)는 매 턴 동일하게 재사용되는데도
         // 캐싱 없이 매번 전체가 재처리되어 run_live_turn 지연시간의 절반 이상을 차지했다 — SYSTEM_ONLY로 캐싱한다.
