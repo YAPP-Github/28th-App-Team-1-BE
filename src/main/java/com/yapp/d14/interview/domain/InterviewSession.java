@@ -160,10 +160,6 @@ public class InterviewSession {
         this.abandonCause = cause;
     }
 
-    public void markFilesCleaned() {
-        this.filesCleanedAt = LocalDateTime.now();
-    }
-
     // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).
     public void recordSttSegments(int failedSegmentCount, int totalSegmentCount) {
         this.sttFailedSegmentCount = (sttFailedSegmentCount == null ? 0 : sttFailedSegmentCount) + failedSegmentCount;

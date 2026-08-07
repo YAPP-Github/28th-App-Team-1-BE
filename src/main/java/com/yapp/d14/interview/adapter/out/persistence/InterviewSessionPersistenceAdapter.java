@@ -1,6 +1,7 @@
 package com.yapp.d14.interview.adapter.out.persistence;
 
 import com.yapp.d14.interview.adapter.out.persistence.entity.InterviewSessionJpaEntity;
+import com.yapp.d14.interview.application.port.out.FileCleanupTarget;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
@@ -8,6 +9,7 @@ import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,13 +55,24 @@ class InterviewSessionPersistenceAdapter implements InterviewSessionRepository {
     }
 
     @Override
-    public List<InterviewSession> findFileCleanupTargets(LocalDateTime endedBefore, int limit) {
+    public List<FileCleanupTarget> findFileCleanupTargets(
+            List<InterviewSessionStatus> reportlessStatuses,
+            AbandonCause reportTriggeringCause,
+            LocalDateTime endedBefore,
+            int limit
+    ) {
         return interviewSessionJpaRepository.findFileCleanupTargets(
-                List.of(InterviewSessionStatus.INVALID, InterviewSessionStatus.PRELOAD_FAILED),
+                reportlessStatuses,
                 InterviewSessionStatus.ABANDONED,
-                AbandonCause.USER_EXIT,
+                reportTriggeringCause,
                 endedBefore,
                 PageRequest.of(0, limit)
-        ).stream().map(InterviewSessionJpaEntity::toDomain).toList();
+        );
+    }
+
+    @Override
+    @Transactional
+    public void markFilesCleaned(List<Long> sessionIds, LocalDateTime cleanedAt) {
+        interviewSessionJpaRepository.markFilesCleaned(sessionIds, cleanedAt);
     }
 }

@@ -23,5 +23,12 @@ public interface InterviewSessionRepository {
 
     long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
 
-    List<InterviewSession> findFileCleanupTargets(LocalDateTime endedBefore, int limit);
+    List<FileCleanupTarget> findFileCleanupTargets(
+            List<InterviewSessionStatus> reportlessStatuses,
+            AbandonCause reportTriggeringCause,
+            LocalDateTime endedBefore,
+            int limit
+    );
+
+    void markFilesCleaned(List<Long> sessionIds, LocalDateTime cleanedAt);
 }

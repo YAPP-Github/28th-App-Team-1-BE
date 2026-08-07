@@ -1,11 +1,10 @@
 package com.yapp.d14.interview.application.service;
 
+import com.yapp.d14.interview.application.port.out.FileCleanupTarget;
 import com.yapp.d14.interview.application.port.out.InterviewSessionFileCleaner;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.domain.AbandonCause;
-import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
-import com.yapp.d14.interview.domain.JobType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,60 +39,63 @@ class InterviewSessionFileCleanupServiceTest {
     private InterviewSessionFileCleanupService interviewSessionFileCleanupService;
 
     @Test
-    void 대상_세션의_S3_잔여물을_지우고_정리_시각을_남긴다() {
-        InterviewSession session = abandonedSession(42L, AbandonCause.NETWORK_DISCONNECT);
-        given(interviewSessionRepository.findFileCleanupTargets(any(), anyInt())).willReturn(List.of(session));
+    void 리포트를_만들지_않는_상태와_유예_시간을_조회_조건으로_넘긴다() {
+        given(interviewSessionRepository.findFileCleanupTargets(any(), any(), any(), anyInt())).willReturn(List.of());
+
+        interviewSessionFileCleanupService.cleanupOrphanFiles();
+
+        ArgumentCaptor<List<InterviewSessionStatus>> statuses = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<LocalDateTime> endedBefore = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(interviewSessionRepository).findFileCleanupTargets(
+                statuses.capture(), eq(AbandonCause.USER_EXIT), endedBefore.capture(), anyInt()
+        );
+        assertThat(statuses.getValue())
+                .containsExactlyInAnyOrder(InterviewSessionStatus.INVALID, InterviewSessionStatus.PRELOAD_FAILED);
+        assertThat(endedBefore.getValue()).isBefore(LocalDateTime.now().minusMinutes(50));
+    }
+
+    @Test
+    void 대상_세션의_S3_잔여물을_지우고_정리_시각을_한번에_기록한다() {
+        FileCleanupTarget target = target(42L);
+        given(interviewSessionRepository.findFileCleanupTargets(any(), any(), any(), anyInt()))
+                .willReturn(List.of(target));
 
         int cleaned = interviewSessionFileCleanupService.cleanupOrphanFiles();
 
         assertThat(cleaned).isEqualTo(1);
-        verify(interviewSessionFileCleaner).deleteSessionFiles(session.getUserId(), 42L);
-
-        ArgumentCaptor<InterviewSession> captor = ArgumentCaptor.forClass(InterviewSession.class);
-        verify(interviewSessionRepository).save(captor.capture());
-        assertThat(captor.getValue().getFilesCleanedAt()).isNotNull();
+        verify(interviewSessionFileCleaner).deleteSessionFiles(target.userId(), 42L);
+        verify(interviewSessionRepository).markFilesCleaned(eq(List.of(42L)), any());
     }
 
     @Test
-    void 종료_후_유예_시간이_지난_세션만_조회한다() {
-        given(interviewSessionRepository.findFileCleanupTargets(any(), anyInt())).willReturn(List.of());
-
-        interviewSessionFileCleanupService.cleanupOrphanFiles();
-
-        ArgumentCaptor<LocalDateTime> captor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(interviewSessionRepository).findFileCleanupTargets(captor.capture(), anyInt());
-        assertThat(captor.getValue()).isBefore(LocalDateTime.now().minusMinutes(50));
-    }
-
-    @Test
-    void 대상이_없으면_S3를_건드리지_않는다() {
-        given(interviewSessionRepository.findFileCleanupTargets(any(), anyInt())).willReturn(List.of());
+    void 대상이_없으면_S3도_기록도_건드리지_않는다() {
+        given(interviewSessionRepository.findFileCleanupTargets(any(), any(), any(), anyInt())).willReturn(List.of());
 
         int cleaned = interviewSessionFileCleanupService.cleanupOrphanFiles();
 
         assertThat(cleaned).isZero();
         verifyNoInteractions(interviewSessionFileCleaner);
+        verify(interviewSessionRepository, never()).markFilesCleaned(any(), any());
     }
 
     @Test
     void S3_삭제에_실패하면_정리_시각을_남기지_않아_다음_실행에서_다시_시도한다() {
-        InterviewSession session = abandonedSession(42L, AbandonCause.HOLD_EXPIRED);
-        given(interviewSessionRepository.findFileCleanupTargets(any(), anyInt())).willReturn(List.of(session));
+        given(interviewSessionRepository.findFileCleanupTargets(any(), any(), any(), anyInt()))
+                .willReturn(List.of(target(42L)));
         willThrow(new RuntimeException("s3 down"))
                 .given(interviewSessionFileCleaner).deleteSessionFiles(any(), eq(42L));
 
         int cleaned = interviewSessionFileCleanupService.cleanupOrphanFiles();
 
         assertThat(cleaned).isZero();
-        assertThat(session.getFilesCleanedAt()).isNull();
-        verify(interviewSessionRepository, never()).save(any());
+        verify(interviewSessionRepository, never()).markFilesCleaned(any(), any());
     }
 
     @Test
-    void 한_세션이_실패해도_나머지는_계속_정리한다() {
-        InterviewSession failing = abandonedSession(1L, AbandonCause.HOLD_EXPIRED);
-        InterviewSession succeeding = abandonedSession(2L, AbandonCause.NETWORK_DISCONNECT);
-        given(interviewSessionRepository.findFileCleanupTargets(any(), anyInt()))
+    void 한_세션이_실패해도_나머지는_계속_정리하고_성공한_것만_기록한다() {
+        FileCleanupTarget failing = target(1L);
+        FileCleanupTarget succeeding = target(2L);
+        given(interviewSessionRepository.findFileCleanupTargets(any(), any(), any(), anyInt()))
                 .willReturn(List.of(failing, succeeding));
         willThrow(new RuntimeException("s3 down"))
                 .given(interviewSessionFileCleaner).deleteSessionFiles(any(), eq(1L));
@@ -101,16 +103,11 @@ class InterviewSessionFileCleanupServiceTest {
         int cleaned = interviewSessionFileCleanupService.cleanupOrphanFiles();
 
         assertThat(cleaned).isEqualTo(1);
-        verify(interviewSessionFileCleaner).deleteSessionFiles(succeeding.getUserId(), 2L);
-        assertThat(succeeding.getFilesCleanedAt()).isNotNull();
+        verify(interviewSessionFileCleaner).deleteSessionFiles(succeeding.userId(), 2L);
+        verify(interviewSessionRepository).markFilesCleaned(eq(List.of(2L)), any());
     }
 
-    private InterviewSession abandonedSession(Long sessionId, AbandonCause cause) {
-        return InterviewSession.of(
-                sessionId, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
-                LocalDateTime.now().minusHours(3), InterviewSessionStatus.ABANDONED,
-                LocalDateTime.now().minusHours(3), LocalDateTime.now().minusHours(2), null,
-                25, 20, 10, 20, 10, 15, 0, 0, cause, null
-        );
+    private FileCleanupTarget target(Long sessionId) {
+        return new FileCleanupTarget(sessionId, UUID.randomUUID(), InterviewSessionStatus.ABANDONED);
     }
 }
