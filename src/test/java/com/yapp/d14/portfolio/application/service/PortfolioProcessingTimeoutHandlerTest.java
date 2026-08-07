@@ -39,7 +39,7 @@ class PortfolioProcessingTimeoutHandlerTest {
 
     @Test
     void 처리_시간을_넘겼으면_FAILED_SYSTEM으로_전환하고_저장한다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findByIdForUpdate(stale.getId())).willReturn(Optional.of(stale));
 
         Portfolio result = portfolioProcessingTimeoutHandler.failAndCleanup(stale);
@@ -50,7 +50,7 @@ class PortfolioProcessingTimeoutHandlerTest {
 
     @Test
     void 처리_시간을_넘겼으면_임베딩과_S3_원본을_함께_지운다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findByIdForUpdate(stale.getId())).willReturn(Optional.of(stale));
 
         portfolioProcessingTimeoutHandler.failAndCleanup(stale);
@@ -61,7 +61,7 @@ class PortfolioProcessingTimeoutHandlerTest {
 
     @Test
     void 소프트_삭제하지_않아_실패_사유가_계속_보인다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findByIdForUpdate(stale.getId())).willReturn(Optional.of(stale));
 
         Portfolio result = portfolioProcessingTimeoutHandler.failAndCleanup(stale);
@@ -85,7 +85,7 @@ class PortfolioProcessingTimeoutHandlerTest {
 
     @Test
     void 락을_잡는_사이_처리가_완료됐으면_덮어쓰지_않고_최신_상태를_돌려준다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         Portfolio completed = readyPortfolio(stale.getId());
         given(portfolioRepository.findByIdForUpdate(stale.getId())).willReturn(Optional.of(completed));
 

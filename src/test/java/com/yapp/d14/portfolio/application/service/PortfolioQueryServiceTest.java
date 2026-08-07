@@ -132,7 +132,7 @@ class PortfolioQueryServiceTest {
 
     @Test
     void 상태_조회_시_처리_시간_초과_여부를_확인한다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findById(stale.getId())).willReturn(Optional.of(stale));
 
         portfolioQueryService.getStatus(stale.getUserId(), stale.getId());
@@ -199,7 +199,7 @@ class PortfolioQueryServiceTest {
 
     @Test
     void 목록_조회_시_항목마다_처리_시간_초과_여부를_확인한다() {
-        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(16));
+        Portfolio stale = processingPortfolioCreatedAt(LocalDateTime.now().minusSeconds(21));
         given(portfolioRepository.findAllActiveByUserId(stale.getUserId())).willReturn(List.of(stale));
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
 

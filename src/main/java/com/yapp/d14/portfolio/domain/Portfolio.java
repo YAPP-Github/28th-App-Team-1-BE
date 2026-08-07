@@ -12,7 +12,7 @@ import java.util.UUID;
 public class Portfolio {
 
     private static final int MIN_EXTRACTED_TEXT_LENGTH = 300;
-    private static final Duration PROCESSING_TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration PROCESSING_TIMEOUT = Duration.ofSeconds(20);
 
     private final UUID id;
     private final UUID userId;
