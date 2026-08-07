@@ -16,10 +16,14 @@ import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
+import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
 import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -45,7 +49,9 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     private static final String CEILING_FEWSHOT_PATH = "interview-rubric/ceiling-fewshot.md";
     // AnthropicProbeCandidateExtractorAdapter.MAX_CANDIDATES 와 동일한 취지 — 한 턴에서 뽑히는 캐물지점 후보가
     // 과도하게 쌓이는 것을 막는 상한이다.
-    private static final int MAX_NEW_PROBES = 3;
+    private static final int MAX_NEW_PROBES = 2;
+    private static final int MAX_PROBE_TEXT_CHARS = 60;
+    private static final int MAX_CEILING_REASON_CHARS = 40;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             당신은 AI 면접관입니다. 지원자의 방금 답변을 분석해 아래 세 가지를 판단합니다.
@@ -67,7 +73,15 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
 
             new_probes 규칙:
             - 캐물지점은 반드시 방금 답변 내용에 근거해야 합니다.
-            - probeText는 "무엇을 캐물을지"에 대한 내부 메모(질문 문장 아님), echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
+            - probeText는 "무엇을 캐물을지"만 적는 내부 메모입니다. 한 항목에 캐물 각도를 하나만 담아,
+              %d자 이내의 명사구 한 문장으로 씁니다. 물음표와 부연 설명은 쓰지 않습니다.
+              캐물 각도가 여러 개 보이면 가장 강한 하나만 남기고, 나머지는 별개의 후보로 분리하세요.
+              실제 질문 문장은 이후 단계에서 따로 생성하므로, 여기서 질문을 완성하면 그 작업은 버려집니다.
+              예시(각각 하나의 각도만 담고 있습니다):
+                "블루그린 배포에서 트래픽 전환 실패를 감지하고 롤백을 트리거하는 판단 기준"
+                "write-back 캐시에서 정합성이 깨지는 조건과 이를 감지·복구하는 설계"
+                "테스트 분리 전략을 바꾸게 된 판단 근거와 당시의 기술적 제약"
+            - echoQuote는 질문할 때 그대로 되받아 물을 원 표현입니다.
             - strength는 반드시 high/mid/low 중 하나로만 답합니다(medium 등 다른 표현 금지).
               신호가 진할수록 high, 애매하면 mid, 약하면 low로 답니다.
             - 개수를 인위적으로 채우거나 줄이지 마세요. 답변에서 자연스럽게 나오는 만큼만 뽑되, 최대 %d개까지만 반환하세요.
@@ -81,6 +95,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             - 첫 답이 추상적이어도 곧장 천장으로 판정하지 말고, 구체화를 유도하는 재질문을 최소 한 번 던진 뒤에만 판정하세요.
               (즉 prior_qa에 같은 axis로 구체화를 시도한 이력이 없다면 아직 천장 판정을 내리지 마세요 — reached=false)
             - kind는 topped_out(위로 닿아 멈춤) 또는 stuck(못 올라가서 멈춤) 중 하나입니다.
+            - reason은 판정 근거를 %d자 이내로 요약합니다. prior_qa 인용이나 답변 재서술 없이 결론만 적으세요.
+              (예: "구체화 재질문 1회 필요 - 아직 수치·근거 부재 단계")
 
             stale_updates 규칙:
             - 사용자 메시지의 open_probes 목록에 있는 항목만 참조할 수 있습니다(probeId는 목록에 있는 값 그대로 사용).
@@ -115,7 +131,8 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
-                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH), MAX_NEW_PROBES
+                loadResource(AXES_YAML_PATH), loadResource(PRINCIPLES_YAML_PATH), loadResource(CEILING_FEWSHOT_PATH),
+                MAX_PROBE_TEXT_CHARS, MAX_NEW_PROBES, MAX_CEILING_REASON_CHARS
         );
         // 이 시스템 프롬프트(axes.yaml+principles.yaml+ceiling-fewshot.md)는 매 턴 동일하게 재사용되는데도
         // 캐싱 없이 매번 전체가 재처리되어 run_live_turn 지연시간의 절반 이상을 차지했다 — SYSTEM_ONLY로 캐싱한다.
@@ -145,13 +162,15 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         LiveTurnTools tools = new LiveTurnTools(portfolioChunkSearchUseCase, priorQaCache, sessionId, portfolioId);
 
         try {
-            LiveTurnLlmResponse response = chatClient.prompt()
+            ResponseEntity<ChatResponse, LiveTurnLlmResponse> responseEntity = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .tools(tools)
                     .options(cachedChatOptions)
                     .call()
-                    .entity(LiveTurnLlmResponse.class);
+                    .responseEntity(LiveTurnLlmResponse.class);
+            logUsage(sessionId, responseEntity.response());
+            LiveTurnLlmResponse response = responseEntity.entity();
 
             // 프롬프트로도 exhaustedAxes/상한을 지시하지만, 모델이 지키지 않을 수 있어 코드에서도 강제한다
             // (AnthropicProbeCandidateExtractorAdapter의 MAX_CANDIDATES와 동일한 원칙).
@@ -168,6 +187,28 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
             log.error("[LIVE TURN ANALYZE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("답변 분석(run_live_turn)에 실패했어요.", e);
         }
+    }
+
+    // 캐시 토큰은 Spring AI 공용 Usage에 없고 Anthropic 네이티브 Usage에만 있다.
+    private void logUsage(Long sessionId, ChatResponse chatResponse) {
+        if (chatResponse == null || chatResponse.getMetadata() == null) {
+            return;
+        }
+        Usage usage = chatResponse.getMetadata().getUsage();
+        if (usage == null) {
+            return;
+        }
+        Integer cacheCreationInputTokens = null;
+        Integer cacheReadInputTokens = null;
+        if (usage.getNativeUsage() instanceof AnthropicApi.Usage nativeUsage) {
+            cacheCreationInputTokens = nativeUsage.cacheCreationInputTokens();
+            cacheReadInputTokens = nativeUsage.cacheReadInputTokens();
+        }
+        log.info(
+                "[LIVE TURN USAGE] sessionId={}, inputTokens={}, outputTokens={}, cacheCreationInputTokens={}, cacheReadInputTokens={}",
+                sessionId, usage.getPromptTokens(), usage.getCompletionTokens(),
+                cacheCreationInputTokens, cacheReadInputTokens
+        );
     }
 
     // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes·제외 axis(완료됐거나 예산 없는 axis) 컨텍스트를 채워넣는다.

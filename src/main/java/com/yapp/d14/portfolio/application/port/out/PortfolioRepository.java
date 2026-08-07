@@ -23,7 +23,9 @@ public interface PortfolioRepository {
 
     boolean existsActiveByUserId(UUID userId);
 
-    boolean existsAnyByUserId(UUID userId);
+    // 완료(READY)까지 간 포트폴리오를 가진 적이 있는지 — 다음 업로드가 최초인지 재업로드인지를 가른다.
+    // 취소·실패 건만 남은 유저는 아직 최초 업로드로 취급한다.
+    boolean existsCompletedByUserId(UUID userId);
 
     boolean existsReplacementSince(UUID userId, LocalDateTime since);
 

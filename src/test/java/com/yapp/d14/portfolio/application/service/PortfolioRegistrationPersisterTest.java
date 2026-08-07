@@ -68,7 +68,7 @@ class PortfolioRegistrationPersisterTest {
 
     @Test
     void 재업로드이고_이번달_재업로드_이력이_있으면_REPLACEMENT_LIMIT_EXCEEDED() {
-        given(portfolioRepository.existsAnyByUserId(userId)).willReturn(true);
+        given(portfolioRepository.existsCompletedByUserId(userId)).willReturn(true);
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(true);
 
         assertThatThrownBy(() -> portfolioRegistrationPersister.persist(command, 5))
@@ -81,7 +81,7 @@ class PortfolioRegistrationPersisterTest {
 
     @Test
     void 재업로드이고_이번달_재업로드_이력이_없으면_replacement_true로_등록된다() {
-        given(portfolioRepository.existsAnyByUserId(userId)).willReturn(true);
+        given(portfolioRepository.existsCompletedByUserId(userId)).willReturn(true);
         given(portfolioRepository.existsReplacementSince(any(), any())).willReturn(false);
         given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -93,7 +93,7 @@ class PortfolioRegistrationPersisterTest {
     }
 
     @Test
-    void 최초_업로드면_replacement_false로_등록된다() {
+    void 완료된_포트폴리오_이력이_없으면_replacement_false로_등록된다() {
         given(portfolioRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
         portfolioRegistrationPersister.persist(command, 5);
@@ -101,5 +101,6 @@ class PortfolioRegistrationPersisterTest {
         ArgumentCaptor<Portfolio> captor = ArgumentCaptor.forClass(Portfolio.class);
         verify(portfolioRepository).save(captor.capture());
         assertThat(captor.getValue().isReplacement()).isFalse();
+        verify(portfolioRepository, never()).existsReplacementSince(any(), any());
     }
 }

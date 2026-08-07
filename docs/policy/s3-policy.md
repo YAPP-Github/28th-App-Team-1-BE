@@ -112,5 +112,7 @@ expires_at > NOW() 확인 (3.2 단계형 기준)
   - pgvector 청크 삭제(`PortfolioEmbeddingStore.deleteByPortfolioId`)는 같은 PostgreSQL 데이터소스를 쓰므로 DB 갱신과 같은 트랜잭션 안에서 처리한다. S3 삭제만 그 트랜잭션 커밋 후 별도로 실행한다 (전부-또는-전무 원칙 — pgvector 삭제가 실패하면 DB 갱신도 함께 롤백된다).
   - 소프트 삭제된 포트폴리오는 ID 기반 상태 조회·재삭제 API에서는 존재하지 않는 것으로 취급된다(404).
     목록 조회에서는 제외되며, 목록 API 자체는 200으로 반환된다. row 보존은 삭제·재업로드 제한 판정용이다.
-  - 삭제(`existsDeletionSince` — `deleted=true` AND `deleted_at >= 이번달 1일`)와 재업로드(`existsReplacementSince` — `is_replacement=true` AND `status=READY` AND `uploaded_at >= 이번달 1일`)는 서로 다른 컬럼·조건을 보는 **독립된 월 1회 제한**이다. 한쪽을 이번 달에 이미 썼더라도 다른 쪽 기회는 남아있을 수 있다.
+  - 삭제(`existsDeletionSince` — `deleted=true` AND `status=READY` AND `deleted_at >= 이번달 1일`)와 재업로드(`existsReplacementSince` — `is_replacement=true` AND `status=READY` AND `uploaded_at >= 이번달 1일`)는 서로 다른 컬럼·조건을 보는 **독립된 월 1회 제한**이다. 한쪽을 이번 달에 이미 썼더라도 다른 쪽 기회는 남아있을 수 있다.
+  - 두 제한 모두 **`READY`까지 간 포트폴리오만 실재하는 것으로 집계**한다. 업로드 진행 중 취소(`CANCELLED`)·처리 실패(`FAILED_FILE`·`FAILED_SYSTEM`) 건은 어느 쪽 기회도 소진하지 않으며, 기회가 이미 소진된 상태에서도 언제든 삭제할 수 있다(`Portfolio.countsTowardDeletionLimit()`). 소진된 삭제 기회 때문에 실패한 포트폴리오를 지우지도 새로 올리지도 못하고 다음 달까지 묶이는 상황을 막기 위함이다.
+  - 같은 기준으로, 다음 업로드가 최초인지 재업로드인지도 `READY` 이력 유무로 판정한다(`existsCompletedByUserId`). 취소·실패 이력만 있는 유저의 다음 업로드는 여전히 최초 업로드로 취급되어 재업로드 기회를 소진하지 않는다.
 - 열람: `GET /api/v1/portfolios/{portfolioId}/file-url` — `PortfolioFileUrlQueryService`가 소유권·`READY` 상태를 확인한 뒤 `PortfolioFileUploader.presignDownload(key)`로 GET presigned URL(유효시간 10분)을 발급한다. 면접 영상 재생(§3.3)과 동일하게 서버는 파일 바이트를 직접 다루지 않고 URL만 반환한다.

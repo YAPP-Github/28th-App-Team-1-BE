@@ -138,6 +138,12 @@ public class Portfolio {
         return true;
     }
 
+    // 완료(READY)까지 간 포트폴리오를 지울 때만 월 1회 삭제 기회를 소진한다.
+    // 취소·실패 건은 재업로드 집계에서도 제외되므로, 삭제 집계에서도 같은 기준을 적용한다.
+    public boolean countsTowardDeletionLimit() {
+        return status == PortfolioStatus.READY;
+    }
+
     public void softDelete() {
         if (status == PortfolioStatus.PROCESSING) {
             this.status = PortfolioStatus.CANCELLED;

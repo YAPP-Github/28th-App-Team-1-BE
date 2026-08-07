@@ -31,7 +31,9 @@ public interface PortfolioControllerDocs {
                     "**인증**: Access Token 필요 (Authorization: Bearer {accessToken})\n\n" +
                     "- 등록 즉시 `PROCESSING` 상태로 202를 반환하고, S3 업로드·파싱·임베딩은 비동기로 처리됩니다.\n" +
                     "- 계정당 포트폴리오는 1개만 등록할 수 있습니다(기존 포트폴리오가 있으면 먼저 삭제해야 함).\n" +
-                    "- 삭제 후 재업로드(교체)는 캘린더 월 1회로 제한됩니다(매월 1일 0시 서버 시간 리셋). 최초 업로드는 이 제한과 무관합니다."
+                    "- 삭제 후 재업로드(교체)는 캘린더 월 1회로 제한됩니다(매월 1일 0시 서버 시간 리셋). 최초 업로드는 이 제한과 무관합니다.\n" +
+                    "- `READY`까지 완료된 업로드만 이 제한에 집계됩니다. 업로드 진행 중 취소했거나 처리에 실패한 건은 기회를 소진하지 않으며, " +
+                    "그런 이력만 있는 계정의 다음 업로드는 여전히 최초 업로드로 취급됩니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -235,7 +237,8 @@ public interface PortfolioControllerDocs {
                     "`nextAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
                     "- `deleteAvailable`: 이번 달 남은 삭제 기회입니다. `replaceAvailable`과 독립적으로 집계되므로, " +
                     "재업로드 기회를 이미 썼어도 삭제 기회가 남아있으면 `true`이고, 반대로 삭제 기회를 이미 썼어도 재업로드 기회는 남아있을 수 있습니다. " +
-                    "`false`면 삭제 시도 시 `DELETE_LIMIT_EXCEEDED`로 거부됩니다. " +
+                    "`false`면 `READY` 상태 포트폴리오의 삭제 시도가 `DELETE_LIMIT_EXCEEDED`로 거부됩니다. " +
+                    "단 `PROCESSING`(업로드 중 취소)·`FAILED_FILE`·`FAILED_SYSTEM` 건의 삭제는 `deleteAvailable`이 `false`여도 항상 허용되며 기회를 소진하지 않습니다.\n" +
                     "`nextDeleteAvailableAt`: `false`일 때만 값이 채워지며 다시 가능해지는 시각(다음 달 1일 0시)을 나타냅니다.\n" +
                     "- `interviewInProgress`: 이 포트폴리오로 진행 중인 면접이 있으면 `true`이며, 이 경우 `deleteAvailable`과 무관하게 삭제 API 호출 시 " +
                     "`PORTFOLIO_DELETE_BLOCKED_BY_INTERVIEW`로 거부됩니다. `interviewInProgress=true`면 `deleteAvailable`이 `true`여도 " +

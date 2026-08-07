@@ -26,7 +26,7 @@ class PortfolioRegistrationPersister {
             throw new PortfolioException(PortfolioErrorCode.PORTFOLIO_ALREADY_EXISTS);
         }
 
-        boolean replacement = portfolioRepository.existsAnyByUserId(command.userId());
+        boolean replacement = portfolioRepository.existsCompletedByUserId(command.userId());
         if (replacement && portfolioRepository.existsReplacementSince(command.userId(), PortfolioReplacementPolicy.currentMonthStart())) {
             throw new PortfolioException(PortfolioErrorCode.REPLACEMENT_LIMIT_EXCEEDED);
         }
