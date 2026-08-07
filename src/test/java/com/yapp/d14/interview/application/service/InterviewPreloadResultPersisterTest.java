@@ -54,7 +54,7 @@ class InterviewPreloadResultPersisterTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PREPARING, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 
@@ -103,7 +103,7 @@ class InterviewPreloadResultPersisterTest {
         InterviewSession alreadyFailedInDb = InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.PRELOAD_FAILED, null, null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
         given(interviewSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(alreadyFailedInDb));
         Question summaryQuestion = Question.create(1L, "질문", 0, 0, null, null, null, false);

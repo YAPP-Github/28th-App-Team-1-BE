@@ -54,7 +54,7 @@ class InterviewAbandonPersisterTest {
         return InterviewSession.of(
                 sessionId, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 LocalDateTime.now(), InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 
@@ -118,7 +118,7 @@ class InterviewAbandonPersisterTest {
         InterviewSession alreadyAbandoned = InterviewSession.of(
                 sessionId, UUID.randomUUID(), UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 LocalDateTime.now(), InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
-                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.NETWORK_DISCONNECT
+                25, 20, 10, 20, 10, 15, 0, 0, AbandonCause.NETWORK_DISCONNECT, null
         );
         given(interviewSessionRepository.findByIdForUpdate(sessionId)).willReturn(Optional.of(alreadyAbandoned));
 

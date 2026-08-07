@@ -112,7 +112,7 @@ class InterviewReportGenerateServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.IN_PROGRESS, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 
@@ -121,7 +121,7 @@ class InterviewReportGenerateServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.ABANDONED, LocalDateTime.now(), LocalDateTime.now(), null,
-                25, 20, 10, 20, 10, 15, 0, 0, cause
+                25, 20, 10, 20, 10, 15, 0, 0, cause, null
         );
     }
 
@@ -130,7 +130,7 @@ class InterviewReportGenerateServiceTest {
         return InterviewSession.of(
                 1L, userId, portfolioId, null, JobType.BACKEND, 3, null, null, null, LocalDateTime.now(),
                 InterviewSessionStatus.COMPLETED, LocalDateTime.now(), LocalDateTime.now(), endType,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 

@@ -98,6 +98,9 @@ public class InterviewSessionJpaEntity {
     @Column(name = "stt_total_segment_count")
     private Integer sttTotalSegmentCount;
 
+    @Column(name = "files_cleaned_at")
+    private LocalDateTime filesCleanedAt;
+
     public static InterviewSessionJpaEntity from(InterviewSession interviewSession) {
         InterviewSessionJpaEntity entity = new InterviewSessionJpaEntity();
         entity.id = interviewSession.getId();
@@ -123,6 +126,7 @@ public class InterviewSessionJpaEntity {
         entity.weightResilience = interviewSession.getWeightResilience();
         entity.sttFailedSegmentCount = interviewSession.getSttFailedSegmentCount();
         entity.sttTotalSegmentCount = interviewSession.getSttTotalSegmentCount();
+        entity.filesCleanedAt = interviewSession.getFilesCleanedAt();
         return entity;
     }
 
@@ -150,7 +154,8 @@ public class InterviewSessionJpaEntity {
                 weightResilience,
                 sttFailedSegmentCount,
                 sttTotalSegmentCount,
-                abandonCause
+                abandonCause,
+                filesCleanedAt
         );
     }
 }

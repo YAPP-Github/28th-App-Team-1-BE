@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,4 +37,21 @@ interface InterviewSessionJpaRepository extends JpaRepository<InterviewSessionJp
     );
 
     long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause);
+
+    // 리포트 생성을 트리거하지 않고 끝난 세션 — interview_video row가 없어 만료·삭제 추적에서 빠진다.
+    // PRELOAD_FAILED는 endedAt을 남기지 않으므로 createdAt으로 대체해 유예 시간을 판정한다.
+    @Query("SELECT s FROM InterviewSessionJpaEntity s "
+            + "WHERE s.filesCleanedAt IS NULL "
+            + "AND (s.status IN :endedStatuses "
+            + "     OR (s.status = :abandoned AND (s.abandonCause IS NULL OR s.abandonCause <> :userExit))) "
+            + "AND COALESCE(s.endedAt, s.createdAt) < :endedBefore "
+            + "AND NOT EXISTS (SELECT 1 FROM InterviewVideoJpaEntity v WHERE v.sessionId = s.id) "
+            + "ORDER BY s.id")
+    List<InterviewSessionJpaEntity> findFileCleanupTargets(
+            @Param("endedStatuses") List<InterviewSessionStatus> endedStatuses,
+            @Param("abandoned") InterviewSessionStatus abandoned,
+            @Param("userExit") AbandonCause userExit,
+            @Param("endedBefore") LocalDateTime endedBefore,
+            Pageable pageable
+    );
 }

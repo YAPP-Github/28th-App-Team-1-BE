@@ -108,6 +108,8 @@ expires_at > NOW() 확인 (3.2 단계형 기준)
 ## 4. 포트폴리오 파일 생명주기
 
 - 업로드: `POST /api/v1/portfolios` 등록 시 비동기로 S3 업로드 (`PortfolioProcessService`, `S3PortfolioFileUploaderAdapter`).
+- 처리 타임아웃: `PortfolioProcessService`는 실패·취소 경로마다 S3 원본과 pgvector 청크를 직접 정리하지만, 워커 스레드가 죽거나 앱이 재시작되면 그 정리 코드 자체가 실행되지 않는다. 이때는 상태 조회·목록 조회가 타임아웃을 감지하는 시점(`PortfolioProcessingTimeoutHandler`)이 유일한 회수 지점이다 — `FAILED_SYSTEM` 전환과 함께 pgvector 청크를 같은 트랜잭션에서 지우고, S3 원본은 커밋 이후 삭제한다.
+  - 실패한 포트폴리오는 소프트 삭제하지 않는다. 실패 사유가 목록·상태 조회에 계속 보여야 하고, 신규 등록 차단 기준(`existsActiveByUserId`)이 `READY`·미삭제만 보므로 실패 건이 남아 있어도 재업로드를 막지 않는다.
 - 삭제: 포트폴리오 삭제는 **소프트 삭제**다. `portfolios` row는 삭제 월 1회 제한과 재업로드 월 1회 제한 판정을 위한 이력으로 보존되고(`deleted=true`, `deleted_at` 기록), S3 원본 파일과 pgvector 임베딩은 이력 보존과 무관하게 즉시 물리 삭제된다. `PortfolioDeleteService.delete()`는 `@Transactional`로 DB 갱신(소프트 삭제 `save`)을 감싸고, `AfterCommitExecutor.runAfterCommit(...)`을 통해 트랜잭션이 커밋된 이후에만 `PortfolioFileUploader.delete(key)`를 실행한다 — DB 갱신이 롤백됐는데 S3 파일은 이미 지워지는 불일치를 방지하기 위함이다.
   - pgvector 청크 삭제(`PortfolioEmbeddingStore.deleteByPortfolioId`)는 같은 PostgreSQL 데이터소스를 쓰므로 DB 갱신과 같은 트랜잭션 안에서 처리한다. S3 삭제만 그 트랜잭션 커밋 후 별도로 실행한다 (전부-또는-전무 원칙 — pgvector 삭제가 실패하면 DB 갱신도 함께 롤백된다).
   - 소프트 삭제된 포트폴리오는 ID 기반 상태 조회·재삭제 API에서는 존재하지 않는 것으로 취급된다(404).
@@ -116,3 +118,46 @@ expires_at > NOW() 확인 (3.2 단계형 기준)
   - 두 제한 모두 **`READY`까지 간 포트폴리오만 실재하는 것으로 집계**한다. 업로드 진행 중 취소(`CANCELLED`)·처리 실패(`FAILED_FILE`·`FAILED_SYSTEM`) 건은 어느 쪽 기회도 소진하지 않으며, 기회가 이미 소진된 상태에서도 언제든 삭제할 수 있다(`Portfolio.countsTowardDeletionLimit()`). 소진된 삭제 기회 때문에 실패한 포트폴리오를 지우지도 새로 올리지도 못하고 다음 달까지 묶이는 상황을 막기 위함이다.
   - 같은 기준으로, 다음 업로드가 최초인지 재업로드인지도 `READY` 이력 유무로 판정한다(`existsCompletedByUserId`). 취소·실패 이력만 있는 유저의 다음 업로드는 여전히 최초 업로드로 취급되어 재업로드 기회를 소진하지 않는다.
 - 열람: `GET /api/v1/portfolios/{portfolioId}/file-url` — `PortfolioFileUrlQueryService`가 소유권·`READY` 상태를 확인한 뒤 `PortfolioFileUploader.presignDownload(key)`로 GET presigned URL(유효시간 10분)을 발급한다. 면접 영상 재생(§3.3)과 동일하게 서버는 파일 바이트를 직접 다루지 않고 URL만 반환한다.
+
+## 5. 리포트 없이 끝난 세션의 S3 잔여물 정리 배치
+
+`interview_video` row는 `InterviewReportPersister.persist()`의 `insertRetentionIfAbsent`에서만 insert된다.
+즉 **리포트 저장에 성공한 세션만** 3장의 만료·삭제 추적 대상이 되고, 그 외 세션이 남긴
+`users/{userId}/sessions/{sessionId}/` 하위 파일은 어떤 테이블에도 추적되지 않는다.
+`InterviewSessionFileCleanupScheduler`(매일 04:10 KST)가 이 잔여물을 회수한다.
+
+### 5.1 정리 대상
+
+리포트 생성 자체를 트리거하지 않는 종료 세션 중 `interview_video` row가 없고, `files_cleaned_at`이 비어 있는 건.
+
+| 상태 | 리포트를 만들지 않는 이유 |
+|---|---|
+| `ABANDONED` (`abandon_cause != USER_EXIT`) | `InterviewAbandonPersister`가 이용권만 release하고 끝낸다 |
+| `INVALID` | STT 실패율 30% 초과로 세션 무효화(`InterviewSttResetPersister`) |
+| `PRELOAD_FAILED` | `InterviewPreloadFailureHandler`가 question·candidate row는 지우지만 이미 업로드된 질문 TTS는 S3에 남는다 |
+
+제외 대상:
+
+- `COMPLETED`·`ABANDONED(USER_EXIT)`인데 리포트 생성이 실패한 세션(`InterviewReportFailureHandler` 경로) —
+  row는 없지만 리포트 재생성 여지가 있으므로 건드리지 않는다.
+- `INSUFFICIENT_ANALYSIS` 리포트 — `persist()`를 타므로 row가 생성돼 이미 3장의 추적 대상이다.
+- 아직 종료되지 않은 세션(`PREPARING`·`IN_PROGRESS`) — 위 세 상태에 해당하지 않아 조회에서 빠진다.
+
+### 5.2 유예 시간
+
+종료 후 **1시간**이 지난 세션만 대상으로 삼는다(`COALESCE(ended_at, created_at) < NOW() - 1h`).
+세션이 끝난 뒤에도 답변 음성 비동기 저장, 지연된 preload TTS, 이미 발급된 presigned PUT URL(§2, 10분)로
+파일이 뒤늦게 도착할 수 있어 그 창구가 모두 닫힌 뒤에 지운다.
+`PRELOAD_FAILED`는 `ended_at`을 남기지 않으므로 `created_at`으로 대체해 판정한다.
+
+### 5.3 삭제 범위와 재실행
+
+- 세션 프리픽스(`users/{userId}/sessions/{sessionId}/`) 하위 전체를 지운다. 답변 음성·녹화본도 개인정보이므로
+  `composite/`만 남기지 않는다. S3에 폴더 단위 삭제 API가 없어 `ListObjectsV2` + `DeleteObjects`로 처리한다.
+- 삭제에 성공한 세션만 `interview_session.files_cleaned_at`을 기록해 다음 실행의 재조회 대상에서 뺀다.
+  실패한 세션은 마킹하지 않아 다음 실행에서 자동으로 재시도되고, 한 세션이 실패해도 나머지 세션 정리는 계속된다.
+- 한 번 실행당 500건 상한. 첫 실행 시 과거 누적분이 한꺼번에 몰리지 않게 하고, 남은 건은 다음 날 이어서 처리한다.
+- 단일 인스턴스 전제로 분산 락을 두지 않는다. 다중 인스턴스가 되면 중복 실행이 가능하지만 S3 삭제는 멱등이다.
+
+> 3장의 만료 영상 삭제 배치(§3.5)와는 별개다. 이 배치는 "추적 주체가 아예 없는" 세션을 다루고,
+> §3.5는 "추적되고 있으나 만료된" 영상을 다룬다. §3.5는 여전히 미구현이다.

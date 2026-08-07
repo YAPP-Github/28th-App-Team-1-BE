@@ -6,8 +6,10 @@ import com.yapp.d14.interview.domain.AbandonCause;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,5 +50,16 @@ class InterviewSessionPersistenceAdapter implements InterviewSessionRepository {
     @Override
     public long countByUserIdAndAbandonCause(UUID userId, AbandonCause abandonCause) {
         return interviewSessionJpaRepository.countByUserIdAndAbandonCause(userId, abandonCause);
+    }
+
+    @Override
+    public List<InterviewSession> findFileCleanupTargets(LocalDateTime endedBefore, int limit) {
+        return interviewSessionJpaRepository.findFileCleanupTargets(
+                List.of(InterviewSessionStatus.INVALID, InterviewSessionStatus.PRELOAD_FAILED),
+                InterviewSessionStatus.ABANDONED,
+                AbandonCause.USER_EXIT,
+                endedBefore,
+                PageRequest.of(0, limit)
+        ).stream().map(InterviewSessionJpaEntity::toDomain).toList();
     }
 }

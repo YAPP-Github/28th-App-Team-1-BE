@@ -50,7 +50,7 @@ class InterviewReportListQueryServiceTest {
         return InterviewSession.of(
                 id, userId, portfolioId, "portfolio.pdf", JobType.BACKEND, 2, "https://jd.example.com", null, null,
                 startedAt, InterviewSessionStatus.COMPLETED, startedAt, startedAt.plusMinutes(30), null,
-                25, 20, 10, 20, 10, 15, 0, 10, null
+                25, 20, 10, 20, 10, 15, 0, 10, null, null
         );
     }
 

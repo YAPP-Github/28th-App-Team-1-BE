@@ -41,6 +41,9 @@ public class InterviewSession {
     private Integer sttFailedSegmentCount;
     private Integer sttTotalSegmentCount;
 
+    // 정리 배치가 이 세션의 S3 잔여물을 지운 시각. 지운 뒤에도 세션 row는 남으므로, 이 값이 다음 실행의 재조회를 막는다.
+    private LocalDateTime filesCleanedAt;
+
     @Builder(access = AccessLevel.PRIVATE)
     private InterviewSession(
             Long id,
@@ -65,7 +68,8 @@ public class InterviewSession {
             Integer weightConflict,
             Integer weightResilience,
             Integer sttFailedSegmentCount,
-            Integer sttTotalSegmentCount
+            Integer sttTotalSegmentCount,
+            LocalDateTime filesCleanedAt
     ) {
         this.id = id;
         this.userId = userId;
@@ -90,6 +94,7 @@ public class InterviewSession {
         this.weightResilience = weightResilience;
         this.sttFailedSegmentCount = sttFailedSegmentCount;
         this.sttTotalSegmentCount = sttTotalSegmentCount;
+        this.filesCleanedAt = filesCleanedAt;
     }
 
     public static InterviewSession create(
@@ -156,6 +161,10 @@ public class InterviewSession {
         this.abandonCause = cause;
     }
 
+    public void markFilesCleaned() {
+        this.filesCleanedAt = LocalDateTime.now();
+    }
+
     // turnLevel≥1 매 턴 STT 변환 직후, 이번 턴의 세그먼트 통계를 세션 누적치에 더한다(SKIP 턴은 호출하지 않음).
     public void recordSttSegments(int failedSegmentCount, int totalSegmentCount) {
         this.sttFailedSegmentCount = (sttFailedSegmentCount == null ? 0 : sttFailedSegmentCount) + failedSegmentCount;
@@ -214,7 +223,8 @@ public class InterviewSession {
             Integer weightResilience,
             Integer sttFailedSegmentCount,
             Integer sttTotalSegmentCount,
-            AbandonCause abandonCause
+            AbandonCause abandonCause,
+            LocalDateTime filesCleanedAt
     ) {
         return InterviewSession.builder()
                 .id(id)
@@ -240,6 +250,7 @@ public class InterviewSession {
                 .weightResilience(weightResilience)
                 .sttFailedSegmentCount(sttFailedSegmentCount)
                 .sttTotalSegmentCount(sttTotalSegmentCount)
+                .filesCleanedAt(filesCleanedAt)
                 .build();
     }
 }

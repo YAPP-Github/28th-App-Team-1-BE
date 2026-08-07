@@ -55,7 +55,7 @@ class InterviewSessionResumeConfirmServiceTest {
         return InterviewSession.of(
                 sessionId, userId, UUID.randomUUID(), null, JobType.BACKEND, 3, null, null, null,
                 LocalDateTime.now(), status, LocalDateTime.now(), null, null,
-                25, 20, 10, 20, 10, 15, 0, 0, null
+                25, 20, 10, 20, 10, 15, 0, 0, null, null
         );
     }
 
