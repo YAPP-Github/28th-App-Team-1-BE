@@ -136,6 +136,12 @@ resource "aws_iam_role_policy_attachment" "ecr" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+# CloudWatch Agent가 커스텀 호스트 메트릭(D14/Host)을 PutMetricData로 전송하기 위한 권한
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
 resource "aws_iam_role_policy" "s3_access" {
   name = "${var.project_name}-s3-access"
   role = aws_iam_role.ec2_role.id
