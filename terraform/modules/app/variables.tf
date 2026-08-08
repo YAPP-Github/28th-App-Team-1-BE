@@ -88,3 +88,22 @@ variable "discord_webhook_url" {
   type        = string
   sensitive   = true
 }
+
+variable "cpu_credit_low_threshold" {
+  description = <<-EOT
+    CPUCreditBalance 저잔량 알람 임계값. 이 값 미만이 15분 지속되면 알람.
+    dev(t3.micro)=30. prod은 인스턴스 타입 최대 크레딧에 맞춰 지정(예: t4g.medium=100).
+  EOT
+  type        = number
+  default     = 30
+}
+
+variable "disk_fstype" {
+  description = <<-EOT
+    disk-full 알람이 매칭할 루트(/) 파일시스템 타입 dimension.
+    CloudWatch Agent는 disk 메트릭에 fstype dimension을 부여하며,
+    Ubuntu 22.04 루트 볼륨은 ext4다. AMI/파일시스템 변경 시 함께 조정한다.
+  EOT
+  type        = string
+  default     = "ext4"
+}
