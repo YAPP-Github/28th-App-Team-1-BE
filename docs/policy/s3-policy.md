@@ -17,7 +17,7 @@
   │     └─ sessions/
   │           └─ {sessionId}/
   │                 │
-  │                 ├─ answers/            ← 사용자 답변 음성 (제출 시 비동기 저장, 리포트 영상 합성용, 네이티브 iOS/Android 기본 포맷 m4a)
+  │                 ├─ answers/            ← 사용자 답변 음성 (제출 시 비동기 저장, 리포트 영상 합성용, 네이티브 iOS/Android 기본 포맷 m4a. 합성 성공 시 삭제 — §3.6)
   │                 │     └─ {turnLevel}.m4a
   │                 │
   │                 ├─ questions/          ← AI 면접관 TTS 음성
@@ -98,12 +98,20 @@ expires_at > NOW() 확인 (3.2 단계형 기준)
 ```
 
 - S3 key는 `userId` + `sessionId`로부터 결정적으로 계산 가능하므로, `interview_video` 테이블에 별도 S3 key 컬럼 없이 배치에서 재계산해 삭제한다. (세션당 영상이 1개라는 전제 하에 유효)
-- 삭제 대상 범위(⚠️ 확인 필요): `composite/final.mp4`만 삭제할지, `sessions/{sessionId}/` 하위 전체(`answers/`, `questions/`, `recording/`, `composite/`)를 함께 삭제할지 정해야 한다. 원본 음성·녹화본도 개인정보이므로 함께 정리하는 편이 자연스럽다.
+- 삭제 대상 범위(⚠️ 확인 필요): `composite/final.mp4`만 삭제할지, `sessions/{sessionId}/` 하위 전체(`questions/`, `recording/`, `composite/`)를 함께 삭제할지 정해야 한다. 원본 녹화본도 개인정보이므로 함께 정리하는 편이 자연스럽다. (`answers/`는 §3.6에서 합성 성공 시 이미 삭제되므로 이 배치의 대상이 아니다.)
 - S3에 폴더 단위 삭제 API는 없으므로, 하위 전체를 지운다면 `ListObjectsV2` + `DeleteObjects`(배치 삭제)로 구현해야 한다. 단일 객체만 지운다면 `DeleteObject`로 충분하다.
 - 배치는 최대 24h 지연될 수 있지만, 3.4의 API 레벨 체크(`expires_at > NOW()`)가 이미 접근을 차단하므로 사용자 노출 관점에서는 문제가 없다. 순수 스토리지 비용 정리 목적의 지연이다.
 - ⚠️ 이 배치가 실제로 구현되면, `expires_at < NOW()`가 지인 하드캡(`base_at`+30일)보다 먼저 도달할 수 있다는 점을 확인해야
   한다 — 소유자 화면 기준으로는 만료돼도 지인은 여전히 30일 이내라면 접근 가능해야 하므로(3.3), 삭제 대상 조건에
   `base_at + 30일 < NOW()`도 함께 만족하는지 확인하는 조건 추가가 필요하다.
+
+### 3.6 합성 성공 시 답변 음성 즉시 삭제 (구현됨)
+
+면접자 답변 음성(`answers/{turnLevel}.m4a`)은 **사용자의 실제 목소리(개인정보)**이며, 유일한 소비처가 리포트 영상 합성 한 곳뿐이다. 합성으로 만든 `composite/final.mp4`에 목소리가 이미 얹히면 원본은 중복 데이터가 되므로, `InterviewVideoCompositeService`가 합성에 성공한 직후(`markComposited > 0`) 해당 세션의 `answers/` 프리픽스 하위를 즉시 삭제한다(`InterviewVoiceStorage.deleteAnswerAudio`).
+
+- 합성 실패(`catch`)나 표시할 영상 row가 없는 경우(`marked == 0`)에는 삭제하지 않는다 — 재합성 여지를 남긴다.
+- 삭제는 부가 정리라 실패해도 합성 성공을 되돌리지 않는다. 예외를 삼키고 로깅만 하며, 남은 파일은 §5(리포트 없이 끝난 세션) 또는 (미래) §3.5 배치가 회수한다.
+- 질문 TTS(`questions/{turnLevel}.mp3`)는 대상이 아니다 — AI 합성음이라 개인정보 민감도가 낮고, 리포트 세그먼트 생성(`QuestionUtteranceSegmentPersister`)이 합성과 별개 흐름으로 재소비하기 때문이다.
 
 ## 4. 포트폴리오 파일 생명주기
 
