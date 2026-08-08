@@ -78,6 +78,9 @@ resource "aws_sns_topic_subscription" "alarms_to_discord" {
   topic_arn = aws_sns_topic.alarms.arn
   protocol  = "lambda"
   endpoint  = aws_lambda_function.discord_alert.arn
+
+  # SNS가 구독 후 Lambda를 호출하려면 invoke 권한이 먼저 있어야 하므로 순서를 고정한다.
+  depends_on = [aws_lambda_permission.allow_sns_alarms]
 }
 
 resource "aws_lambda_permission" "allow_sns_alarms" {
@@ -110,8 +113,9 @@ resource "aws_cloudwatch_metric_alarm" "mem_high" {
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "missing"
 
-  alarm_actions = local.alarm_topics
-  ok_actions    = local.alarm_topics
+  alarm_actions             = local.alarm_topics
+  ok_actions                = local.alarm_topics
+  insufficient_data_actions = local.alarm_topics
 }
 
 resource "aws_cloudwatch_metric_alarm" "swap_high" {
@@ -129,8 +133,9 @@ resource "aws_cloudwatch_metric_alarm" "swap_high" {
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "missing"
 
-  alarm_actions = local.alarm_topics
-  ok_actions    = local.alarm_topics
+  alarm_actions             = local.alarm_topics
+  ok_actions                = local.alarm_topics
+  insufficient_data_actions = local.alarm_topics
 }
 
 resource "aws_cloudwatch_metric_alarm" "disk_full" {
@@ -152,8 +157,9 @@ resource "aws_cloudwatch_metric_alarm" "disk_full" {
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "missing"
 
-  alarm_actions = local.alarm_topics
-  ok_actions    = local.alarm_topics
+  alarm_actions             = local.alarm_topics
+  ok_actions                = local.alarm_topics
+  insufficient_data_actions = local.alarm_topics
 }
 
 # ── 네이티브(AWS/EC2) 메트릭 알람 ──
@@ -173,8 +179,9 @@ resource "aws_cloudwatch_metric_alarm" "cpu_credit_low" {
   comparison_operator = "LessThanThreshold"
   treat_missing_data  = "missing"
 
-  alarm_actions = local.alarm_topics
-  ok_actions    = local.alarm_topics
+  alarm_actions             = local.alarm_topics
+  ok_actions                = local.alarm_topics
+  insufficient_data_actions = local.alarm_topics
 }
 
 resource "aws_cloudwatch_metric_alarm" "status_check" {
@@ -192,6 +199,7 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "missing"
 
-  alarm_actions = local.alarm_topics
-  ok_actions    = local.alarm_topics
+  alarm_actions             = local.alarm_topics
+  ok_actions                = local.alarm_topics
+  insufficient_data_actions = local.alarm_topics
 }
