@@ -1,4 +1,4 @@
-package com.yapp.d14.portfolio.application.service;
+package com.yapp.d14.portfolio.domain;
 
 import org.junit.jupiter.api.Test;
 

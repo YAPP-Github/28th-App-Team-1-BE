@@ -1,4 +1,4 @@
-package com.yapp.d14.portfolio.application.service;
+package com.yapp.d14.portfolio.domain;
 
 import lombok.experimental.UtilityClass;
 
@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @UtilityClass
-class PortfolioPiiMasker {
+public class PortfolioPiiMasker {
 
     private static final Pattern EMAIL = Pattern.compile("\\b[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern MOBILE = Pattern.compile("\\b01[016789][-.\\s]?\\d{3,4}[-.\\s]?\\d{4}\\b");
@@ -24,7 +24,7 @@ class PortfolioPiiMasker {
     private static final int PHONE_INDEX = 1;
     private static final int RRN_INDEX = 2;
 
-    MaskingResult mask(String rawText) {
+    public MaskingResult mask(String rawText) {
         int[] counts = new int[3];
 
         // 이메일을 먼저 치환해야 hong01012345678@naver.com 같은 값의 로컬파트가 전화번호로 잘리지 않는다.
@@ -67,6 +67,6 @@ class PortfolioPiiMasker {
         return checkDigit == Character.getNumericValue(digits.charAt(RRN_DIGIT_LENGTH - 1));
     }
 
-    record MaskingResult(String maskedText, int emailCount, int phoneCount, int rrnCount) {
+    public record MaskingResult(String maskedText, int emailCount, int phoneCount, int rrnCount) {
     }
 }

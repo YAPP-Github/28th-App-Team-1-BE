@@ -6,6 +6,7 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
+import com.yapp.d14.portfolio.domain.PortfolioPiiMasker;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
