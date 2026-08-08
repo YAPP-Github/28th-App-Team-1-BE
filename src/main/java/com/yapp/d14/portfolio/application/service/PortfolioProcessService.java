@@ -6,6 +6,7 @@ import com.yapp.d14.portfolio.application.port.out.PortfolioEmbeddingStore;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import com.yapp.d14.portfolio.application.port.out.PortfolioRepository;
 import com.yapp.d14.portfolio.domain.Portfolio;
+import com.yapp.d14.portfolio.domain.PortfolioPiiMasker;
 import com.yapp.d14.portfolio.domain.PortfolioStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +45,9 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
             return;
         }
 
-        if (!embed(portfolio, extractedText)) {
+        String maskedText = maskPii(portfolio, extractedText);
+
+        if (!embed(portfolio, maskedText)) {
             return;
         }
 
@@ -98,14 +101,22 @@ class PortfolioProcessService implements PortfolioProcessUseCase {
         return extractedText;
     }
 
-    private boolean embed(Portfolio portfolio, String extractedText) {
+    // 마스킹된 텍스트만 임베딩·LLM 입력으로 흘려보낸다. 로그에는 값이 아닌 유형별 건수만 남긴다.
+    private String maskPii(Portfolio portfolio, String extractedText) {
+        PortfolioPiiMasker.MaskingResult result = PortfolioPiiMasker.mask(extractedText);
+        log.info("[PORTFOLIO PROCESS] PII 마스킹 완료: portfolioId={}, email={}, phone={}, rrn={}",
+                portfolio.getId(), result.emailCount(), result.phoneCount(), result.rrnCount());
+        return result.maskedText();
+    }
+
+    private boolean embed(Portfolio portfolio, String maskedText) {
         for (int attempt = 1; attempt <= MAX_PROCESS_RETRIES + 1; attempt++) {
             if (attempt > 1 && !isStillProcessing(portfolio.getId())) {
                 log.warn("[PORTFOLIO PROCESS] 처리 시간 초과로 이미 종료됨, 임베딩 재시도를 중단함: portfolioId={}", portfolio.getId());
                 break;
             }
             try {
-                portfolioEmbeddingStore.save(portfolio.getId(), portfolio.getUserId(), portfolio.getFileName(), extractedText);
+                portfolioEmbeddingStore.save(portfolio.getId(), portfolio.getUserId(), portfolio.getFileName(), maskedText);
                 return true;
             } catch (Exception e) {
                 log.warn("[PORTFOLIO PROCESS] 임베딩 실패 ({}/{}): portfolioId={}",

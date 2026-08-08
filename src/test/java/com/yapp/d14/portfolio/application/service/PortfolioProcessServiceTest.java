@@ -11,6 +11,7 @@ import com.yapp.d14.portfolio.exception.PortfolioException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -220,6 +221,23 @@ class PortfolioProcessServiceTest {
         verify(portfolioCompletionPersister).completeIfStillProcessing(portfolio.getId());
         verify(portfolioFileUploader, never()).delete(any());
         verify(portfolioEmbeddingStore, never()).deleteByPortfolioId(any());
+    }
+
+    @Test
+    void 추출된_텍스트에_PII가_있으면_마스킹된_텍스트로_임베딩한다() {
+        String textWithPii = "연락처 hong@gmail.com / 010-1234-5678 " + VALID_EXTRACTED_TEXT;
+        given(portfolioRepository.findById(portfolio.getId())).willReturn(Optional.of(portfolio));
+        given(pdfTextExtractor.extractText(fileContent)).willReturn(textWithPii);
+
+        portfolioProcessService.process(userId, portfolio.getId(), fileContent);
+
+        ArgumentCaptor<String> embeddedText = ArgumentCaptor.forClass(String.class);
+        verify(portfolioEmbeddingStore).save(any(), any(), any(), embeddedText.capture());
+        assertThat(embeddedText.getValue())
+                .doesNotContain("hong@gmail.com")
+                .doesNotContain("010-1234-5678")
+                .contains("[이메일]")
+                .contains("[전화번호]");
     }
 
     @Test
