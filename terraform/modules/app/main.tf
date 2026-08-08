@@ -321,6 +321,14 @@ resource "aws_spot_instance_request" "app" {
   }))
 
   tags = { Name = "${var.project_name}-app-server" }
+
+  lifecycle {
+    # user_data는 ForceNew 속성이라 파일을 바꾸면 인스턴스가 destroy+recreate 되고,
+    # root 볼륨(delete_on_termination=true) 위의 docker volume(postgres/redis 데이터)까지
+    # 삭제된다. 실행 중 인스턴스의 부트스트랩 변경은 SSM Run Command로 반영하고,
+    # user_data 변경분은 의도적으로 인스턴스를 교체할 때만 적용되도록 무시한다.
+    ignore_changes = [user_data]
+  }
 }
 
 resource "aws_ec2_tag" "spot_instance_name" {
