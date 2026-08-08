@@ -48,4 +48,7 @@ module "app" {
   s3_cors_allowed_origins = var.s3_cors_allowed_origins
   log_retention_days      = var.log_retention_days
   discord_webhook_url     = var.discord_webhook_url
+
+  cpu_credit_low_threshold = var.cpu_credit_low_threshold
+  disk_fstype              = var.disk_fstype
 }

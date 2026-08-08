@@ -66,3 +66,13 @@ variable "discord_webhook_url" {
   type      = string
   sensitive = true
 }
+
+variable "cpu_credit_low_threshold" {
+  type    = number
+  default = 30
+}
+
+variable "disk_fstype" {
+  type    = string
+  default = "ext4"
+}
