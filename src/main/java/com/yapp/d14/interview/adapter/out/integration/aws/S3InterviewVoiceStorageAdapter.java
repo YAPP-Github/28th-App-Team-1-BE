@@ -10,10 +10,18 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -111,6 +119,43 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
             }
         }
         log.error("[INTERVIEW ANSWER UPLOAD] 재시도 소진, 업로드 실패: key={}", key);
+    }
+
+    // 합성 성공 후 답변 음성(answers/ 하위)을 정리한다. 세션당 턴 수만큼이라 한 페이지(1000개)로 충분하지만
+    // 페이지네이터로 순회해 안전하게 처리한다. 부분 실패는 예외로 알려 호출부(합성 서비스)가 삼키고 로깅하게 한다.
+    @Override
+    public int deleteAnswerAudio(UUID userId, Long sessionId) {
+        String prefix = S3KeyGenerator.interviewAnswerPrefix(userId, sessionId);
+        ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
+                .bucket(s3Properties.getBucket())
+                .prefix(prefix)
+                .build();
+
+        int deleted = 0;
+        for (ListObjectsV2Response page : s3Client.listObjectsV2Paginator(listRequest)) {
+            List<ObjectIdentifier> keys = page.contents().stream()
+                    .map(object -> ObjectIdentifier.builder().key(object.key()).build())
+                    .toList();
+            if (keys.isEmpty()) {
+                continue;
+            }
+            deleteBatch(keys);
+            deleted += keys.size();
+        }
+        return deleted;
+    }
+
+    private void deleteBatch(List<ObjectIdentifier> keys) {
+        DeleteObjectsResponse response = s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .delete(Delete.builder().objects(keys).build())
+                .build());
+
+        if (response.hasErrors() && !response.errors().isEmpty()) {
+            throw S3Exception.builder()
+                    .message("답변 음성 일부를 삭제하지 못했어요: " + response.errors().getFirst().key())
+                    .build();
+        }
     }
 
     private boolean sleepBackoff(int attempt) {

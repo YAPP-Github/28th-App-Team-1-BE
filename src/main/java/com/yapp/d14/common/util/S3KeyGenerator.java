@@ -23,6 +23,11 @@ public final class S3KeyGenerator {
         return "users/%s/sessions/%s/answers/%s.m4a".formatted(userId, sessionId, turnLevel);
     }
 
+    // 면접자 답변 음성 프리픽스. 합성 성공 후 이 하위 전체를 삭제한다(s3-policy.md §3.5).
+    public static String interviewAnswerPrefix(UUID userId, Long sessionId) {
+        return "users/%s/sessions/%s/answers/".formatted(userId, sessionId);
+    }
+
     // 프론트 녹화본. 세션당 1개로 고정되며 userId+sessionId로 결정적 계산 가능(s3-policy.md §3.4).
     public static String interviewRecordingKey(UUID userId, Long sessionId) {
         return "users/%s/sessions/%s/recording/raw.mp4".formatted(userId, sessionId);

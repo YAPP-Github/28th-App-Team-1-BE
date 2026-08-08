@@ -3,7 +3,9 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.interview.application.port.out.AnswerRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor.AudioTrack;
+import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.Answer;
 import com.yapp.d14.interview.domain.Question;
@@ -41,6 +43,10 @@ class InterviewVideoCompositeServiceTest {
     private InterviewVideoCompositor interviewVideoCompositor;
     @Mock
     private InterviewVideoRepository interviewVideoRepository;
+    @Mock
+    private InterviewSessionRepository interviewSessionRepository;
+    @Mock
+    private InterviewVoiceStorage interviewVoiceStorage;
 
     @InjectMocks
     private InterviewVideoCompositeService service;
@@ -85,6 +91,7 @@ class InterviewVideoCompositeServiceTest {
                 .containsExactly(questionKey(1), answerKey(1), questionKey(2), answerKey(2));
         assertThat(tracks).extracting(AudioTrack::startSec).containsExactly(5.0f, 8.0f, 12.0f, 15.0f);
         verify(interviewVideoRepository).markComposited(SESSION_ID);
+        verify(interviewVoiceStorage).deleteAnswerAudio(USER_ID, SESSION_ID);
     }
 
     @Test
@@ -120,6 +127,7 @@ class InterviewVideoCompositeServiceTest {
 
         verify(interviewVideoCompositor, never()).compose(any(), any(), any());
         verify(interviewVideoRepository, never()).markComposited(any());
+        verify(interviewVoiceStorage, never()).deleteAnswerAudio(any(), any());
     }
 
     @Test
@@ -134,5 +142,38 @@ class InterviewVideoCompositeServiceTest {
         service.composite(USER_ID, SESSION_ID);
 
         verify(interviewVideoRepository, never()).markComposited(any());
+        // 합성 실패 시에는 답변 음성을 지우지 않는다 — 재합성 여지를 남긴다.
+        verify(interviewVoiceStorage, never()).deleteAnswerAudio(any(), any());
+    }
+
+    @Test
+    void 합성됐지만_표시할_영상_row가_없으면_답변음성을_지우지_않는다() {
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                question(1L, 1, 5.0f)
+        ));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(interviewVideoRepository.markComposited(SESSION_ID)).willReturn(0);
+
+        service.composite(USER_ID, SESSION_ID);
+
+        verify(interviewVoiceStorage, never()).deleteAnswerAudio(any(), any());
+    }
+
+    @Test
+    void 답변음성_삭제가_실패해도_합성_완료표시는_유지된다() {
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                question(1L, 1, 5.0f)
+        ));
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(
+                answer(1L, 8.0f, false)
+        ));
+        given(interviewVideoRepository.markComposited(SESSION_ID)).willReturn(1);
+        doThrow(new IllegalStateException("S3 삭제 실패"))
+                .when(interviewVoiceStorage).deleteAnswerAudio(USER_ID, SESSION_ID);
+
+        service.composite(USER_ID, SESSION_ID);
+
+        verify(interviewVideoCompositor).compose(eq(USER_ID), eq(SESSION_ID), any());
+        verify(interviewVideoRepository).markComposited(SESSION_ID);
     }
 }
