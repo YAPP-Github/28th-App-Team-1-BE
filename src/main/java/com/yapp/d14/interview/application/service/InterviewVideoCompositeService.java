@@ -7,6 +7,7 @@ import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor.AudioTrack;
 import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.domain.InterviewEndType;
 import com.yapp.d14.interview.domain.InterviewVideo;
@@ -34,6 +35,7 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
     private final InterviewVideoCompositor interviewVideoCompositor;
     private final InterviewVideoRepository interviewVideoRepository;
     private final InterviewSessionRepository interviewSessionRepository;
+    private final InterviewVoiceStorage interviewVoiceStorage;
 
     @Override
     @Async("interviewCompositeTaskExecutor")
@@ -58,10 +60,23 @@ class InterviewVideoCompositeService implements InterviewVideoCompositeUseCase {
                 log.warn("[COMPOSITE] 합성본은 업로드됐으나 표시할 영상 row가 없음(marked=0): sessionId={}", sessionId);
             } else {
                 log.info("[COMPOSITE] 합성 완료: sessionId={}, trackCount={}", sessionId, tracks.size());
+                // 합성이 실제로 반영된 세션(marked>0)에서만 답변 음성을 정리한다. 목소리는 이미 final.mp4에 얹혔다.
+                deleteAnswerAudioSafely(userId, sessionId);
             }
         } catch (Exception e) {
             // 합성 실패는 리포트/피드백 흐름을 막지 않는다. videoUrl은 composited=false라 계속 null로 노출된다.
             log.error("[COMPOSITE] 합성 실패, videoUrl은 null로 유지: sessionId={}", sessionId, e);
+        }
+    }
+
+    // 답변 음성은 합성으로 만든 final.mp4에 이미 얹혀 중복 데이터가 됐고, 소비처가 합성 한 곳뿐이라 여기서 정리한다(#140).
+    // 삭제는 부가 정리라 실패해도 합성 성공을 되돌리지 않는다 — 예외를 삼키고 로깅만 한다(잔여물은 §5/§3.5 배치가 회수).
+    private void deleteAnswerAudioSafely(UUID userId, Long sessionId) {
+        try {
+            int deleted = interviewVoiceStorage.deleteAnswerAudio(userId, sessionId);
+            log.info("[COMPOSITE] 합성 후 답변 음성 삭제: sessionId={}, deleted={}건", sessionId, deleted);
+        } catch (Exception e) {
+            log.warn("[COMPOSITE] 답변 음성 삭제 실패, 합성에는 영향 없음: sessionId={}", sessionId, e);
         }
     }
 
