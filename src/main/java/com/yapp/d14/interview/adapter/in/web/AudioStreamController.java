@@ -3,6 +3,7 @@ package com.yapp.d14.interview.adapter.in.web;
 import com.yapp.d14.common.web.CurrentUser;
 import com.yapp.d14.interview.application.port.in.AudioStreamUseCase;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/interview/sessions")
 @RequiredArgsConstructor
@@ -32,9 +34,14 @@ class AudioStreamController implements AudioStreamControllerDocs {
             @PathVariable Long questionId
     ) {
         Flux<byte[]> audioChunks = audioStreamUseCase.stream(userId, sessionId, questionId);
-        StreamingResponseBody body = outputStream -> audioChunks
-                .doOnNext(chunk -> writeChunk(outputStream, chunk))
-                .blockLast();
+        StreamingResponseBody body = outputStream -> {
+            try {
+                audioChunks.doOnNext(chunk -> writeChunk(outputStream, chunk)).blockLast();
+            } catch (UncheckedIOException e) {
+                log.debug("클라이언트가 오디오 스트림 도중 연결을 끊었습니다: sessionId={}, questionId={}",
+                        sessionId, questionId);
+            }
+        };
         return ResponseEntity.ok().contentType(MediaType.valueOf("audio/mpeg")).body(body);
     }
 
