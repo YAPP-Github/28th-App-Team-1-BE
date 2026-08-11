@@ -6,8 +6,10 @@ import com.yapp.d14.auth.application.port.out.JwtProvider;
 import com.yapp.d14.auth.application.port.out.SocialAuthClient;
 import com.yapp.d14.auth.application.port.out.SocialUserInfo;
 import com.yapp.d14.auth.application.port.out.TokenRepository;
+import com.yapp.d14.common.properties.DemoLoginProperties;
 import com.yapp.d14.consent.application.port.in.RequiredConsentStatusQueryUseCase;
 import com.yapp.d14.consent.domain.RequiredConsentStatus;
+import com.yapp.d14.user.application.port.in.FindUserUseCase;
 import com.yapp.d14.user.application.port.in.UserProfileQueryUseCase;
 import com.yapp.d14.user.application.port.in.result.UserProfileResult;
 import com.yapp.d14.user.domain.Provider;
@@ -41,6 +43,12 @@ class SocialLoginServiceTest {
 
     @Mock
     private RequiredConsentStatusQueryUseCase requiredConsentStatusQueryUseCase;
+
+    @Mock
+    private FindUserUseCase findUserUseCase;
+
+    @Mock
+    private DemoLoginProperties demoLoginProperties;
 
     @InjectMocks
     private SocialLoginService service;
