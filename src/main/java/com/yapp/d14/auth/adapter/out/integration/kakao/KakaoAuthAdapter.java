@@ -8,6 +8,7 @@ import com.yapp.d14.common.properties.KakaoProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
@@ -54,9 +55,28 @@ class KakaoAuthAdapter implements KakaoSocialClient {
                     .body("target_id_type=user_id&target_id=" + providerId)
                     .retrieve()
                     .toBodilessEntity();
+        } catch (HttpClientErrorException e) {
+            // 이미 앱과 연결이 끊긴 유저(-101)는 우리가 원하는 최종 상태이므로 실패가 아니라 멱등 성공으로 처리한다.
+            // 그 외 카카오 오류(admin key 오류·rate limit·5xx 등)는 실제 연결이 남아있을 수 있으므로 그대로 실패시킨다.
+            if (isAlreadyUnlinked(e)) {
+                log.info("[KAKAO UNLINK] 이미 연결이 끊긴 유저 - 멱등 처리: providerId={}", providerId);
+                return;
+            }
+            log.error("[KAKAO UNLINK] 카카오 연결 끊기 실패: providerId={}", providerId, e);
+            throw new AuthException(AuthErrorCode.SOCIAL_UNLINK_FAILED);
         } catch (Exception e) {
             log.error("[KAKAO UNLINK] 카카오 연결 끊기 실패: providerId={}", providerId, e);
             throw new AuthException(AuthErrorCode.SOCIAL_UNLINK_FAILED);
+        }
+    }
+
+    private boolean isAlreadyUnlinked(HttpClientErrorException e) {
+        try {
+            KakaoErrorResponse body = e.getResponseBodyAs(KakaoErrorResponse.class);
+            return body != null && body.isNotRegisteredUser();
+        } catch (Exception parseError) {
+            log.warn("[KAKAO UNLINK] 카카오 에러 응답 파싱 실패, 실패로 처리: body={}", e.getResponseBodyAsString(), parseError);
+            return false;
         }
     }
 }
