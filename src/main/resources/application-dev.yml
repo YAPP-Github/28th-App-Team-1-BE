@@ -77,6 +77,11 @@ apple:
 kakao:
   admin-key: ${KAKAO_ADMIN_KEY}
 
+demo:
+  enabled: ${DEMO_LOGIN_ENABLED:true}
+  credential: ${DEMO_LOGIN_CREDENTIAL}
+  user-id: ${DEMO_LOGIN_USER_ID}
+
 encryption:
   token-key: ${TOKEN_ENCRYPTION_KEY}
 
