@@ -38,10 +38,18 @@ class AudioStreamService implements AudioStreamUseCase {
                 .doOnNext(buffer::writeBytes)
                 .doOnComplete(() -> archiveAsync(userId, sessionId, question.getTurnLevel(), buffer.toByteArray()))
                 .doOnError(e -> log.warn(
-                        "[AUDIO ARCHIVE] TTS 스트림 생성 실패, S3 업로드 생략: sessionId={}, questionId={}", sessionId, questionId, e));
+                        "[AUDIO ARCHIVE] TTS 스트림 생성 실패, S3 업로드 생략: sessionId={}, questionId={}", sessionId, questionId, e))
+                // 취소되면 doOnComplete가 발화하지 않아 이 턴의 질문 음성이 영구 누락된다.
+                // 컨트롤러가 연결 끊김에도 구독을 유지하므로 정상 흐름에서는 찍히지 않는다.
+                .doOnCancel(() -> log.warn(
+                        "[AUDIO ARCHIVE] 스트림이 취소돼 S3 업로드를 건너뜁니다: sessionId={}, questionId={}", sessionId, questionId));
     }
 
     private void archiveAsync(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
+        if (audioContent.length == 0) {
+            log.warn("[AUDIO ARCHIVE] 수신된 오디오가 없어 업로드를 생략합니다: sessionId={}, turnLevel={}", sessionId, turnLevel);
+            return;
+        }
         try {
             interviewVoiceStorage.uploadAsync(userId, sessionId, turnLevel, audioContent);
         } catch (Exception e) {
