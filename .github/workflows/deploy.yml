@@ -125,6 +125,8 @@ jobs:
             APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}
             APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}
             KAKAO_ADMIN_KEY=${{ secrets.KAKAO_ADMIN_KEY }}
+            DEMO_LOGIN_CREDENTIAL=${{ secrets.DEMO_LOGIN_CREDENTIAL }}
+            DEMO_LOGIN_USER_ID=${{ secrets.DEMO_LOGIN_USER_ID }}
             TOKEN_ENCRYPTION_KEY=${{ secrets.TOKEN_ENCRYPTION_KEY }}
             ENVEOF
             chmod 600 /opt/d14/.env

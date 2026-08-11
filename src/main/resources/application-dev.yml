@@ -79,7 +79,8 @@ kakao:
 
 demo:
   enabled: ${DEMO_LOGIN_ENABLED:true}
-  user-id: ${DEMO_LOGIN_USER_ID:6f44ad45-7333-411c-834b-7baf1b21d681}
+  credential: ${DEMO_LOGIN_CREDENTIAL}
+  user-id: ${DEMO_LOGIN_USER_ID}
 
 encryption:
   token-key: ${TOKEN_ENCRYPTION_KEY}

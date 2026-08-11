@@ -12,5 +12,6 @@ import org.springframework.stereotype.Component;
 public class DemoLoginProperties {
 
     private boolean enabled;
+    private String credential;
     private String userId;
 }

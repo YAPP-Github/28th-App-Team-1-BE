@@ -50,7 +50,7 @@ class SocialLoginService implements SocialLoginUseCase {
     private boolean isDemoLogin(SocialLoginCommand command) {
         return demoLoginProperties.isEnabled()
                 && command.provider() == Provider.KAKAO
-                && command.credential().equals(demoLoginProperties.getUserId());
+                && command.credential().equals(demoLoginProperties.getCredential());
     }
 
     private AuthToken issueAuthToken(User user, boolean newUser) {
