@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - issue/5/infra
+      - feat/146-demo-access-token
   workflow_dispatch:
 
 env:
