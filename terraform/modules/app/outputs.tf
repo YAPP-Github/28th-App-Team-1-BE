@@ -42,3 +42,8 @@ output "cloudwatch_log_group_name" {
   description = "앱 로그가 쌓이는 CloudWatch 로그그룹 이름"
   value       = aws_cloudwatch_log_group.app.name
 }
+
+output "alarms_sns_topic_arn" {
+  description = "리소스 알람이 게시되는 SNS 토픽 ARN"
+  value       = aws_sns_topic.alarms.arn
+}
