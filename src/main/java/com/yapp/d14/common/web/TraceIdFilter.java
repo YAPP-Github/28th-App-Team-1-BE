@@ -19,7 +19,7 @@ import java.util.UUID;
 @Component
 public class TraceIdFilter extends OncePerRequestFilter {
 
-    private static final String TRACE_ID_MDC_KEY = "traceId";
+    public static final String TRACE_ID_MDC_KEY = "traceId";
 
     @Override
     protected void doFilterInternal(
