@@ -89,6 +89,17 @@ fi
 log "app-$target healthy"
 
 # ── Caddy 업스트림 전환 (무중단 reload) ─────────────────────
+# Caddy 는 배포마다 재생성하지 않고 계속 살려두므로(TLS 인증서 유지·무중단), 오래 살아있는 사이
+# 새로 만들어지는 app 컨테이너와 다른 Docker 네트워크에 놓여 app-<color> DNS 해석에 실패할 수 있다.
+# (그러면 reload 는 성공해도 실제로는 업스트림에 못 닿아 502.) 전환 직전에 target 과 같은 네트워크로
+# Caddy 를 강제 정렬한다. 이미 붙어 있으면 무시된다.
+target_net=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' "d14-app-$target")
+if [ -n "$target_net" ]; then
+  docker network connect "$target_net" d14-caddy 2>/dev/null \
+    && log "caddy 를 네트워크 $target_net 에 연결" \
+    || true
+fi
+
 render_caddyfile "$target"
 docker exec d14-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
 log "caddy reload 완료 -> app-$target 로 트래픽 전환"
