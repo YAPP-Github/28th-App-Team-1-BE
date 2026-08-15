@@ -6,7 +6,9 @@ import com.yapp.d14.interview.domain.QuestionCandidateStrength;
 import com.yapp.d14.interview.domain.TestType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
@@ -57,26 +59,33 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
 
     private final ChatClient chatClient;
     private final String systemPrompt;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
-    AnthropicProbeCandidateExtractorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+    AnthropicProbeCandidateExtractorAdapter(
+            @Qualifier("anthropicChatModel") ChatModel chatModel,
+            AnthropicUsageRecorder anthropicUsageRecorder
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml(), MAX_CANDIDATES);
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
     public List<ProbeCandidateDraft> extract(
-            String focusProject, List<String> portfolioChunks, List<String> jdKeywords, List<String> priorQuestions
+            Long sessionId, String focusProject, List<String> portfolioChunks, List<String> jdKeywords,
+            List<String> priorQuestions
     ) {
         String userMessage = buildUserMessage(focusProject, portfolioChunks, jdKeywords, priorQuestions);
 
         try {
-            List<ProbeCandidateLlmEntry> entries = chatClient.prompt()
+            ResponseEntity<ChatResponse, List<ProbeCandidateLlmEntry>> responseEntity = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .call()
-                    .entity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
+                    .responseEntity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
                     });
-            return entries.stream().map(this::toDraft).toList();
+            anthropicUsageRecorder.record(sessionId, responseEntity.response());
+            return responseEntity.entity().stream().map(this::toDraft).toList();
         } catch (Exception e) {
             log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("캐물지점 추출에 실패했어요.", e);

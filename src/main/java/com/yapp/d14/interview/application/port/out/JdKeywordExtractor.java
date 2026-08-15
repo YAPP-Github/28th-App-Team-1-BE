@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface JdKeywordExtractor {
 
-    List<String> extractKeywords(String jdText);
+    List<String> extractKeywords(Long sessionId, String jdText);
 }

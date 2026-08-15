@@ -58,21 +58,26 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
             """;
 
     private final ChatClient chatClient;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
-    AnthropicReportHeadlineGeneratorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+    AnthropicReportHeadlineGeneratorAdapter(
+            @Qualifier("anthropicChatModel") ChatModel chatModel,
+            AnthropicUsageRecorder anthropicUsageRecorder
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
-    public String generate(HeadlineContext context) {
+    public String generate(Long sessionId, HeadlineContext context) {
         String userMessage = buildUserMessage(context);
 
         try {
-            String content = chatClient.prompt()
+            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userMessage)
                     .call()
-                    .content();
+                    .chatResponse());
             return sanitize(content);
         } catch (Exception e) {
             log.error("[REPORT HEADLINE GENERATE] Anthropic 호출/파싱 실패", e);

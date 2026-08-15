@@ -34,7 +34,7 @@ class AudioStreamService implements AudioStreamUseCase {
         // tee: 클라이언트로 나가는 동일 스트림에서 청크를 버퍼링해뒀다가 완료 시점에 S3로 비동기 업로드한다.
         // Flux를 재구독해 새로 생성하면 OpenAI TTS 호출이 두 번 나가 비용이 두 배가 되므로 반드시 같은 구독에서 처리한다.
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        return textToSpeechSynthesizer.synthesizeStream(question.getContent())
+        return textToSpeechSynthesizer.synthesizeStream(sessionId, question.getContent())
                 .doOnNext(buffer::writeBytes)
                 .doOnComplete(() -> archiveAsync(userId, sessionId, question.getTurnLevel(), buffer.toByteArray()))
                 .doOnError(e -> log.warn(

@@ -36,7 +36,9 @@ class AnthropicLiveTurnAnalyzerAdapterParseFallbackTest {
             """;
 
     private AnthropicLiveTurnAnalyzerAdapter adapter(Function<Prompt, ChatResponse> behavior) {
-        return new AnthropicLiveTurnAnalyzerAdapter(new StubChatModel(behavior), new NoOpChunkSearch(), new NoOpPriorQaCache());
+        return new AnthropicLiveTurnAnalyzerAdapter(new StubChatModel(behavior), new NoOpChunkSearch(), new NoOpPriorQaCache(),
+                new AnthropicUsageRecorder(command -> {
+                }));
     }
 
     private LiveTurnResult analyze(AnthropicLiveTurnAnalyzerAdapter adapter, String lastAnswer, TestType currentAxis) {

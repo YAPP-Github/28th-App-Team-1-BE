@@ -221,7 +221,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
 
         log.info("[INTERVIEW REPORT] axis 채점 시작: sessionId={}, axisCount={}", sessionId, axisTurnGroups.size());
         List<AxisScoreDraft> drafts = LlmCallRetrySupport.retry(
-                () -> axisReportScorer.score(new AxisReportScoreContext(axisTurnGroups)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+                () -> axisReportScorer.score(sessionId, new AxisReportScoreContext(axisTurnGroups)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
         );
         log.info("[INTERVIEW REPORT] axis 채점 완료: sessionId={}, scoredCount={}", sessionId, drafts.size());
         return drafts;
@@ -269,7 +269,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         log.info("[INTERVIEW REPORT] 레드플래그 확정 시작: sessionId={}, portfolioCandidateCount={}, contradictionCandidateCount={}",
                 sessionId, portfolioCandidates.size(), contradictionCandidates.size());
         List<RedFlagVerdict> verdicts = LlmCallRetrySupport.retry(() -> redFlagReconciler.reconcile(
-                new RedFlagReconcileContext(portfolioCandidates, contradictionCandidates, contextTurns)
+                sessionId, new RedFlagReconcileContext(portfolioCandidates, contradictionCandidates, contextTurns)
         ), MAX_LLM_RETRIES, "INTERVIEW REPORT");
         log.info("[INTERVIEW REPORT] 레드플래그 확정 완료: sessionId={}, verdictCount={}", sessionId, verdicts.size());
         return verdicts;
@@ -363,7 +363,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         log.info("[INTERVIEW REPORT] 한 줄 요약 생성 시작: sessionId={}, severeRedFlagPresent={}, coverageIncomplete={}",
                 sessionId, severeRedFlagPresent, context.coverageIncomplete());
         String headline = LlmCallRetrySupport.retry(
-                () -> reportHeadlineGenerator.generate(context), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+                () -> reportHeadlineGenerator.generate(sessionId, context), MAX_LLM_RETRIES, "INTERVIEW REPORT"
         );
         log.info("[INTERVIEW REPORT] 한 줄 요약 생성 완료: sessionId={}", sessionId);
         return headline;
@@ -419,7 +419,7 @@ class InterviewReportGenerateService implements InterviewReportGenerateUseCase {
         int turnCount = axisCards.stream().mapToInt(card -> card.turns().size()).sum();
         log.info("[INTERVIEW REPORT] 리포트 카드 생성 시작: sessionId={}, axisCount={}, turnCount={}", sessionId, axisCards.size(), turnCount);
         List<ReportCardDraft> drafts = LlmCallRetrySupport.retry(
-                () -> reportCardContentGenerator.generate(new ReportCardContentContext(axisCards)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
+                () -> reportCardContentGenerator.generate(sessionId, new ReportCardContentContext(axisCards)), MAX_LLM_RETRIES, "INTERVIEW REPORT"
         );
         log.info("[INTERVIEW REPORT] 리포트 카드 생성 완료: sessionId={}, cardCount={}", sessionId, drafts.size());
 

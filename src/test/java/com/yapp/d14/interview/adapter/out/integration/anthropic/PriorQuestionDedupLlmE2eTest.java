@@ -41,7 +41,8 @@ class PriorQuestionDedupLlmE2eTest {
     @Test
     void 이전_질문을_넘기면_여는_질문이_그_소재를_피한다() {
         AnthropicQuestionTextGeneratorAdapter generator =
-                new AnthropicQuestionTextGeneratorAdapter(buildRealAnthropicChatModel());
+                new AnthropicQuestionTextGeneratorAdapter(buildRealAnthropicChatModel(), new AnthropicUsageRecorder(command -> {
+                }));
 
         List<String> priorQuestions = List.of(
                 "일하면서 예상과 다르게 흘러갔거나 실패했던 경험, 그리고 거기서 무엇을 배우셨는지 말씀해 주실 수 있을까요?",
@@ -49,9 +50,11 @@ class PriorQuestionDedupLlmE2eTest {
         );
 
         String baseline = generator.generateOpener(
+                1L,
                 TestType.RESILIENCE, JobType.BACKEND, 3, List.of(), List.of(), List.of()
         );
         String deduped = generator.generateOpener(
+                1L,
                 TestType.RESILIENCE, JobType.BACKEND, 3, List.of(), List.of(), priorQuestions
         );
 
@@ -71,7 +74,8 @@ class PriorQuestionDedupLlmE2eTest {
     @Test
     void 이전_질문이_다룬_지점은_후보풀에서_빠지고_안_다룬_지점이_올라온다() {
         AnthropicProbeCandidateExtractorAdapter extractor =
-                new AnthropicProbeCandidateExtractorAdapter(buildRealAnthropicChatModel());
+                new AnthropicProbeCandidateExtractorAdapter(buildRealAnthropicChatModel(), new AnthropicUsageRecorder(command -> {
+                }));
 
         List<String> priorQuestions = List.of(
                 "타임세일 트래픽이 몰릴 때 Redis 분산락을 왜 그 방식으로 잡으셨는지 궁금해요.",
@@ -79,8 +83,8 @@ class PriorQuestionDedupLlmE2eTest {
                 "응답 지연을 800ms에서 200ms로 줄이신 과정을 좀 더 설명해 주실 수 있을까요?"
         );
 
-        List<ProbeCandidateDraft> baseline = extractor.extract(null, PORTFOLIO_CHUNKS, List.of(), List.of());
-        List<ProbeCandidateDraft> deduped = extractor.extract(null, PORTFOLIO_CHUNKS, List.of(), priorQuestions);
+        List<ProbeCandidateDraft> baseline = extractor.extract(1L, null, PORTFOLIO_CHUNKS, List.of(), List.of());
+        List<ProbeCandidateDraft> deduped = extractor.extract(1L, null, PORTFOLIO_CHUNKS, List.of(), priorQuestions);
 
         log.info("========== [LLM E2E] 후보풀 중복 회피 ==========");
         log.info("[이전 질문] {}", priorQuestions);

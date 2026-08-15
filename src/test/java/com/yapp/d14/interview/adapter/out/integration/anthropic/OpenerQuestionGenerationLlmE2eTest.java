@@ -34,7 +34,8 @@ class OpenerQuestionGenerationLlmE2eTest {
     @Test
     void 실제_LLM으로_직군_axis_조합별_여는_질문을_생성한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
-        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
+        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
+                }));
 
         List<JobType> jobTypes = List.of(JobType.BACKEND, JobType.FRONTEND, JobType.INFRA_SRE);
         List<TestType> axes = List.of(TestType.CONFLICT, TestType.RESILIENCE, TestType.TRADEOFF);
@@ -43,7 +44,7 @@ class OpenerQuestionGenerationLlmE2eTest {
         log.info("========== [LLM E2E] 여는 질문(opener) 직군×axis 조합 ==========");
         for (JobType jobType : jobTypes) {
             for (TestType axis : axes) {
-                String opener = questionTextGenerator.generateOpener(axis, jobType, yearsOfExperience, List.of(), List.of(), List.of());
+                String opener = questionTextGenerator.generateOpener(1L, axis, jobType, yearsOfExperience, List.of(), List.of(), List.of());
                 log.info("[직무={} / 연차={}년 / axis={}] {}", jobType.getLabel(), yearsOfExperience, axis.getLabel(), opener);
                 assertThat(opener).isNotBlank();
             }
@@ -54,7 +55,8 @@ class OpenerQuestionGenerationLlmE2eTest {
     @Test
     void 실제_LLM으로_JD_포폴_소재가_뒷받침될_때와_안될_때_조건부_오프너를_비교한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
-        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
+        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
+                }));
 
         List<String> jdKeywords = List.of("대용량 트래픽 처리", "Redis 캐시 전략");
 
@@ -65,12 +67,14 @@ class OpenerQuestionGenerationLlmE2eTest {
                         "응답 지연을 800ms에서 200ms로 줄였다."
         );
         String groundedOpener = questionTextGenerator.generateOpener(
+                1L,
                 TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, groundedChunks, List.of()
         );
         log.info("[근거 있음] {}", groundedOpener);
         assertThat(groundedOpener).isNotBlank();
 
         String ungroundedOpener = questionTextGenerator.generateOpener(
+                1L,
                 TestType.DEPTH, JobType.BACKEND, 3, jdKeywords, List.of(), List.of()
         );
         log.info("[근거 없음(포폴 청크 미제공)] {}", ungroundedOpener);
@@ -82,7 +86,8 @@ class OpenerQuestionGenerationLlmE2eTest {
     @Test
     void 실제_LLM으로_직군별_조건부_오프너_근거_유무를_비교한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
-        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
+        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
+                }));
 
         List<JobTypeFixture> fixtures = List.of(
                 new JobTypeFixture(
@@ -127,12 +132,14 @@ class OpenerQuestionGenerationLlmE2eTest {
         log.info("========== [LLM E2E] 직군별 조건부 오프너: 포폴 근거 있음/없음 비교 ==========");
         for (JobTypeFixture fixture : fixtures) {
             String grounded = questionTextGenerator.generateOpener(
+                1L,
                     TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of(fixture.groundedChunk()), List.of()
             );
             log.info("[{} / 근거 있음] {}", fixture.jobType().getLabel(), grounded);
             assertThat(grounded).isNotBlank();
 
             String ungrounded = questionTextGenerator.generateOpener(
+                1L,
                     TestType.DEPTH, fixture.jobType(), yearsOfExperience, fixture.jdKeywords(), List.of(), List.of()
             );
             log.info("[{} / 근거 없음] {}", fixture.jobType().getLabel(), ungrounded);

@@ -38,7 +38,7 @@ final class DummyAnswerAudioGenerator {
 
     static AnswerAudio synthesizeAnswerAudio(TextToSpeechSynthesizer textToSpeechSynthesizer, int turnIndex) {
         String text = ANSWER_TEXTS.get(turnIndex % ANSWER_TEXTS.size());
-        byte[] speechBytes = textToSpeechSynthesizer.synthesize(text);
+        byte[] speechBytes = textToSpeechSynthesizer.synthesize(null, text);
         return transcodeToM4a(speechBytes);
     }
 

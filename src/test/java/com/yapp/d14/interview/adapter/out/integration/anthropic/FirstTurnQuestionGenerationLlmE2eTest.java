@@ -60,9 +60,11 @@ class FirstTurnQuestionGenerationLlmE2eTest {
                     public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
                         return List.of();
                     }
-                }, new NoOpPriorQaCache()
+                }, new NoOpPriorQaCache(), new AnthropicUsageRecorder(command -> {
+                })
         );
-        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel);
+        AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
+                }));
 
         String summaryQuestion = "가장 자신 있는 프로젝트를 2분간 소개해주세요.";
         String selfIntroduction = """
@@ -92,6 +94,7 @@ class FirstTurnQuestionGenerationLlmE2eTest {
         // 2. select_next_probe 없이(DB 없음) strength가 가장 높은 후보 하나를 골라 generate_question_text 호출
         ProbeCandidateDraft topProbe = pickHighestStrength(liveTurnResult.newProbes());
         String nextQuestionText = questionTextGenerator.generate(
+                1L,
                 topProbe.probeText(), topProbe.echoQuote(), JobType.BACKEND, 3
         );
 

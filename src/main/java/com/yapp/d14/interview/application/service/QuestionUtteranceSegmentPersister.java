@@ -58,7 +58,7 @@ class QuestionUtteranceSegmentPersister {
                 return;
             }
             byte[] audio = Base64.getDecoder().decode(base64);
-            TranscriptionResult transcription = speechToTextTranscriber.transcribe(audio);
+            TranscriptionResult transcription = speechToTextTranscriber.transcribe(sessionId, audio);
             List<UtteranceSegment> segments = ScriptSegmentMapper.map(
                     ScriptRole.INTERVIEWER, question.getContent(), transcription.segments(), question.getQuestionStartSec());
             utteranceSegmentRepository.saveAll(sessionId, question.getId(), segments);
