@@ -3,9 +3,11 @@ package com.yapp.d14.interview.application.service;
 import com.yapp.d14.feedback.application.port.in.FeedbackShareExistsUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
 import com.yapp.d14.interview.domain.InterviewSessionStatus;
+import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.Report;
 import com.yapp.d14.interview.domain.ReportStatus;
@@ -34,6 +36,9 @@ class InterviewReportListQueryServiceTest {
 
     @Mock
     private ReportRepository reportRepository;
+
+    @Mock
+    private InterviewVideoRepository interviewVideoRepository;
 
     @Mock
     private PortfolioActiveCheckUseCase portfolioActiveCheckUseCase;
@@ -148,6 +153,41 @@ class InterviewReportListQueryServiceTest {
         List<InterviewReportListItem> result = service.getReportList(userId);
 
         assertThat(result.get(0).reportStatus()).isEqualTo(ReportStatus.INSUFFICIENT_ANALYSIS);
+        assertThat(result.get(0).feedbackAvailable()).isTrue();
+    }
+
+    @Test
+    void 채점은_끝났어도_영상_합성이_timeout_전이면_목록에서도_GENERATING으로_보인다() {
+        // 상세 조회와 동일한 규칙 — 목록만 READY로 보이고 상세는 GENERATING인 모순을 막는다(#155 리뷰).
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L)).willReturn(Optional.of(
+                Report.of(10L, 1L, 80.0, null, "headline", null, ReportStatus.READY, LocalDateTime.now())));
+        given(interviewVideoRepository.findBySessionId(1L)).willReturn(Optional.of(
+                InterviewVideo.of(1L, 1L, LocalDateTime.now(), LocalDateTime.now().plusDays(3), false, true, false, null, null)));
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).reportStatus()).isEqualTo(ReportStatus.GENERATING);
+        assertThat(result.get(0).feedbackAvailable()).isFalse();
+        verify(feedbackShareExistsUseCase, never()).existsForSession(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void 영상_합성_timeout을_넘기면_목록에도_영상없이_원래_status가_노출된다() {
+        InterviewSession target = session(1L, null, LocalDateTime.now());
+
+        given(interviewSessionRepository.findAllByUserId(userId)).willReturn(List.of(target));
+        given(reportRepository.findBySessionId(1L)).willReturn(Optional.of(
+                Report.of(10L, 1L, 80.0, null, "headline", null, ReportStatus.READY, LocalDateTime.now().minusMinutes(10))));
+        given(interviewVideoRepository.findBySessionId(1L)).willReturn(Optional.of(
+                InterviewVideo.of(1L, 1L, LocalDateTime.now(), LocalDateTime.now().plusDays(3), false, false, false, null, null)));
+        given(feedbackShareExistsUseCase.existsForSession(1L)).willReturn(false);
+
+        List<InterviewReportListItem> result = service.getReportList(userId);
+
+        assertThat(result.get(0).reportStatus()).isEqualTo(ReportStatus.READY);
         assertThat(result.get(0).feedbackAvailable()).isTrue();
     }
 

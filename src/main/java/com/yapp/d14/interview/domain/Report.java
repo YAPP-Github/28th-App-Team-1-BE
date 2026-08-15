@@ -58,6 +58,21 @@ public class Report {
                 .build();
     }
 
+    /**
+     * 목록/상세 화면에 실제로 노출할 status. FAILED는 영상과 무관하게 그대로 노출한다.
+     * 그 외에는 영상이 있고 아직 합성 전이며 대기 timeout(createdAt 기준) 전이면 GENERATING으로 가린다 —
+     * 채점만 끝난 상태를 사용자에게 완료로 보여주지 않기 위함(#155). timeout을 넘기면 영상 없이 원래 status를 노출한다.
+     */
+    public ReportStatus effectiveStatus(InterviewVideo video) {
+        if (status == ReportStatus.FAILED) {
+            return ReportStatus.FAILED;
+        }
+        if (video != null && !video.isComposited() && !video.isCompositeOverdue(createdAt)) {
+            return ReportStatus.GENERATING;
+        }
+        return status;
+    }
+
     public static Report of(
             Long id,
             Long sessionId,

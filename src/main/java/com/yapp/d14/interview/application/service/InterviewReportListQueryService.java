@@ -4,9 +4,12 @@ import com.yapp.d14.feedback.application.port.in.FeedbackShareExistsUseCase;
 import com.yapp.d14.interview.application.port.in.InterviewReportListQueryUseCase;
 import com.yapp.d14.interview.application.port.in.result.InterviewReportListItem;
 import com.yapp.d14.interview.application.port.out.InterviewSessionRepository;
+import com.yapp.d14.interview.application.port.out.InterviewVideoRepository;
 import com.yapp.d14.interview.application.port.out.ReportRepository;
 import com.yapp.d14.interview.domain.InterviewSession;
+import com.yapp.d14.interview.domain.InterviewVideo;
 import com.yapp.d14.interview.domain.Report;
+import com.yapp.d14.interview.domain.ReportStatus;
 import com.yapp.d14.portfolio.application.port.in.PortfolioActiveCheckUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
 
     private final InterviewSessionRepository interviewSessionRepository;
     private final ReportRepository reportRepository;
+    private final InterviewVideoRepository interviewVideoRepository;
     private final PortfolioActiveCheckUseCase portfolioActiveCheckUseCase;
     private final FeedbackShareExistsUseCase feedbackShareExistsUseCase;
 
@@ -39,7 +43,11 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
     private InterviewReportListItem toItem(InterviewSession session, Report report) {
         UUID portfolioId = session.getPortfolioId();
         boolean portfolioDeleted = portfolioId != null && !portfolioActiveCheckUseCase.isActive(portfolioId);
-        boolean feedbackAvailable = report.getStatus().isComplete()
+        // 상세 조회(InterviewReportQueryService)와 동일한 기준으로 가린다 — 목록만 READY로 보이고
+        // 상세는 아직 GENERATING인 모순을 막는다(#155 리뷰). feedbackAvailable도 이 기준을 따른다.
+        InterviewVideo video = interviewVideoRepository.findBySessionId(session.getId()).orElse(null);
+        ReportStatus effectiveStatus = report.effectiveStatus(video);
+        boolean feedbackAvailable = effectiveStatus.isComplete()
                 && !feedbackShareExistsUseCase.existsForSession(session.getId());
 
         return new InterviewReportListItem(
@@ -50,7 +58,7 @@ class InterviewReportListQueryService implements InterviewReportListQueryUseCase
                 session.getPortfolioFilename(),
                 portfolioDeleted,
                 session.getJdUrl(),
-                report.getStatus(),
+                effectiveStatus,
                 feedbackAvailable,
                 report.getHeadline()
         );

@@ -105,11 +105,14 @@ class InterviewReportQueryServiceTest {
 
     @Test
     void 채점은_끝났어도_영상_합성이_timeout_전이면_GENERATING을_유지한다() {
+        // timeout 기준은 report.createdAt이다(video.baseAt은 업로드-완료가 먼저 INSERT하면 채점 완료보다
+        // 훨씬 이전일 수 있어 기준으로 쓸 수 없다, #155 리뷰). 리포트가 방금(now) 저장됐다고 가정한다.
+        LocalDateTime reportCreatedAt = LocalDateTime.now();
         given(reportRepository.findBySessionId(SESSION_ID))
-                .willReturn(Optional.of(report(ReportStatus.READY, "한 줄 요약")));
-        // baseAt이 방금 전(now)이라 5분 timeout 전이고, 업로드는 됐지만 아직 합성 전이다.
+                .willReturn(Optional.of(Report.of(1L, SESSION_ID, 80.0, null, "한 줄 요약", HeadlineBranch.NORMAL, ReportStatus.READY, reportCreatedAt)));
+        // 업로드는 됐지만 아직 합성 전이다. video.baseAt은 훨씬 이전이어도(업로드가 먼저 끝난 케이스) 영향 없어야 한다.
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(
-                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now(), LocalDateTime.now().plusDays(3), false, true, false, null, null)));
+                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().plusDays(3), false, true, false, null, null)));
 
         InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
 
@@ -122,16 +125,17 @@ class InterviewReportQueryServiceTest {
 
     @Test
     void 영상_합성이_timeout을_넘기면_영상없이_READY로_넘어간다() {
+        // report.createdAt이 timeout(5분)보다 오래 전이면, video.baseAt이 방금(now)이어도 더는 기다리지 않는다.
+        LocalDateTime reportCreatedAt = LocalDateTime.now().minusMinutes(10);
         given(reportRepository.findBySessionId(SESSION_ID))
-                .willReturn(Optional.of(report(ReportStatus.READY, "한 줄 요약")));
+                .willReturn(Optional.of(Report.of(1L, SESSION_ID, 80.0, null, "한 줄 요약", HeadlineBranch.NORMAL, ReportStatus.READY, reportCreatedAt)));
         given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
         given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
-        // baseAt이 timeout(5분)보다 오래 전이라, 업로드조차 안 됐어도 더는 기다리지 않는다.
         given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(
-                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now().minusMinutes(10), LocalDateTime.now().plusDays(3), false, false, false, null, null)));
+                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now(), LocalDateTime.now().plusDays(3), false, false, false, null, null)));
         given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
                 .willReturn(new GuestFeedbackReportView(0, List.of()));
 
