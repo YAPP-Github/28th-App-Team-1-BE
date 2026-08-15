@@ -110,6 +110,15 @@ public class InterviewVideo {
         return deleted || LocalDateTime.now().isAfter(expiresAt);
     }
 
+    /**
+     * 합성 대기가 timeout을 넘겼는지 판단한다. 이미 합성됐으면 항상 false.
+     * baseAt은 리포트 저장(Step1) 시점에 찍히므로, 녹화 업로드 자체가 영영 오지 않는 세션(조기 이탈 등)도
+     * 이 기준으로 무한 대기하지 않고 fallback할 수 있다.
+     */
+    public boolean isCompositeOverdue(Duration timeout) {
+        return !composited && LocalDateTime.now().isAfter(baseAt.plus(timeout));
+    }
+
     /** 지인(공유 링크) 접근 전용 판정. 소유자 쪽 단계형 expiresAt과 무관하게 baseAt+30일(영상 최대보유기간) 하드캡으로만 판정한다. */
     public boolean isExpiredForGuest() {
         return deleted || LocalDateTime.now().isAfter(getGuestExpiresAt());

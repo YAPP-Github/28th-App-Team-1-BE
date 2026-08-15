@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record InterviewReportHttpResponse(
-        @Schema(description = "채점 파이프라인 진행 상태 — GENERATING(채점 중) / READY(생성 완료) / INSUFFICIENT_ANALYSIS(분석 부족) / FAILED(생성 실패). " +
+        @Schema(description = "채점 파이프라인 진행 상태 — GENERATING(채점 중이거나, 채점은 끝났지만 영상 합성 대기 중) / READY(생성 완료) / " +
+                "INSUFFICIENT_ANALYSIS(분석 부족) / FAILED(생성 실패). 영상 합성이 일정 시간 넘게 끝나지 않으면 영상 없이 READY로 전환될 수 있다. " +
                 "레드플래그는 전체 보고서 단위가 아니라 각 카드의 cardRedFlagNotices로만 노출되며, headline 톤에도 반영된다",
                 allowableValues = {"GENERATING", "READY", "INSUFFICIENT_ANALYSIS", "FAILED"})
         String status,

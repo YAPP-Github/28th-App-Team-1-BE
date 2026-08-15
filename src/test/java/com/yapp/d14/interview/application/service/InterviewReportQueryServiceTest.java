@@ -104,6 +104,44 @@ class InterviewReportQueryServiceTest {
     }
 
     @Test
+    void 채점은_끝났어도_영상_합성이_timeout_전이면_GENERATING을_유지한다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "한 줄 요약")));
+        // baseAt이 방금 전(now)이라 5분 timeout 전이고, 업로드는 됐지만 아직 합성 전이다.
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(
+                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now(), LocalDateTime.now().plusDays(3), false, true, false, null, null)));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.status()).isEqualTo(ReportStatus.GENERATING);
+        assertThat(result.headline()).isNull();
+        assertThat(result.cards()).isNull();
+        assertThat(result.video()).isNull();
+        verifyNoInteractions(reportCardRepository, redFlagRepository, guestFeedbackReportQueryUseCase);
+    }
+
+    @Test
+    void 영상_합성이_timeout을_넘기면_영상없이_READY로_넘어간다() {
+        given(reportRepository.findBySessionId(SESSION_ID))
+                .willReturn(Optional.of(report(ReportStatus.READY, "한 줄 요약")));
+        given(reportCardRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(answerRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(axisEvaluationRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        given(redFlagRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of());
+        // baseAt이 timeout(5분)보다 오래 전이라, 업로드조차 안 됐어도 더는 기다리지 않는다.
+        given(interviewVideoRepository.findBySessionId(SESSION_ID)).willReturn(Optional.of(
+                InterviewVideo.of(1L, SESSION_ID, LocalDateTime.now().minusMinutes(10), LocalDateTime.now().plusDays(3), false, false, false, null, null)));
+        given(guestFeedbackReportQueryUseCase.getForReport(SESSION_ID))
+                .willReturn(new GuestFeedbackReportView(0, List.of()));
+
+        InterviewReportQueryResult result = service.getReport(USER_ID, SESSION_ID);
+
+        assertThat(result.status()).isEqualTo(ReportStatus.READY);
+        assertThat(result.video().url()).isNull();
+    }
+
+    @Test
     void FAILED_상태면_status만_반환한다() {
         given(reportRepository.findBySessionId(SESSION_ID))
                 .willReturn(Optional.of(report(ReportStatus.FAILED, null)));
