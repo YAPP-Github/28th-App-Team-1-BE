@@ -23,7 +23,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
-        log.warn("[BusinessException] code={}, message={}", errorCode.getCode(), errorCode.getMessage());
+        if (errorCode.getHttpStatus().is5xxServerError()) {
+            // 서버 귀책(5xx) 비즈니스 예외는 원인 추적이 필요하므로 error 레벨 + 스택트레이스로 남긴다.
+            // (5xx는 로그 서브스크립션 필터에서 Discord 알림으로도 나간다.)
+            log.error("[BusinessException] code={}, message={}", errorCode.getCode(), errorCode.getMessage(), e);
+        } else {
+            // 클라이언트 귀책(4xx)은 예상된 흐름이므로 스택 없이 warn 으로만 남긴다.
+            log.warn("[BusinessException] code={}, message={}", errorCode.getCode(), errorCode.getMessage());
+        }
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(ErrorResponse.of(errorCode.getCode(), errorCode.getMessage()));
