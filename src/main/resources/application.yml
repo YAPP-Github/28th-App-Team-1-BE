@@ -14,8 +14,18 @@ spring:
       max-file-size: 20MB
       max-request-size: 21MB
 
+  # graceful shutdown이 in-flight 요청을 마무리할 최대 대기 시간. 초과 시 강제 종료.
+  # 질문 음성 스트림 등 오래 걸리는 요청도 여유 있게 마무리하도록 60초로 잡는다.
+  # 단, docker stop 의 SIGKILL 타임아웃(compose 의 stop_grace_period)이 이 값보다 커야
+  # 컨테이너가 강제로 죽기 전에 graceful 종료가 끝난다.
+  lifecycle:
+    timeout-per-shutdown-phase: 60s
+
 server:
   port: 8080
+  # 블루-그린 전환 시 구 버전(active) 컨테이너를 내릴 때, 처리 중인 요청을 유실하지 않고
+  # 마무리한 뒤 종료한다. timeout-per-shutdown-phase 안에 끝나지 않으면 강제 종료된다.
+  shutdown: graceful
 
 springdoc:
   swagger-ui:

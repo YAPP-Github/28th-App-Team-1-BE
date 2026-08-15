@@ -17,9 +17,10 @@ RUN ./gradlew bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
-# 면접 영상·질문 음성 합성(FfmpegInterviewVideoCompositorAdapter)이 ffmpeg 바이너리를 서브프로세스로 호출한다.
+# ffmpeg: 면접 영상·질문 음성 합성(FfmpegInterviewVideoCompositorAdapter)이 서브프로세스로 호출.
+# curl: 컨테이너 healthcheck(/health)로 블루-그린 배포 시 새 버전 기동 완료를 판별한다.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
