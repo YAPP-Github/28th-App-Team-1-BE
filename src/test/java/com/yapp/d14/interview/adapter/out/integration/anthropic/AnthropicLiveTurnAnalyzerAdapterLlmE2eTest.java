@@ -87,6 +87,51 @@ class AnthropicLiveTurnAnalyzerAdapterLlmE2eTest {
         assertThat(result.ceiling()).isNotNull();
     }
 
+    // 프롬프트만으로 스키마 JSON이 돌아오는지 확인한다 — 어댑터 폴백이 대신 받아내면 로그에 "응답 파싱 실패"가 남는다(#152).
+    @Test
+    void STT가_한_토막으로_변환된_답변에도_스키마_JSON을_반환한다() {
+        AnthropicLiveTurnAnalyzerAdapter liveTurnAnalyzer = buildAdapter();
+
+        LiveTurnResult firstTurn = liveTurnAnalyzer.analyze(
+                1L, null, "먼저 진행하신 프로젝트를 간단히 소개해 주세요.", "토큰 재등업 결합",
+                null, JobType.BACKEND, List.of(), List.of(), Set.of()
+        );
+        LiveTurnResult regularTurn = liveTurnAnalyzer.analyze(
+                1L, null, "그 구조를 선택하신 이유가 무엇인가요?", "어 그게 좀",
+                TestType.DEPTH, JobType.BACKEND,
+                List.of(new PriorTurn(1, "어떤 프로젝트였나요?", "결제 시스템이요", TestType.DEPTH)),
+                List.of(), Set.of()
+        );
+
+        log.info("========== [LLM E2E] 짧은 STT 답변 결과 ==========");
+        log.info("[첫 턴] ceiling={} newProbes={}건 staleUpdates={}건",
+                firstTurn.ceiling(), firstTurn.newProbes().size(), firstTurn.staleUpdates().size());
+        log.info("[일반 턴] ceiling={} newProbes={}건 staleUpdates={}건",
+                regularTurn.ceiling(), regularTurn.newProbes().size(), regularTurn.staleUpdates().size());
+        log.info("===================================================");
+
+        assertThat(firstTurn.ceiling()).isNotNull();
+        assertThat(regularTurn.ceiling()).isNotNull();
+        assertThat(regularTurn.ceiling().reached()).isFalse();
+    }
+
+    private AnthropicLiveTurnAnalyzerAdapter buildAdapter() {
+        return new AnthropicLiveTurnAnalyzerAdapter(
+                buildRealAnthropicChatModel(), new PortfolioChunkSearchUseCase() {
+                    @Override
+                    public List<PortfolioChunkResult> searchChunks(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+
+                    @Override
+                    public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
+                        return List.of();
+                    }
+                }, new NoOpPriorQaCache(), new AnthropicUsageRecorder(command -> {
+                })
+        );
+    }
+
     private ChatModel buildRealAnthropicChatModel() {
         AnthropicApi anthropicApi = AnthropicApi.builder()
                 .apiKey(readAnthropicApiKeyFromEnvFile())

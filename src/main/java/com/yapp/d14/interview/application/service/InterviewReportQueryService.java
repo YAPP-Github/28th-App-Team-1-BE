@@ -93,6 +93,13 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
             return statusOnly(ReportStatus.FAILED);
         }
 
+        // 채점(report row)만으로는 부족하다 — 영상 합성(composite)까지 끝나야 READY로 노출한다(#155).
+        // 합성이 timeout을 넘겨도 안 끝나면(업로드 누락 등) 더는 기다리지 않고 영상 없이 진행한다.
+        InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
+        if (report.effectiveStatus(video) == ReportStatus.GENERATING) {
+            return statusOnly(ReportStatus.GENERATING);
+        }
+
         List<RedFlag> redFlags = redFlagRepository.findAllBySessionId(sessionId);
         List<ReportCard> cards = reportCardRepository.findAllBySessionId(sessionId);
 
@@ -111,7 +118,6 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         Map<Long, List<InterviewReportQueryResult.RedFlagNotice>> cardNoticesByQuestionId = cardNoticesByQuestionId(redFlags);
         // 문장 단위 발화 시각(면접관/면접자)을 questionId별로 묶어 카드에 붙인다(#78). 각 리스트는 startSec 순(면접관 → 면접자).
         Map<Long, List<UtteranceSegment>> segmentsByQuestionId = utteranceSegmentRepository.findBySessionIdGroupedByQuestionId(sessionId);
-        InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
         // 카드(채점 대상 턴) 유무와 무관하게, 세션의 모든 발화를 startSec 순으로 이어붙인 전체 대본 타임라인(영상 싱크용).
         List<InterviewReportQueryResult.ScriptLine> script = new ArrayList<>(segmentsByQuestionId.values().stream()
                 .flatMap(List::stream)
