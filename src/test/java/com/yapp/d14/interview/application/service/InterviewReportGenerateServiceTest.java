@@ -187,10 +187,10 @@ class InterviewReportGenerateServiceTest {
 
         service.generate(1L);
 
-        verify(axisReportScorer, never()).score(any());
-        verify(redFlagReconciler, never()).reconcile(any());
-        verify(reportCardContentGenerator, never()).generate(any());
-        verify(reportHeadlineGenerator, never()).generate(any());
+        verify(axisReportScorer, never()).score(any(), any());
+        verify(redFlagReconciler, never()).reconcile(any(), any());
+        verify(reportCardContentGenerator, never()).generate(any(), any());
+        verify(reportHeadlineGenerator, never()).generate(any(), any());
 
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         verify(interviewReportPersister).persist(eq(1L), reportCaptor.capture(), eq(List.of()), eq(List.of()), eq(List.of()));
@@ -234,20 +234,20 @@ class InterviewReportGenerateServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
                 axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.BOUNDARY, AxisTier.SUPPORT)
         ));
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거"),
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of(
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of(
                 new ReportCardDraft(1L, 1, TestType.DEPTH, "제목", "질문의도", List.of()),
                 new ReportCardDraft(2L, 1, TestType.BOUNDARY, "제목2", "질문의도2", List.of())
         ));
-        given(reportHeadlineGenerator.generate(any())).willReturn("좋은 답변이었어요");
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("좋은 답변이었어요");
 
         service.generate(1L);
 
         // 후보가 없어도 턴이 있으면 PERFECT_NARRATIVE/BLAME_SHIFTING/BUZZWORD_SALAD 검사를 위해 리컨실러를 1회 호출한다
-        verify(redFlagReconciler).reconcile(any());
+        verify(redFlagReconciler).reconcile(any(), any());
 
         ArgumentCaptor<Report> reportCaptor = ArgumentCaptor.forClass(Report.class);
         @SuppressWarnings("unchecked")
@@ -280,20 +280,20 @@ class InterviewReportGenerateServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
                 axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.BOUNDARY, AxisTier.SUPPORT)
         ));
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거"),
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
-        given(redFlagReconciler.reconcile(any())).willReturn(List.of(
+        given(redFlagReconciler.reconcile(any(), any())).willReturn(List.of(
                 new RedFlagVerdict(RedFlagType.BLAME_SHIFTING, TestType.DEPTH, 2, false, List.of(), List.of(), "남탓 근거")
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of());
-        given(reportHeadlineGenerator.generate(any())).willReturn("보통 헤드라인");
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of());
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("보통 헤드라인");
 
         service.generate(1L);
 
         ArgumentCaptor<RedFlagReconcileContext> ctxCaptor = ArgumentCaptor.forClass(RedFlagReconcileContext.class);
-        verify(redFlagReconciler).reconcile(ctxCaptor.capture());
+        verify(redFlagReconciler).reconcile(any(), ctxCaptor.capture());
         assertThat(ctxCaptor.getValue().contradictionCandidates()).hasSize(1);
         assertThat(ctxCaptor.getValue().contradictionCandidates().get(0).originTurnNumber()).isEqualTo(1);
         assertThat(ctxCaptor.getValue().contradictionCandidates().get(0).contradictingTurnNumber()).isEqualTo(2);
@@ -332,16 +332,16 @@ class InterviewReportGenerateServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
                 axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.BOUNDARY, AxisTier.SUPPORT)
         ));
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거"),
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
-        given(redFlagReconciler.reconcile(any())).willReturn(List.of(
+        given(redFlagReconciler.reconcile(any(), any())).willReturn(List.of(
                 // 턴 1·2는 questionId 1L·2L로 매핑되고, 존재하지 않는 턴 99는 버려진다.
                 new RedFlagVerdict(RedFlagType.CONTRADICTION, null, null, false, List.of(), List.of(1, 2, 99), "모순 근거")
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of());
-        given(reportHeadlineGenerator.generate(any())).willReturn("헤드라인");
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of());
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("헤드라인");
 
         service.generate(1L);
 
@@ -368,20 +368,20 @@ class InterviewReportGenerateServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
                 axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.BOUNDARY, AxisTier.SUPPORT)
         ));
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거"),
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(), "경계 근거")
         ));
-        given(redFlagReconciler.reconcile(any())).willReturn(List.of(
+        given(redFlagReconciler.reconcile(any(), any())).willReturn(List.of(
                 new RedFlagVerdict(RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(), List.of(), "날조 근거")
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of());
-        given(reportHeadlineGenerator.generate(any())).willReturn("레드플래그 헤드라인");
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of());
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("레드플래그 헤드라인");
 
         service.generate(1L);
 
         ArgumentCaptor<HeadlineContext> headlineCtxCaptor = ArgumentCaptor.forClass(HeadlineContext.class);
-        verify(reportHeadlineGenerator).generate(headlineCtxCaptor.capture());
+        verify(reportHeadlineGenerator).generate(any(), headlineCtxCaptor.capture());
         assertThat(headlineCtxCaptor.getValue().severeRedFlagPresent()).isTrue();
         // CORE 축(DEPTH)이 모두 채점됐으므로 커버리지는 완전하다.
         assertThat(headlineCtxCaptor.getValue().coverageIncomplete()).isFalse();
@@ -404,19 +404,19 @@ class InterviewReportGenerateServiceTest {
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(
                 axisPlan(TestType.DEPTH, AxisTier.CORE), axisPlan(TestType.CONFLICT, AxisTier.CORE)
         ));
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(), "깊이 근거")
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of(
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of(
                 new ReportCardDraft(1L, 1, TestType.DEPTH, "제목", "질문의도", List.of())
         ));
-        given(reportHeadlineGenerator.generate(any())).willReturn("이번 면접은 짧게 진행돼 한 주제만 다뤘어요");
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("이번 면접은 짧게 진행돼 한 주제만 다뤘어요");
 
         service.generate(1L);
 
         // 고정 문구 대신 실제 LLM 헤드라인을 생성하되, 커버리지 미달 신호(CORE 2개 중 1개만)를 전달한다.
         ArgumentCaptor<HeadlineContext> headlineCtxCaptor = ArgumentCaptor.forClass(HeadlineContext.class);
-        verify(reportHeadlineGenerator).generate(headlineCtxCaptor.capture());
+        verify(reportHeadlineGenerator).generate(any(), headlineCtxCaptor.capture());
         HeadlineContext ctx = headlineCtxCaptor.getValue();
         assertThat(ctx.totalCoreAxisCount()).isEqualTo(2);
         assertThat(ctx.coveredCoreAxisCount()).isEqualTo(1);
@@ -440,7 +440,7 @@ class InterviewReportGenerateServiceTest {
         given(answerRepository.findAllBySessionId(1L)).willReturn(List.of(answer(1L, 1L, TestType.DEPTH, "깊이 답변")));
         given(questionCandidateRepository.findAllBySessionId(1L)).willReturn(List.of());
         given(interviewAxisPlanRepository.findAllBySessionId(1L)).willReturn(List.of(axisPlan(TestType.DEPTH, AxisTier.CORE)));
-        given(axisReportScorer.score(any())).willThrow(new RuntimeException("LLM 호출 실패"));
+        given(axisReportScorer.score(any(), any())).willThrow(new RuntimeException("LLM 호출 실패"));
 
         service.generate(1L);
 

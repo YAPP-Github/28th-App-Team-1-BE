@@ -81,14 +81,21 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
 
     private final ChatClient chatClient;
     private final String openerSystemPrompt;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
-    AnthropicQuestionTextGeneratorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+    AnthropicQuestionTextGeneratorAdapter(
+            @Qualifier("anthropicChatModel") ChatModel chatModel,
+            AnthropicUsageRecorder anthropicUsageRecorder
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.openerSystemPrompt = OPENER_SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml());
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
-    public String generate(String probeText, String echoQuote, JobType jobType, Integer yearsOfExperience) {
+    public String generate(
+            Long sessionId, String probeText, String echoQuote, JobType jobType, Integer yearsOfExperience
+    ) {
         String userMessage = """
                 [캐물 의도] %s
                 [되받아 물을 표현] %s
@@ -97,11 +104,11 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
                 """.formatted(probeText, echoQuote, jobType.getLabel(), yearsOfExperience);
 
         try {
-            String content = chatClient.prompt()
+            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userMessage)
                     .call()
-                    .content();
+                    .chatResponse());
             if (content == null || content.isBlank()) {
                 throw new IllegalStateException("Anthropic이 빈 질문 문장을 반환했어요.");
             }
@@ -114,7 +121,7 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
 
     @Override
     public String generateOpener(
-            TestType axis, JobType jobType, Integer yearsOfExperience,
+            Long sessionId, TestType axis, JobType jobType, Integer yearsOfExperience,
             List<String> jdKeywords, List<String> relatedPortfolioChunks, List<String> priorQuestions
     ) {
         String userMessage = buildOpenerUserMessage(
@@ -122,11 +129,11 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
         );
 
         try {
-            String content = chatClient.prompt()
+            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
                     .system(openerSystemPrompt)
                     .user(userMessage)
                     .call()
-                    .content();
+                    .chatResponse());
             if (content == null || content.isBlank()) {
                 throw new IllegalStateException("Anthropic이 빈 여는 질문을 반환했어요.");
             }

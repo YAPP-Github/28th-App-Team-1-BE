@@ -63,6 +63,31 @@ spring:
         distance-type: COSINE_DISTANCE
         dimensions: 1536
 
+# 단위는 nano USD(1e-9) 정수. 등록되지 않은 모델은 비용 0 + WARN 로그로 남는다.
+# TODO(#154): OpenAI 단가는 미검증 값이므로 대시보드 기준으로 확인 후 확정할 것.
+ai:
+  pricing:
+    models:
+      claude-haiku-4-5-20251001:
+        input-nano-usd-per-token: 1000
+        output-nano-usd-per-token: 5000
+        cache-write-nano-usd-per-token: 1250
+        cache-read-nano-usd-per-token: 100
+      claude-haiku-4-5:
+        input-nano-usd-per-token: 1000
+        output-nano-usd-per-token: 5000
+        cache-write-nano-usd-per-token: 1250
+        cache-read-nano-usd-per-token: 100
+      text-embedding-3-small:
+        input-nano-usd-per-token: 20
+      whisper-1:
+        nano-usd-per-second: 100000
+      tts-1:
+        nano-usd-per-character: 15000
+      gpt-4o-mini:
+        input-nano-usd-per-token: 150
+        output-nano-usd-per-token: 600
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:10800000}

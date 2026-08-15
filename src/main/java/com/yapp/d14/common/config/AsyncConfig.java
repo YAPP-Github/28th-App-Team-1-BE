@@ -68,6 +68,19 @@ public class AsyncConfig {
         return executor;
     }
 
+    @Bean(name = "aiUsageTaskExecutor")
+    public Executor aiUsageTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("ai-usage-async-");
+        // 큐가 가득 차도 호출부(면접·리포트)를 깨뜨리면 안 되므로 호출 스레드가 직접 처리한다.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+        return executor;
+    }
+
     @Bean(name = "interviewReportTaskExecutor")
     public Executor interviewReportTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

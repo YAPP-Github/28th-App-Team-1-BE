@@ -1,9 +1,14 @@
 package com.yapp.d14.interview.adapter.out.integration.openai;
 
+import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
+import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -24,20 +29,27 @@ class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
             """;
 
     private final ChatClient chatClient;
+    private final AiUsageRecordUseCase aiUsageRecordUseCase;
 
-    OpenAiJdKeywordExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel) {
+    OpenAiJdKeywordExtractorAdapter(
+            @Qualifier("openAiChatModel") ChatModel chatModel,
+            AiUsageRecordUseCase aiUsageRecordUseCase
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
+        this.aiUsageRecordUseCase = aiUsageRecordUseCase;
     }
 
     @Override
-    public List<String> extractKeywords(String jdText) {
+    public List<String> extractKeywords(Long sessionId, String jdText) {
         try {
-            List<String> keywords = chatClient.prompt()
+            ResponseEntity<ChatResponse, List<String>> responseEntity = chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(jdText)
                     .call()
-                    .entity(new ParameterizedTypeReference<List<String>>() {
+                    .responseEntity(new ParameterizedTypeReference<List<String>>() {
                     });
+            recordUsage(sessionId, responseEntity.response());
+            List<String> keywords = responseEntity.entity();
             if (keywords == null) {
                 throw new IllegalStateException("JD 키워드 추출 응답이 비어있어요.");
             }
@@ -46,5 +58,21 @@ class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
             log.error("[JD KEYWORD EXTRACT] OpenAI 호출/파싱 실패", e);
             throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);
         }
+    }
+
+    private void recordUsage(Long sessionId, ChatResponse chatResponse) {
+        if (sessionId == null || chatResponse == null || chatResponse.getMetadata() == null) {
+            return;
+        }
+        Usage usage = chatResponse.getMetadata().getUsage();
+        if (usage == null) {
+            return;
+        }
+        aiUsageRecordUseCase.record(AiUsageRecordCommand.openAiChat(
+                sessionId,
+                chatResponse.getMetadata().getModel(),
+                usage.getPromptTokens() == null ? 0L : usage.getPromptTokens(),
+                usage.getCompletionTokens() == null ? 0L : usage.getCompletionTokens()
+        ));
     }
 }

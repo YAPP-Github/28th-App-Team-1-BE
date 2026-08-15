@@ -69,7 +69,7 @@ class QuestionUtteranceSegmentPersisterTest {
         given(questionRepository.findAllBySessionId(SESSION_ID)).willReturn(List.of(question));
         given(interviewVoiceStorage.readBase64(voiceKey(1)))
                 .willReturn(Base64.getEncoder().encodeToString(new byte[]{1, 2, 3}));
-        given(speechToTextTranscriber.transcribe(any())).willReturn(new TranscriptionResult(
+        given(speechToTextTranscriber.transcribe(any(), any())).willReturn(new TranscriptionResult(
                 "안녕하세요. 반갑습니다.", 2, 0,
                 List.of(
                         new TranscriptSegment("안녕하세요.", 0.0f, 1.0f),
@@ -100,7 +100,7 @@ class QuestionUtteranceSegmentPersisterTest {
         persister.persist(USER_ID, SESSION_ID);
 
         verify(utteranceSegmentRepository).deleteBySessionIdAndRole(SESSION_ID, ScriptRole.INTERVIEWER);
-        verify(speechToTextTranscriber, never()).transcribe(any());
+        verify(speechToTextTranscriber, never()).transcribe(any(), any());
         verify(utteranceSegmentRepository, never()).saveAll(any(), any(), any());
     }
 
@@ -112,7 +112,7 @@ class QuestionUtteranceSegmentPersisterTest {
         given(interviewVoiceStorage.readBase64(voiceKey(1))).willThrow(new RuntimeException("S3 오류"));
         given(interviewVoiceStorage.readBase64(voiceKey(2)))
                 .willReturn(Base64.getEncoder().encodeToString(new byte[]{9}));
-        given(speechToTextTranscriber.transcribe(any())).willReturn(new TranscriptionResult(
+        given(speechToTextTranscriber.transcribe(any(), any())).willReturn(new TranscriptionResult(
                 "정상 질문입니다.", 1, 0, List.of(new TranscriptSegment("정상 질문입니다.", 0.0f, 1.5f))));
 
         persister.persist(USER_ID, SESSION_ID);

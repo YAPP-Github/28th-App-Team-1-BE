@@ -73,7 +73,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
             log.info("[INTERVIEW PRELOAD] 요약 질문 음성 합성 시작: sessionId={}", sessionId);
             Instant ttsStartedAt = Instant.now();
             byte[] audioContent = LlmCallRetrySupport.retry(
-                    () -> textToSpeechSynthesizer.synthesize(questionText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+                    () -> textToSpeechSynthesizer.synthesize(sessionId, questionText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
             );
             String aiVoiceS3Key = audioContent != null
                     ? interviewVoiceStorage.upload(session.getUserId(), sessionId, SUMMARY_TURN_LEVEL, audioContent)
@@ -129,7 +129,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 시작: sessionId={}", session.getId());
         Instant startedAt = Instant.now();
         List<String> jdKeywords = LlmCallRetrySupport.retry(
-                () -> jdKeywordExtractor.extractKeywords(jdText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
+                () -> jdKeywordExtractor.extractKeywords(session.getId(), jdText), MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
         );
         log.info("[INTERVIEW PRELOAD] JD 키워드 추출 완료: sessionId={}, keywordCount={}, elapsedSeconds={}",
                 session.getId(), jdKeywords.size(), elapsedSeconds(startedAt));
@@ -178,7 +178,7 @@ class InterviewSessionPreloadService implements InterviewSessionPreloadUseCase {
                 session.getId(), chunks, jdKeywords);
         Instant startedAt = Instant.now();
         List<ProbeCandidateDraft> drafts = LlmCallRetrySupport.retry(
-                () -> probeCandidateExtractor.extract(session.getFocusProject(), chunks, jdKeywords, priorQuestions),
+                () -> probeCandidateExtractor.extract(session.getId(), session.getFocusProject(), chunks, jdKeywords, priorQuestions),
                 MAX_LLM_RETRIES, "INTERVIEW PRELOAD"
         );
         log.info("[INTERVIEW PRELOAD] 캐물지점 추출 완료: sessionId={}, candidateCount={}, elapsedSeconds={}",

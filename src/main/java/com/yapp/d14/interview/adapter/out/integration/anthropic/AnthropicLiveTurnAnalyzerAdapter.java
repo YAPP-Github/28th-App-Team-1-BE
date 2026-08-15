@@ -16,12 +16,10 @@ import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
-import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.anthropic.api.AnthropicCacheOptions;
 import org.springframework.ai.anthropic.api.AnthropicCacheStrategy;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ResponseEntity;
-import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -123,11 +121,13 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     private final AnthropicChatOptions cachedChatOptions;
     private final PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
     private final PriorQaCache priorQaCache;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
     AnthropicLiveTurnAnalyzerAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
             PortfolioChunkSearchUseCase portfolioChunkSearchUseCase,
-            PriorQaCache priorQaCache
+            PriorQaCache priorQaCache,
+            AnthropicUsageRecorder anthropicUsageRecorder
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
@@ -143,6 +143,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         this.cachedChatOptions = cachedOptions;
         this.portfolioChunkSearchUseCase = portfolioChunkSearchUseCase;
         this.priorQaCache = priorQaCache;
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
@@ -169,7 +170,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
                     .options(cachedChatOptions)
                     .call()
                     .responseEntity(LiveTurnLlmResponse.class);
-            logUsage(sessionId, responseEntity.response());
+            anthropicUsageRecorder.record(sessionId, responseEntity.response());
             LiveTurnLlmResponse response = responseEntity.entity();
 
             // 프롬프트로도 exhaustedAxes/상한을 지시하지만, 모델이 지키지 않을 수 있어 코드에서도 강제한다
@@ -189,27 +190,6 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         }
     }
 
-    // 캐시 토큰은 Spring AI 공용 Usage에 없고 Anthropic 네이티브 Usage에만 있다.
-    private void logUsage(Long sessionId, ChatResponse chatResponse) {
-        if (chatResponse == null || chatResponse.getMetadata() == null) {
-            return;
-        }
-        Usage usage = chatResponse.getMetadata().getUsage();
-        if (usage == null) {
-            return;
-        }
-        Integer cacheCreationInputTokens = null;
-        Integer cacheReadInputTokens = null;
-        if (usage.getNativeUsage() instanceof AnthropicApi.Usage nativeUsage) {
-            cacheCreationInputTokens = nativeUsage.cacheCreationInputTokens();
-            cacheReadInputTokens = nativeUsage.cacheReadInputTokens();
-        }
-        log.info(
-                "[LIVE TURN USAGE] sessionId={}, inputTokens={}, outputTokens={}, cacheCreationInputTokens={}, cacheReadInputTokens={}",
-                sessionId, usage.getPromptTokens(), usage.getCompletionTokens(),
-                cacheCreationInputTokens, cacheReadInputTokens
-        );
-    }
 
     // 유저 메시지에 current_axis/jobRole/직전 질답과, prior_qa·open_probes·제외 axis(완료됐거나 예산 없는 axis) 컨텍스트를 채워넣는다.
     private String buildUserMessage(

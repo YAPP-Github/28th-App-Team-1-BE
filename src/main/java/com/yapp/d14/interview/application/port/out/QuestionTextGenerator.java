@@ -9,14 +9,16 @@ import java.util.List;
 public interface QuestionTextGenerator {
 
     // jobType·yearsOfExperience는 질문의 톤·후속 방향만 조정하고, probeText/echoQuote의 핵심 내용은 바꾸지 않는다.
-    String generate(String probeText, String echoQuote, JobType jobType, Integer yearsOfExperience);
+    String generate(
+            Long sessionId, String probeText, String echoQuote, JobType jobType, Integer yearsOfExperience
+    );
 
     // 해당 axis에 캐물 지점 후보가 없을 때 직무·연차에 맞춰 직접 여는 질문(seed)을 생성한다.
     // jdKeywords/relatedPortfolioChunks가 있으면(JD∩포폴이 실제로 뒷받침하는 소재) 조건부로 반영하고,
     // 없으면(빈 리스트) 직무·연차 기반 일반 질문으로 생성한다.
     // priorQuestions: 같은 사용자의 이전 면접에서 이미 나간 질문 — 반복 세션에서 같은 여는 질문이 나오지 않도록 회피 대상으로 넘긴다.
     String generateOpener(
-            TestType axis, JobType jobType, Integer yearsOfExperience,
+            Long sessionId, TestType axis, JobType jobType, Integer yearsOfExperience,
             List<String> jdKeywords, List<String> relatedPortfolioChunks, List<String> priorQuestions
     );
 }

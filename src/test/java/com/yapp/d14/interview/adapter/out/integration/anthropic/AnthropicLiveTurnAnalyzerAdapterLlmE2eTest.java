@@ -56,7 +56,8 @@ class AnthropicLiveTurnAnalyzerAdapterLlmE2eTest {
                     public List<PortfolioChunkResult> searchChunksWithoutThreshold(UUID portfolioId, String queryText, int topK) {
                         return List.of();
                     }
-                }, new NoOpPriorQaCache()
+                }, new NoOpPriorQaCache(), new AnthropicUsageRecorder(command -> {
+                })
         );
 
         QuestionCandidate openProbe = QuestionCandidate.of(

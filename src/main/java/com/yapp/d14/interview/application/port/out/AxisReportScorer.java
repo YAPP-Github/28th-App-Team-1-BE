@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface AxisReportScorer {
 
-    List<AxisScoreDraft> score(AxisReportScoreContext context);
+    List<AxisScoreDraft> score(Long sessionId, AxisReportScoreContext context);
 }

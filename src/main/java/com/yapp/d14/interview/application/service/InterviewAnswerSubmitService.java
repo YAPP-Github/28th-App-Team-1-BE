@@ -95,7 +95,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private InterviewAnswerSubmitResult handleFirstTurn(
             InterviewSession session, Question summaryQuestion, InterviewAnswerSubmitCommand command
     ) {
-        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        TranscriptionResult transcription =
+                retryAiCall(() -> speechToTextTranscriber.transcribe(session.getId(), command.audioContent())); // STT 변환
         String sttText = transcription.text();
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, Q={}, A={}",
                 session.getId(), summaryQuestion.getId(), summaryQuestion.getTurnLevel(),
@@ -196,7 +197,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
             InterviewSession session, Question question, InterviewAnswerSubmitCommand command
     ) {
         Instant sttStartedAt = Instant.now();
-        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent())); // STT 변환
+        TranscriptionResult transcription =
+                retryAiCall(() -> speechToTextTranscriber.transcribe(session.getId(), command.audioContent())); // STT 변환
         double sttSeconds = elapsedSeconds(sttStartedAt);
         log.debug("[TURN QA] sessionId={}, questionId={}, turnLevel={}, axis={}, Q={}, A={}",
                 session.getId(), question.getId(), question.getTurnLevel(), question.getTestType(),
@@ -364,7 +366,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         TerminationAnswer termination = buildTerminationAnswer(session, question, command);
         markQuestionPlayed(question, command);
 
-        InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(endType);
+        InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessage = wrapUpMessageFor(session.getId(), endType);
 
         InterviewAnswerTerminationPersister.PersistResult persisted =
                 interviewAnswerTerminationPersister.persist(session, question, termination.answer(), endType);
@@ -388,7 +390,8 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         if (command.audioContent() == null) {
             return new TerminationAnswer(null, null);
         }
-        TranscriptionResult transcription = retryAiCall(() -> speechToTextTranscriber.transcribe(command.audioContent()));
+        TranscriptionResult transcription =
+                retryAiCall(() -> speechToTextTranscriber.transcribe(session.getId(), command.audioContent()));
         log.debug("[TURN QA] sessionId={}, questionId={} (termination), Q={}, A={}",
                 session.getId(), question.getId(), singleLine(question.getContent()), singleLine(transcription.text()));
         try {
@@ -413,25 +416,25 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         }
     }
 
-    private InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessageFor(InterviewEndType endType) {
+    private InterviewAnswerSubmitResult.WrapUpMessage wrapUpMessageFor(Long sessionId, InterviewEndType endType) {
         String text = wrapUpTextFor(endType);
         if (text == null) {
             return null;
         }
-        return new InterviewAnswerSubmitResult.WrapUpMessage(resolveWrapUpAudioBase64(endType, text));
+        return new InterviewAnswerSubmitResult.WrapUpMessage(resolveWrapUpAudioBase64(sessionId, endType, text));
     }
 
     private String wrapUpTextFor(InterviewEndType endType) {
         return WrapUpMessage.textFor(endType);
     }
 
-    private String resolveWrapUpAudioBase64(InterviewEndType endType, String text) {
+    private String resolveWrapUpAudioBase64(Long sessionId, InterviewEndType endType, String text) {
         String key = S3KeyGenerator.wrapUpMessageKey(endType.name());
         String cached = interviewVoiceStorage.readBase64(key);
         if (cached != null) {
             return cached;
         }
-        byte[] audioContent = retryAiCall(() -> textToSpeechSynthesizer.synthesize(text));
+        byte[] audioContent = retryAiCall(() -> textToSpeechSynthesizer.synthesize(sessionId, text));
         interviewVoiceStorage.upload(key, audioContent);
         return Base64.getEncoder().encodeToString(audioContent);
     }
@@ -632,7 +635,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private String generateNextQuestionText(Optional<QuestionCandidate> selectedProbe, TestType axis, InterviewSession session) {
         String questionText = selectedProbe
                 .map(probe -> retryAiCall(() -> questionTextGenerator.generate(
-                        probe.getProbeText(), probe.getEchoQuote(),
+                        session.getId(), probe.getProbeText(), probe.getEchoQuote(),
                         session.getSnapshotJobType(), session.getSnapshotYearsOfExperience()
                 )))
                 .orElseGet(() -> generateOpenerText(axis, session));
@@ -644,7 +647,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
         JdOpenerContext context = jdOpenerContextCache.get(session.getId()).orElse(EMPTY_JD_OPENER_CONTEXT);
         List<String> priorQuestions = priorQuestionCache.get(session.getId()).orElseGet(List::of);
         return retryAiCall(() -> questionTextGenerator.generateOpener(
-                axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
+                session.getId(), axis, session.getSnapshotJobType(), session.getSnapshotYearsOfExperience(),
                 context.jdKeywords(), context.relatedPortfolioChunks(), priorQuestions
         ));
     }

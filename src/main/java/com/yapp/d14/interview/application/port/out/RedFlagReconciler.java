@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface RedFlagReconciler {
 
-    List<RedFlagVerdict> reconcile(RedFlagReconcileContext context);
+    List<RedFlagVerdict> reconcile(Long sessionId, RedFlagReconcileContext context);
 }

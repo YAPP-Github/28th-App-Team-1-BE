@@ -185,7 +185,7 @@ class InterviewReportGenerateServiceIntegrationTest {
         createAxisPlan(sessionId, TestType.DEPTH, AxisTier.CORE);
         createAxisPlan(sessionId, TestType.BOUNDARY, AxisTier.SUPPORT);
 
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(
                         TestType.DEPTH, 4, ResolutionLevel.NORMAL, null,
                         List.of(new TimeRange(12.0f, 38.0f)),
@@ -196,7 +196,7 @@ class InterviewReportGenerateServiceIntegrationTest {
                         List.of(), "트래픽 규모와 병목 지점을 파악하고 있으나 대안 비교는 부족함"
                 )
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of(
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of(
                 new ReportCardDraft(
                         depthQuestionId, 1, TestType.DEPTH, "데이터 정합성 보장",
                         "이 질문은 실패 상황에서 데이터 정합성을 어떻게 보장했는지 확인하려는 의도예요.",
@@ -212,7 +212,7 @@ class InterviewReportGenerateServiceIntegrationTest {
                         List.of()
                 )
         ));
-        given(reportHeadlineGenerator.generate(any())).willReturn("결제 재시도 로직을 깊이 있게 설명했고, 트래픽 규모에 따른 한계도 잘 짚었어요.");
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn("결제 재시도 로직을 깊이 있게 설명했고, 트래픽 규모에 따른 한계도 잘 짚었어요.");
 
         interviewReportGenerateUseCase.generate(sessionId);
 
@@ -272,21 +272,21 @@ class InterviewReportGenerateServiceIntegrationTest {
                 null, QuestionCandidateStrength.HIGH, null
         ));
 
-        given(axisReportScorer.score(any())).willReturn(List.of(
+        given(axisReportScorer.score(any(), any())).willReturn(List.of(
                 new AxisScoreDraft(TestType.DEPTH, 4, ResolutionLevel.NORMAL, null, List.of(),
                         "설계 주도 경험을 구체적으로 설명하지 못하고 팀 전체 의사결정으로 답변을 흐림"),
                 new AxisScoreDraft(TestType.BOUNDARY, 3, ResolutionLevel.NORMAL, null, List.of(),
                         "트래픽 규모는 언급했으나 근거 수치가 불명확함")
         ));
-        given(redFlagReconciler.reconcile(any())).willReturn(List.of(
+        given(redFlagReconciler.reconcile(any(), any())).willReturn(List.of(
                 new RedFlagVerdict(
                         RedFlagType.FABRICATION, TestType.DEPTH, null, true, List.of(), List.of(),
                         "포트폴리오에서는 아키텍처 설계를 리드했다고 주장했지만, "
                                 + "실제 답변에서는 본인이 맡은 부분을 특정하지 못하고 회피성 답변으로 일관함"
                 )
         ));
-        given(reportCardContentGenerator.generate(any())).willReturn(List.of());
-        given(reportHeadlineGenerator.generate(any())).willReturn(
+        given(reportCardContentGenerator.generate(any(), any())).willReturn(List.of());
+        given(reportHeadlineGenerator.generate(any(), any())).willReturn(
                 "포트폴리오에 기재된 경험과 실제 답변 사이에 확인이 필요한 불일치가 있어요."
         );
 

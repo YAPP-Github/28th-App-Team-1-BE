@@ -131,6 +131,7 @@ class PreloadQuestionPoolGenerationLlmE2eTest {
         for (QuestionCandidate candidate : candidates) {
             Instant questionStartedAt = Instant.now();
             String questionText = questionTextGenerator.generate(
+                1L,
                     candidate.getProbeText(), candidate.getEchoQuote(), jobRole, careerYears
             );
             double questionElapsedSeconds = elapsedSeconds(questionStartedAt);

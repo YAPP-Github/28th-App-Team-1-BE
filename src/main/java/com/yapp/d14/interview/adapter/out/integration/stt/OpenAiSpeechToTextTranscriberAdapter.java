@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.stt;
 
+import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
+import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
 import com.yapp.d14.interview.domain.TranscriptSegment;
@@ -25,9 +27,10 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
 
     private final OpenAiAudioApi openAiAudioApi;
     private final OpenAiAudioTranscriptionProperties transcriptionProperties;
+    private final AiUsageRecordUseCase aiUsageRecordUseCase;
 
     @Override
-    public TranscriptionResult transcribe(byte[] audioContent) {
+    public TranscriptionResult transcribe(Long sessionId, byte[] audioContent) {
         try {
             // verbose_json은 별도 옵션 없이 발화 세그먼트(start/end/text/no_speech_prob)를 반환한다 —
             // 실패율 계산(no_speech_prob)과 문장 단위 발화 시각 매핑(#78)에 모두 이 세그먼트를 쓴다.
@@ -51,11 +54,24 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
                     .filter(this::isFailedSegment)
                     .count();
 
-            return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount, toSegments(segments));
+            List<TranscriptSegment> transcriptSegments = toSegments(segments);
+            recordUsage(sessionId, transcriptSegments);
+
+            return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount, transcriptSegments);
         } catch (Exception e) {
             log.error("[STT TRANSCRIBE] OpenAI Whisper 호출 실패", e);
             throw new RuntimeException("STT 변환에 실패했어요.", e);
         }
+    }
+
+    // Whisper는 오디오 길이로 과금된다 — 응답에 길이가 없으므로 마지막 세그먼트의 종료 시각으로 잡는다.
+    private void recordUsage(Long sessionId, List<TranscriptSegment> segments) {
+        if (sessionId == null || segments.isEmpty()) {
+            return;
+        }
+        float endSec = segments.get(segments.size() - 1).endSec();
+        aiUsageRecordUseCase.record(AiUsageRecordCommand.openAiStt(
+                sessionId, transcriptionProperties.getOptions().getModel(), Math.round(endSec * 1000.0f)));
     }
 
     private boolean isFailedSegment(OpenAiAudioApi.StructuredResponse.Segment segment) {

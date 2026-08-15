@@ -12,7 +12,9 @@ import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.interview.domain.TextRange;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
@@ -124,25 +126,31 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
 
     private final ChatClient chatClient;
     private final String systemPrompt;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
-    AnthropicReportCardContentGeneratorAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+    AnthropicReportCardContentGeneratorAdapter(
+            @Qualifier("anthropicChatModel") ChatModel chatModel,
+            AnthropicUsageRecorder anthropicUsageRecorder
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadPrinciplesYaml());
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
-    public List<ReportCardDraft> generate(ReportCardContentContext context) {
+    public List<ReportCardDraft> generate(Long sessionId, ReportCardContentContext context) {
         String userMessage = buildUserMessage(context);
         Map<Long, TurnRef> turnRefsById = indexTurnsByQuestionId(context);
 
         try {
-            List<ReportCardContentLlmEntry> entries = chatClient.prompt()
+            ResponseEntity<ChatResponse, List<ReportCardContentLlmEntry>> responseEntity = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .call()
-                    .entity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
+                    .responseEntity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
                     });
-            return toDrafts(entries, turnRefsById);
+            anthropicUsageRecorder.record(sessionId, responseEntity.response());
+            return toDrafts(responseEntity.entity(), turnRefsById);
         } catch (Exception e) {
             log.error("[REPORT CARD CONTENT GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("리포트 카드 생성에 실패했어요.", e);

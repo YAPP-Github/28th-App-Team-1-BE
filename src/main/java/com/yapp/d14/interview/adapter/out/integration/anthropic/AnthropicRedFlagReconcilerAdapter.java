@@ -11,7 +11,9 @@ import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.interview.domain.TimeRange;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
@@ -80,24 +82,30 @@ class AnthropicRedFlagReconcilerAdapter implements RedFlagReconciler {
 
     private final ChatClient chatClient;
     private final String systemPrompt;
+    private final AnthropicUsageRecorder anthropicUsageRecorder;
 
-    AnthropicRedFlagReconcilerAdapter(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+    AnthropicRedFlagReconcilerAdapter(
+            @Qualifier("anthropicChatModel") ChatModel chatModel,
+            AnthropicUsageRecorder anthropicUsageRecorder
+    ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadRedFlagsYaml());
+        this.anthropicUsageRecorder = anthropicUsageRecorder;
     }
 
     @Override
-    public List<RedFlagVerdict> reconcile(RedFlagReconcileContext context) {
+    public List<RedFlagVerdict> reconcile(Long sessionId, RedFlagReconcileContext context) {
         String userMessage = buildUserMessage(context);
 
         try {
-            List<RedFlagVerdictLlmEntry> entries = chatClient.prompt()
+            ResponseEntity<ChatResponse, List<RedFlagVerdictLlmEntry>> responseEntity = chatClient.prompt()
                     .system(systemPrompt)
                     .user(userMessage)
                     .call()
-                    .entity(new ParameterizedTypeReference<List<RedFlagVerdictLlmEntry>>() {
+                    .responseEntity(new ParameterizedTypeReference<List<RedFlagVerdictLlmEntry>>() {
                     });
-            return entries.stream().map(this::toVerdict).toList();
+            anthropicUsageRecorder.record(sessionId, responseEntity.response());
+            return responseEntity.entity().stream().map(this::toVerdict).toList();
         } catch (Exception e) {
             log.error("[RED FLAG RECONCILE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("레드플래그 확정에 실패했어요.", e);

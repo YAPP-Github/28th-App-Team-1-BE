@@ -1,8 +1,11 @@
 package com.yapp.d14.interview.adapter.out.integration.tts;
 
+import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
+import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechProperties;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -14,11 +17,15 @@ class OpenAiTextToSpeechSynthesizerAdapter implements TextToSpeechSynthesizer {
 
     // OpenAiAudioSpeechModel은 SpeechModel(동기 call)과 StreamingSpeechModel(stream) 둘 다 구현한다
     private final OpenAiAudioSpeechModel speechModel;
+    private final OpenAiAudioSpeechProperties speechProperties;
+    private final AiUsageRecordUseCase aiUsageRecordUseCase;
 
     @Override
-    public byte[] synthesize(String text) {
+    public byte[] synthesize(Long sessionId, String text) {
         try {
-            return speechModel.call(text);
+            byte[] audioContent = speechModel.call(text);
+            recordUsage(sessionId, text);
+            return audioContent;
         } catch (Exception e) {
             log.error("[TTS SYNTHESIZE] OpenAI 호출 실패", e);
             throw new RuntimeException("TTS 합성에 실패했어요.", e);
@@ -26,8 +33,17 @@ class OpenAiTextToSpeechSynthesizerAdapter implements TextToSpeechSynthesizer {
     }
 
     @Override
-    public Flux<byte[]> synthesizeStream(String text) {
+    public Flux<byte[]> synthesizeStream(Long sessionId, String text) {
         return speechModel.stream(text)
+                .doOnComplete(() -> recordUsage(sessionId, text))
                 .doOnError(e -> log.error("[TTS SYNTHESIZE STREAM] OpenAI 호출 실패", e));
+    }
+
+    private void recordUsage(Long sessionId, String text) {
+        if (sessionId == null || text == null) {
+            return;
+        }
+        aiUsageRecordUseCase.record(AiUsageRecordCommand.openAiTts(
+                sessionId, speechProperties.getOptions().getModel(), text.length()));
     }
 }

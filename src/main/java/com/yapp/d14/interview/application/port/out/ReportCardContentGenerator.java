@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface ReportCardContentGenerator {
 
-    List<ReportCardDraft> generate(ReportCardContentContext context);
+    List<ReportCardDraft> generate(Long sessionId, ReportCardContentContext context);
 }

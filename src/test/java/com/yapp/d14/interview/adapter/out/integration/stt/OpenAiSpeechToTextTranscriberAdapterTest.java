@@ -44,7 +44,8 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
 
     @Test
     void no_speech_prob이_0점6을_초과하는_세그먼트만_실패로_센다() {
-        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties());
+        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
+        });
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 5f, "전체 텍스트",
                 List.of(),
@@ -53,7 +54,7 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
         given(openAiAudioApi.createTranscription(any(OpenAiAudioApi.TranscriptionRequest.class), eq(OpenAiAudioApi.StructuredResponse.class)))
                 .willReturn(ResponseEntity.ok(response));
 
-        TranscriptionResult result = adapter.transcribe(new byte[]{1, 2, 3});
+        TranscriptionResult result = adapter.transcribe(1L, new byte[]{1, 2, 3});
 
         assertThat(result.text()).isEqualTo("전체 텍스트");
         assertThat(result.totalSegmentCount()).isEqualTo(4);
@@ -63,7 +64,8 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
 
     @Test
     void 발화_세그먼트를_TranscriptSegment로_매핑한다() {
-        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties());
+        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
+        });
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 3f, "안녕하세요. 반갑습니다.",
                 List.of(),
@@ -75,7 +77,7 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
         given(openAiAudioApi.createTranscription(any(OpenAiAudioApi.TranscriptionRequest.class), eq(OpenAiAudioApi.StructuredResponse.class)))
                 .willReturn(ResponseEntity.ok(response));
 
-        TranscriptionResult result = adapter.transcribe(new byte[]{1, 2, 3});
+        TranscriptionResult result = adapter.transcribe(1L, new byte[]{1, 2, 3});
 
         assertThat(result.segments()).hasSize(2);
         assertThat(result.segments().get(0).text()).isEqualTo("안녕하세요.");
@@ -88,14 +90,15 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
 
     @Test
     void 세그먼트가_비어있으면_전체_실패_모두_0이다() {
-        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties());
+        adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
+        });
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 0f, "", List.of(), List.of()
         );
         given(openAiAudioApi.createTranscription(any(OpenAiAudioApi.TranscriptionRequest.class), eq(OpenAiAudioApi.StructuredResponse.class)))
                 .willReturn(ResponseEntity.ok(response));
 
-        TranscriptionResult result = adapter.transcribe(new byte[]{1});
+        TranscriptionResult result = adapter.transcribe(1L, new byte[]{1});
 
         assertThat(result.totalSegmentCount()).isZero();
         assertThat(result.failedSegmentCount()).isZero();
