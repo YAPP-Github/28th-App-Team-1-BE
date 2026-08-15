@@ -137,45 +137,21 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
-          source: "docker-compose.yml,Caddyfile"
+          source: "docker-compose.yml,Caddyfile.template,scripts/deploy.sh"
           target: "/opt/d14/"
 
-      - name: ECR login & restart services on EC2
+      - name: Blue-green deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
+          # 실제 블루-그린 전환(신 버전 기동 → /health 대기 → caddy reload → 구 버전 graceful 종료)은
+          # 리포지토리의 scripts/deploy.sh 가 담당한다. 여기서는 그 스크립트를 실행만 한다.
           script: |
             set -euo pipefail
-            cd /opt/d14
-
-            # 스크립트가 성공/실패 어느 쪽으로 끝나든 미사용 이미지를 정리한다.
-            # -a: 컨테이너가 사용하지 않는 이전 배포 태그(ECR_REPOSITORY_URL:<short_sha>)까지 제거.
-            # 실행 중인 컨테이너가 참조하는 이미지는 삭제되지 않으므로 현재 배포본은 안전하다.
-            cleanup() { docker image prune -af || true; }
-            trap cleanup EXIT
-
-            echo "== 배포 전 디스크 사용량 =="
-            df -h /
-
-            # EC2 IAM role 의 ECR ReadOnly 권한으로 docker login
-            /usr/local/bin/ecr-login.sh
-
-            # pull 로 디스크가 소진되지 않도록, 새 이미지를 받기 전에 미사용 이미지를 먼저 정리한다.
-            docker image prune -af
-
-            # 이미지 pull & 컨테이너 재시작
-            docker compose pull app
-            docker compose up -d --remove-orphans
-
-            # 헬스 체크 (최대 60초 대기)
-            timeout 60 sh -c 'until docker compose ps app | grep -q "Up"; do sleep 3; done' \
-              || (docker compose logs app && exit 1)
-
-            echo "== 배포 후 디스크 사용량 =="
-            df -h /
+            bash /opt/d14/scripts/deploy.sh
 
   # ──────────────────────────────────────────────────────────────
   # Job 4: Notify Discord
