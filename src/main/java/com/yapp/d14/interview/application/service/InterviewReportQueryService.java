@@ -36,7 +36,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -49,9 +48,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 class InterviewReportQueryService implements InterviewReportQueryUseCase {
-
-    // 채점이 끝나도 영상 합성이 이보다 오래 안 끝나면(업로드 누락·조기 이탈 등) 영상 없이 READY로 넘긴다(#155).
-    private static final Duration VIDEO_COMPOSITE_WAIT_TIMEOUT = Duration.ofMinutes(5);
 
     // 노출 레드플래그 3종의 사용자용 중립 안내 문구.
     private static final Map<RedFlagType, String> RED_FLAG_NOTICE = Map.of(
@@ -100,7 +96,7 @@ class InterviewReportQueryService implements InterviewReportQueryUseCase {
         // 채점(report row)만으로는 부족하다 — 영상 합성(composite)까지 끝나야 READY로 노출한다(#155).
         // 합성이 timeout을 넘겨도 안 끝나면(업로드 누락 등) 더는 기다리지 않고 영상 없이 진행한다.
         InterviewVideo video = interviewVideoRepository.findBySessionId(sessionId).orElse(null);
-        if (video != null && !video.isComposited() && !video.isCompositeOverdue(VIDEO_COMPOSITE_WAIT_TIMEOUT)) {
+        if (report.effectiveStatus(video) == ReportStatus.GENERATING) {
             return statusOnly(ReportStatus.GENERATING);
         }
 

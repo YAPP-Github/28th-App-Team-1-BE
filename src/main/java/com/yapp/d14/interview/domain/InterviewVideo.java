@@ -17,6 +17,9 @@ public class InterviewVideo {
      */
     private static final Duration GUEST_MAX_RETENTION = Duration.ofDays(30);
 
+    /** 채점 완료 후 영상 합성을 기다리는 최대 시간(#155). 이보다 오래 안 끝나면 영상 없이 진행한다. */
+    private static final Duration COMPOSITE_WAIT_TIMEOUT = Duration.ofMinutes(5);
+
     private final Long id;
     private final Long sessionId;
     private final LocalDateTime baseAt;
@@ -112,11 +115,13 @@ public class InterviewVideo {
 
     /**
      * 합성 대기가 timeout을 넘겼는지 판단한다. 이미 합성됐으면 항상 false.
-     * baseAt은 리포트 저장(Step1) 시점에 찍히므로, 녹화 업로드 자체가 영영 오지 않는 세션(조기 이탈 등)도
-     * 이 기준으로 무한 대기하지 않고 fallback할 수 있다.
+     * 기준 시각(since)은 호출자가 넘긴다 — baseAt은 영상 업로드 완료가 리포트 채점보다 먼저 끝나면
+     * 채점 완료보다 훨씬 이전 시각일 수 있어(두 흐름 중 먼저 INSERT하는 쪽이 baseAt을 찍음, #155 리뷰),
+     * "채점이 끝난 뒤 영상을 얼마나 기다렸는지"를 재는 기준으로 쓸 수 없다. 호출자는 리포트 저장 시각
+     * (Report.createdAt)처럼 실제로 기다리기 시작한 시점을 넘겨야 한다.
      */
-    public boolean isCompositeOverdue(Duration timeout) {
-        return !composited && LocalDateTime.now().isAfter(baseAt.plus(timeout));
+    public boolean isCompositeOverdue(LocalDateTime since) {
+        return !composited && LocalDateTime.now().isAfter(since.plus(COMPOSITE_WAIT_TIMEOUT));
     }
 
     /** 지인(공유 링크) 접근 전용 판정. 소유자 쪽 단계형 expiresAt과 무관하게 baseAt+30일(영상 최대보유기간) 하드캡으로만 판정한다. */

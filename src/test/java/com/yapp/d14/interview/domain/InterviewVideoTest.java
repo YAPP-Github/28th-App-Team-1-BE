@@ -2,7 +2,6 @@ package com.yapp.d14.interview.domain;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,28 +69,38 @@ class InterviewVideoTest {
     @Test
     void 합성이_이미_끝났으면_timeout이_지났어도_overdue가_아니다() {
         InterviewVideo video = InterviewVideo.of(
-                1L, 100L, LocalDateTime.now().minusMinutes(10), LocalDateTime.now().plusDays(1), false, true, true, null, null
+                1L, 100L, LocalDateTime.now(), LocalDateTime.now().plusDays(1), false, true, true, null, null
         );
 
-        assertThat(video.isCompositeOverdue(Duration.ofMinutes(5))).isFalse();
+        assertThat(video.isCompositeOverdue(LocalDateTime.now().minusMinutes(10))).isFalse();
     }
 
     @Test
-    void 합성_전이고_baseAt으로부터_timeout이_지나면_overdue다() {
+    void 합성_전이고_기준시각으로부터_timeout이_지나면_overdue다() {
         InterviewVideo video = InterviewVideo.of(
-                1L, 100L, LocalDateTime.now().minusMinutes(10), LocalDateTime.now().plusDays(1), false, true, false, null, null
+                1L, 100L, LocalDateTime.now(), LocalDateTime.now().plusDays(1), false, true, false, null, null
         );
 
-        assertThat(video.isCompositeOverdue(Duration.ofMinutes(5))).isTrue();
+        assertThat(video.isCompositeOverdue(LocalDateTime.now().minusMinutes(10))).isTrue();
     }
 
     @Test
-    void 합성_전이어도_baseAt으로부터_timeout_전이면_overdue가_아니다() {
+    void 합성_전이어도_기준시각으로부터_timeout_전이면_overdue가_아니다() {
         InterviewVideo video = InterviewVideo.of(
                 1L, 100L, LocalDateTime.now(), LocalDateTime.now().plusDays(1), false, false, false, null, null
         );
 
-        assertThat(video.isCompositeOverdue(Duration.ofMinutes(5))).isFalse();
+        assertThat(video.isCompositeOverdue(LocalDateTime.now())).isFalse();
+    }
+
+    @Test
+    void overdue_판단은_baseAt이_아니라_호출자가_넘긴_기준시각을_따른다() {
+        // baseAt이 오래전이어도(업로드가 채점보다 먼저 끝나 baseAt이 일찍 찍힌 경우) 기준시각이 최근이면 overdue가 아니다.
+        InterviewVideo video = InterviewVideo.of(
+                1L, 100L, LocalDateTime.now().minusMinutes(20), LocalDateTime.now().plusDays(1), false, true, false, null, null
+        );
+
+        assertThat(video.isCompositeOverdue(LocalDateTime.now())).isFalse();
     }
 
     @Test
