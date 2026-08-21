@@ -1,0 +1,38 @@
+name: Release Please
+
+# main 머지마다 릴리즈 노트를 누적하는 Release PR 을 유지하고,
+# 그 Release PR 이 머지되면 SemVer 태그(vX.Y.Z) + GitHub Release 를 발행한다.
+# 버전 산정은 커밋 타입(feat=minor, fix=patch, feat!/BREAKING CHANGE=major)만 반영하고,
+# 릴리즈 노트에는 전 커밋 타입(chore/docs/refactor/test/build/ci 포함)을 표시한다.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Maintain Release PR & tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # release-please 가 GITHUB_TOKEN 으로 만든 태그 push 는 다른 워크플로우를 트리거하지 못하므로,
+  # 릴리즈가 생성된 경우 여기서 배포 워크플로우를 직접 호출한다.
+  deploy:
+    name: Deploy released version
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
