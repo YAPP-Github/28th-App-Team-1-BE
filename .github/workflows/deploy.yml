@@ -1,15 +1,14 @@
 name: Deploy
 
 # 릴리즈 태그(vX.Y.Z) 발행 시에만 빌드·배포한다.
-# - push(tags): 사람이 직접 민 태그(수동 릴리즈·롤백 re-tag)로 배포
-# - workflow_call: release-please.yml 이 릴리즈 생성 시 호출 (GITHUB_TOKEN 태그는
-#   push 이벤트를 트리거하지 못하므로 이 경로로 배포)
+# - push(tags): release-please(PAT) 가 만든 태그, 또는 사람이 직접 민 태그
+#   (수동 릴리즈·롤백 re-tag)로 배포
+# - workflow_dispatch: 수동 실행
 # 단위 테스트 게이트는 ci.yml 이 PR/main push 에서 담당한다.
 on:
   push:
     tags:
       - 'v*'
-  workflow_call:
   workflow_dispatch:
 
 env:

@@ -4,6 +4,11 @@ name: Release Please
 # 그 Release PR 이 머지되면 SemVer 태그(vX.Y.Z) + GitHub Release 를 발행한다.
 # 버전 산정은 커밋 타입(feat=minor, fix=patch, feat!/BREAKING CHANGE=major)만 반영하고,
 # 릴리즈 노트에는 전 커밋 타입(chore/docs/refactor/test/build/ci 포함)을 표시한다.
+#
+# 기본 GITHUB_TOKEN 은 (1) 조직 정책상 Actions 의 PR 생성이 막혀 있고,
+# (2) 그 토큰으로 push 한 태그는 다른 워크플로우(deploy.yml)를 트리거하지 못한다.
+# 두 문제를 모두 우회하기 위해 개인 토큰(RELEASE_PLEASE_TOKEN)으로 동작시킨다.
+# → PAT 로 push 된 태그는 deploy.yml 의 `push: tags` 를 정상적으로 트리거한다.
 on:
   push:
     branches:
@@ -17,22 +22,10 @@ jobs:
   release-please:
     name: Maintain Release PR & tag
     runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Run release-please
-        id: release
         uses: googleapis/release-please-action@v4
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-
-  # release-please 가 GITHUB_TOKEN 으로 만든 태그 push 는 다른 워크플로우를 트리거하지 못하므로,
-  # 릴리즈가 생성된 경우 여기서 배포 워크플로우를 직접 호출한다.
-  deploy:
-    name: Deploy released version
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    uses: ./.github/workflows/deploy.yml
-    secrets: inherit
