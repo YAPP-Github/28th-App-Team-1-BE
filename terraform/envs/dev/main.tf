@@ -31,6 +31,21 @@ provider "aws" {
   }
 }
 
+# CloudFront 용 ACM 인증서 발급 전용 (반드시 us-east-1)
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = var.aws_profile
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 module "app" {
   source = "../../modules/app"
 
@@ -51,4 +66,18 @@ module "app" {
 
   cpu_credit_low_threshold = var.cpu_credit_low_threshold
   disk_fstype              = var.disk_fstype
+}
+
+module "landing" {
+  source = "../../modules/landing"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name = var.project_name
+  environment  = var.environment
+  domain_name  = var.landing_domain_name
+  bucket_name  = var.landing_bucket_name
 }

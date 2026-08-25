@@ -33,3 +33,20 @@ output "ssh_command" {
 output "cloudwatch_log_group_name" {
   value = module.app.cloudwatch_log_group_name
 }
+
+# --- 랜딩페이지 ---
+output "landing_bucket_name" {
+  value = module.landing.bucket_name
+}
+
+output "landing_cloudfront_distribution_id" {
+  value = module.landing.cloudfront_distribution_id
+}
+
+output "landing_cloudfront_domain_name" {
+  value = module.landing.cloudfront_domain_name
+}
+
+output "landing_acm_validation_records" {
+  value = module.landing.acm_validation_records
+}

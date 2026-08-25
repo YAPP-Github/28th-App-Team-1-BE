@@ -76,3 +76,14 @@ variable "disk_fstype" {
   type    = string
   default = "ext4"
 }
+
+# --- 랜딩페이지(정적 사이트) 호스팅 ---
+variable "landing_domain_name" {
+  type    = string
+  default = "www.hilit.my"
+}
+
+variable "landing_bucket_name" {
+  type    = string
+  default = "d14-hilit-landing"
+}
