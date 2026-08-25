@@ -50,3 +50,7 @@ output "landing_cloudfront_domain_name" {
 output "landing_acm_validation_records" {
   value = module.landing.acm_validation_records
 }
+
+output "landing_deploy_role_arn" {
+  value = module.landing.deploy_role_arn
+}

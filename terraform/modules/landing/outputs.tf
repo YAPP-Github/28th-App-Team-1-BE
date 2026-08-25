@@ -13,6 +13,11 @@ output "cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.this.domain_name
 }
 
+output "deploy_role_arn" {
+  description = "GitHub Actions 가 assume 할 배포 역할 ARN (레포 Secret AWS_DEPLOY_ROLE_ARN 에 등록)"
+  value       = aws_iam_role.deploy.arn
+}
+
 # 가비아에 수동 등록할 ACM 검증용 CNAME (name -> value)
 output "acm_validation_records" {
   description = "ACM DNS 검증을 위해 가비아에 추가할 CNAME 레코드"

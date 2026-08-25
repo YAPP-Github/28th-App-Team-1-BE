@@ -21,3 +21,9 @@ variable "price_class" {
   type    = string
   default = "PriceClass_200"
 }
+
+# 배포 워크플로우가 있는 GitHub 레포 (owner/repo). OIDC 역할 신뢰 대상.
+variable "github_repo" {
+  type    = string
+  default = "Team-Hilit/landing-page"
+}
