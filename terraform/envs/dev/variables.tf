@@ -87,3 +87,19 @@ variable "landing_bucket_name" {
   type    = string
   default = "d14-hilit-landing"
 }
+
+# --- 팀 수신 메일(SES inbound → Lambda 포워딩) ---
+variable "mail_domain" {
+  type    = string
+  default = "hilit.my"
+}
+
+variable "mail_recipients" {
+  type    = list(string)
+  default = ["team@hilit.my"]
+}
+
+# 포워딩 대상 주소 (기존 팀/개인 Gmail 등). tfvars 에서 채운다.
+variable "mail_forward_to" {
+  type = string
+}

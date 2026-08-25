@@ -54,3 +54,24 @@ output "landing_acm_validation_records" {
 output "landing_deploy_role_arn" {
   value = module.landing.deploy_role_arn
 }
+
+# --- 팀 수신 메일: 아래 값들을 가비아 DNS 에 수동 등록 ---
+output "mail_verification_txt" {
+  value = module.email.verification_txt
+}
+
+output "mail_dkim_cname_records" {
+  value = module.email.dkim_cname_records
+}
+
+output "mail_mx_record" {
+  value = module.email.mx_record
+}
+
+output "mail_spf_txt_record" {
+  value = module.email.spf_txt_record
+}
+
+output "mail_inbox_bucket" {
+  value = module.email.inbox_bucket
+}

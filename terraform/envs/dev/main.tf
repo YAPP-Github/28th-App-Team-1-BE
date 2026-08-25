@@ -81,3 +81,18 @@ module "landing" {
   domain_name  = var.landing_domain_name
   bucket_name  = var.landing_bucket_name
 }
+
+# 서울은 SES 수신 미지원 → 모듈 전체를 us-east-1 provider 로 돌린다.
+module "email" {
+  source = "../../modules/email"
+
+  providers = {
+    aws = aws.us_east_1
+  }
+
+  project_name = var.project_name
+  environment  = var.environment
+  mail_domain  = var.mail_domain
+  recipients   = var.mail_recipients
+  forward_to   = var.mail_forward_to
+}
