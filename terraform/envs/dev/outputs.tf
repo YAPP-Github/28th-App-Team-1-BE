@@ -33,3 +33,45 @@ output "ssh_command" {
 output "cloudwatch_log_group_name" {
   value = module.app.cloudwatch_log_group_name
 }
+
+# --- 랜딩페이지 ---
+output "landing_bucket_name" {
+  value = module.landing.bucket_name
+}
+
+output "landing_cloudfront_distribution_id" {
+  value = module.landing.cloudfront_distribution_id
+}
+
+output "landing_cloudfront_domain_name" {
+  value = module.landing.cloudfront_domain_name
+}
+
+output "landing_acm_validation_records" {
+  value = module.landing.acm_validation_records
+}
+
+output "landing_deploy_role_arn" {
+  value = module.landing.deploy_role_arn
+}
+
+# --- 팀 수신 메일: 아래 값들을 가비아 DNS 에 수동 등록 ---
+output "mail_verification_txt" {
+  value = module.email.verification_txt
+}
+
+output "mail_dkim_cname_records" {
+  value = module.email.dkim_cname_records
+}
+
+output "mail_mx_record" {
+  value = module.email.mx_record
+}
+
+output "mail_spf_txt_record" {
+  value = module.email.spf_txt_record
+}
+
+output "mail_inbox_bucket" {
+  value = module.email.inbox_bucket
+}

@@ -24,6 +24,7 @@ terraform/envs/**/*.tfvars
 terraform/crash.log
 terraform/crash.*.log
 terraform/modules/app/lambda/*.zip
+terraform/modules/email/lambda/*.zip
 
 # OS
 .DS_Store
