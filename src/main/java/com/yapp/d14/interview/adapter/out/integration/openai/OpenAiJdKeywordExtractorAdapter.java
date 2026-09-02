@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.openai;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
 import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.JdKeywordExtractor;
@@ -30,30 +32,35 @@ class OpenAiJdKeywordExtractorAdapter implements JdKeywordExtractor {
 
     private final ChatClient chatClient;
     private final AiUsageRecordUseCase aiUsageRecordUseCase;
+    private final AiCallMetrics aiCallMetrics;
 
     OpenAiJdKeywordExtractorAdapter(
             @Qualifier("openAiChatModel") ChatModel chatModel,
-            AiUsageRecordUseCase aiUsageRecordUseCase
+            AiUsageRecordUseCase aiUsageRecordUseCase,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.aiUsageRecordUseCase = aiUsageRecordUseCase;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
     public List<String> extractKeywords(Long sessionId, String jdText) {
         try {
-            ResponseEntity<ChatResponse, List<String>> responseEntity = chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
-                    .user(jdText)
-                    .call()
-                    .responseEntity(new ParameterizedTypeReference<List<String>>() {
-                    });
-            recordUsage(sessionId, responseEntity.response());
-            List<String> keywords = responseEntity.entity();
-            if (keywords == null) {
-                throw new IllegalStateException("JD 키워드 추출 응답이 비어있어요.");
-            }
-            return keywords;
+            return aiCallMetrics.record(AiCallStage.JD_KEYWORD, () -> {
+                ResponseEntity<ChatResponse, List<String>> responseEntity = chatClient.prompt()
+                        .system(SYSTEM_PROMPT)
+                        .user(jdText)
+                        .call()
+                        .responseEntity(new ParameterizedTypeReference<List<String>>() {
+                        });
+                recordUsage(sessionId, responseEntity.response());
+                List<String> keywords = responseEntity.entity();
+                if (keywords == null) {
+                    throw new IllegalStateException("JD 키워드 추출 응답이 비어있어요.");
+                }
+                return keywords;
+            });
         } catch (Exception e) {
             log.error("[JD KEYWORD EXTRACT] OpenAI 호출/파싱 실패", e);
             throw new RuntimeException("JD 키워드 추출에 실패했어요.", e);

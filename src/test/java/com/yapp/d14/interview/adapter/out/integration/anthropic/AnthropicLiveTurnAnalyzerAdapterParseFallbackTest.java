@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
 import com.yapp.d14.interview.application.port.out.LiveTurnResult;
 import com.yapp.d14.interview.application.port.out.PriorQaCache;
 import com.yapp.d14.interview.application.port.out.PriorTurn;
@@ -8,6 +9,7 @@ import com.yapp.d14.interview.domain.QuestionCandidate;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.api.AnthropicApi;
@@ -38,7 +40,7 @@ class AnthropicLiveTurnAnalyzerAdapterParseFallbackTest {
     private AnthropicLiveTurnAnalyzerAdapter adapter(Function<Prompt, ChatResponse> behavior) {
         return new AnthropicLiveTurnAnalyzerAdapter(new StubChatModel(behavior), new NoOpChunkSearch(), new NoOpPriorQaCache(),
                 new AnthropicUsageRecorder(command -> {
-                }));
+                }), new AiCallMetrics(new SimpleMeterRegistry()));
     }
 
     private LiveTurnResult analyze(AnthropicLiveTurnAnalyzerAdapter adapter, String lastAnswer, TestType currentAxis) {

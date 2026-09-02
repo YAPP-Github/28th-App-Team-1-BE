@@ -1,7 +1,9 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.TestType;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -35,7 +37,7 @@ class OpenerQuestionGenerationLlmE2eTest {
     void 실제_LLM으로_직군_axis_조합별_여는_질문을_생성한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
-                }));
+                }), new AiCallMetrics(new SimpleMeterRegistry()));
 
         List<JobType> jobTypes = List.of(JobType.BACKEND, JobType.FRONTEND, JobType.INFRA_SRE);
         List<TestType> axes = List.of(TestType.CONFLICT, TestType.RESILIENCE, TestType.TRADEOFF);
@@ -56,7 +58,7 @@ class OpenerQuestionGenerationLlmE2eTest {
     void 실제_LLM으로_JD_포폴_소재가_뒷받침될_때와_안될_때_조건부_오프너를_비교한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
-                }));
+                }), new AiCallMetrics(new SimpleMeterRegistry()));
 
         List<String> jdKeywords = List.of("대용량 트래픽 처리", "Redis 캐시 전략");
 
@@ -87,7 +89,7 @@ class OpenerQuestionGenerationLlmE2eTest {
     void 실제_LLM으로_직군별_조건부_오프너_근거_유무를_비교한다() {
         ChatModel chatModel = buildRealAnthropicChatModel();
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
-                }));
+                }), new AiCallMetrics(new SimpleMeterRegistry()));
 
         List<JobTypeFixture> fixtures = List.of(
                 new JobTypeFixture(

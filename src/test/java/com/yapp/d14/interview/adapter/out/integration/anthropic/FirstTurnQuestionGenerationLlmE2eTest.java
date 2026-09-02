@@ -1,5 +1,6 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
 import com.yapp.d14.interview.application.port.out.LiveTurnResult;
 import com.yapp.d14.interview.application.port.out.PriorQaCache;
 import com.yapp.d14.interview.application.port.out.PriorTurn;
@@ -8,6 +9,7 @@ import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.TestType;
 import com.yapp.d14.portfolio.application.port.in.PortfolioChunkSearchUseCase;
 import com.yapp.d14.portfolio.application.port.in.result.PortfolioChunkResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -61,10 +63,10 @@ class FirstTurnQuestionGenerationLlmE2eTest {
                         return List.of();
                     }
                 }, new NoOpPriorQaCache(), new AnthropicUsageRecorder(command -> {
-                })
+                }), new AiCallMetrics(new SimpleMeterRegistry())
         );
         AnthropicQuestionTextGeneratorAdapter questionTextGenerator = new AnthropicQuestionTextGeneratorAdapter(chatModel, new AnthropicUsageRecorder(command -> {
-                }));
+                }), new AiCallMetrics(new SimpleMeterRegistry()));
 
         String summaryQuestion = "가장 자신 있는 프로젝트를 2분간 소개해주세요.";
         String selfIntroduction = """

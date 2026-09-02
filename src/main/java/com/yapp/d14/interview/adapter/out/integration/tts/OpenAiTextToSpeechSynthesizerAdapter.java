@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.tts;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
 import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.TextToSpeechSynthesizer;
@@ -19,13 +21,16 @@ class OpenAiTextToSpeechSynthesizerAdapter implements TextToSpeechSynthesizer {
     private final OpenAiAudioSpeechModel speechModel;
     private final OpenAiAudioSpeechProperties speechProperties;
     private final AiUsageRecordUseCase aiUsageRecordUseCase;
+    private final AiCallMetrics aiCallMetrics;
 
     @Override
     public byte[] synthesize(Long sessionId, String text) {
         try {
-            byte[] audioContent = speechModel.call(text);
-            recordUsage(sessionId, text);
-            return audioContent;
+            return aiCallMetrics.record(AiCallStage.TTS, () -> {
+                byte[] audioContent = speechModel.call(text);
+                recordUsage(sessionId, text);
+                return audioContent;
+            });
         } catch (Exception e) {
             log.error("[TTS SYNTHESIZE] OpenAI 호출 실패", e);
             throw new RuntimeException("TTS 합성에 실패했어요.", e);
@@ -34,9 +39,9 @@ class OpenAiTextToSpeechSynthesizerAdapter implements TextToSpeechSynthesizer {
 
     @Override
     public Flux<byte[]> synthesizeStream(Long sessionId, String text) {
-        return speechModel.stream(text)
+        return aiCallMetrics.recordStream(AiCallStage.TTS_STREAM, () -> speechModel.stream(text)
                 .doOnComplete(() -> recordUsage(sessionId, text))
-                .doOnError(e -> log.error("[TTS SYNTHESIZE STREAM] OpenAI 호출 실패", e));
+                .doOnError(e -> log.error("[TTS SYNTHESIZE STREAM] OpenAI 호출 실패", e)));
     }
 
     private void recordUsage(Long sessionId, String text) {

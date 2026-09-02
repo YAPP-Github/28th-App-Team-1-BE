@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.HeadlineContext;
 import com.yapp.d14.interview.application.port.out.HeadlineContext.AxisTopic;
 import com.yapp.d14.interview.application.port.out.ReportHeadlineGenerator;
@@ -59,13 +61,16 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
 
     private final ChatClient chatClient;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicReportHeadlineGeneratorAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -73,12 +78,14 @@ class AnthropicReportHeadlineGeneratorAdapter implements ReportHeadlineGenerator
         String userMessage = buildUserMessage(context);
 
         try {
-            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
-                    .user(userMessage)
-                    .call()
-                    .chatResponse());
-            return sanitize(content);
+            return aiCallMetrics.record(AiCallStage.REPORT_HEADLINE, () -> {
+                String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
+                        .system(SYSTEM_PROMPT)
+                        .user(userMessage)
+                        .call()
+                        .chatResponse());
+                return sanitize(content);
+            });
         } catch (Exception e) {
             log.error("[REPORT HEADLINE GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("한 줄 요약 생성에 실패했어요.", e);
