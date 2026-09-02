@@ -32,6 +32,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // 서버 상태 지표(D 지표) — HTTP 응답시간·오류율, HikariCP, Lettuce, 비동기 큐 등을
+    // Spring Boot가 자동 수집해 /actuator/prometheus 로 노출한다. 관리 포트는 8081(외부 미노출).
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 

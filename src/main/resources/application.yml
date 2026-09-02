@@ -32,3 +32,17 @@ springdoc:
     enabled: false
   api-docs:
     enabled: false
+
+# 서버 상태 지표(D 지표)를 Prometheus가 긁어갈 엔드포인트.
+# 포트를 8080과 분리하는 이유: Caddy가 호스트의 모든 경로를 8080으로 프록시하므로,
+# 8080에 두면 https://hilit.my/actuator/prometheus 가 외부에 열린다.
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
