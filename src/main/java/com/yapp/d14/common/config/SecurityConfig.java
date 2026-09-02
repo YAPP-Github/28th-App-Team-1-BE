@@ -42,6 +42,8 @@ public class SecurityConfig {
                         // 로그인 전 스플래시에서 호출하는 앱 버전 정책 조회
                         .requestMatchers("/api/v1/app-versions/check").permitAll()
                         .requestMatchers("/health").permitAll()
+                        // Prometheus 스크랩용. 관리 포트(8081)는 이 체인을 그대로 타므로 여기서 열어야 한다.
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // 로컬 수동 테스트용 정적 하네스 페이지. dev 프로파일에서만 컨트롤러가 등록되어(DevInterviewTestPageController)
                         // 운영에서는 이 경로 자체가 404이므로 permitAll이어도 노출되지 않는다. API는 그대로 JWT가 필요하다.
