@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.AxisReportScoreContext;
 import com.yapp.d14.interview.application.port.out.AxisReportScoreContext.AxisTurnGroup;
 import com.yapp.d14.interview.application.port.out.AxisReportScoreContext.Turn;
@@ -62,14 +64,17 @@ class AnthropicAxisReportScorerAdapter implements AxisReportScorer {
     private final ChatClient chatClient;
     private final String systemPrompt;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicAxisReportScorerAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadScoringBarsYaml());
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -77,14 +82,16 @@ class AnthropicAxisReportScorerAdapter implements AxisReportScorer {
         String userMessage = buildUserMessage(context);
 
         try {
-            ResponseEntity<ChatResponse, List<AxisScoreLlmEntry>> responseEntity = chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(userMessage)
-                    .call()
-                    .responseEntity(new ParameterizedTypeReference<List<AxisScoreLlmEntry>>() {
-                    });
-            anthropicUsageRecorder.record(sessionId, responseEntity.response());
-            return responseEntity.entity().stream().map(this::toDraft).toList();
+            return aiCallMetrics.record(AiCallStage.AXIS_SCORE, () -> {
+                ResponseEntity<ChatResponse, List<AxisScoreLlmEntry>> responseEntity = chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(userMessage)
+                        .call()
+                        .responseEntity(new ParameterizedTypeReference<List<AxisScoreLlmEntry>>() {
+                        });
+                anthropicUsageRecorder.record(sessionId, responseEntity.response());
+                return responseEntity.entity().stream().map(this::toDraft).toList();
+            });
         } catch (Exception e) {
             log.error("[AXIS REPORT SCORE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("축별 채점에 실패했어요.", e);

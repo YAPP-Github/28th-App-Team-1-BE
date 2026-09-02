@@ -1,6 +1,8 @@
 package com.yapp.d14.interview.adapter.out.integration.stt;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
 import com.yapp.d14.interview.application.port.out.TranscriptionResult;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -45,7 +47,7 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
     @Test
     void no_speech_prob이_0점6을_초과하는_세그먼트만_실패로_센다() {
         adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
-        });
+        }, new AiCallMetrics(new SimpleMeterRegistry()));
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 5f, "전체 텍스트",
                 List.of(),
@@ -65,7 +67,7 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
     @Test
     void 발화_세그먼트를_TranscriptSegment로_매핑한다() {
         adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
-        });
+        }, new AiCallMetrics(new SimpleMeterRegistry()));
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 3f, "안녕하세요. 반갑습니다.",
                 List.of(),
@@ -91,7 +93,7 @@ class OpenAiSpeechToTextTranscriberAdapterTest {
     @Test
     void 세그먼트가_비어있으면_전체_실패_모두_0이다() {
         adapter = new OpenAiSpeechToTextTranscriberAdapter(openAiAudioApi, properties(), command -> {
-        });
+        }, new AiCallMetrics(new SimpleMeterRegistry()));
         OpenAiAudioApi.StructuredResponse response = new OpenAiAudioApi.StructuredResponse(
                 "ko", 0f, "", List.of(), List.of()
         );

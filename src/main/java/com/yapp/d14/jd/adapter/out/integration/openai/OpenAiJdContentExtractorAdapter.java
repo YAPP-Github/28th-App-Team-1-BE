@@ -1,5 +1,7 @@
 package com.yapp.d14.jd.adapter.out.integration.openai;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.jd.application.port.out.JdContentExtractor;
 import com.yapp.d14.jd.exception.JdExtractionFailedException;
 import lombok.extern.slf4j.Slf4j;
@@ -25,20 +27,22 @@ class OpenAiJdContentExtractorAdapter implements JdContentExtractor {
             """;
 
     private final ChatClient chatClient;
+    private final AiCallMetrics aiCallMetrics;
 
-    OpenAiJdContentExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel) {
+    OpenAiJdContentExtractorAdapter(@Qualifier("openAiChatModel") ChatModel chatModel, AiCallMetrics aiCallMetrics) {
         this.chatClient = ChatClient.builder(chatModel).build();
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
     public String extract(String rawText) {
         String content;
         try {
-            content = chatClient.prompt()
+            content = aiCallMetrics.record(AiCallStage.JD_CONTENT, () -> chatClient.prompt()
                     .system(SYSTEM_PROMPT)
                     .user(rawText)
                     .call()
-                    .content();
+                    .content());
         } catch (Exception e) {
             log.error("[JD EXTRACT] OpenAI 호출 실패", e);
             throw new JdExtractionFailedException("AI 처리 중 오류가 발생했습니다.", e);

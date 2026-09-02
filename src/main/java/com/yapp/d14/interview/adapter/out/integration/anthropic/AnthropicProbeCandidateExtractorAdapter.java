@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateExtractor;
 import com.yapp.d14.interview.domain.QuestionCandidateStrength;
@@ -60,14 +62,17 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
     private final ChatClient chatClient;
     private final String systemPrompt;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicProbeCandidateExtractorAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml(), MAX_CANDIDATES);
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -78,14 +83,16 @@ class AnthropicProbeCandidateExtractorAdapter implements ProbeCandidateExtractor
         String userMessage = buildUserMessage(focusProject, portfolioChunks, jdKeywords, priorQuestions);
 
         try {
-            ResponseEntity<ChatResponse, List<ProbeCandidateLlmEntry>> responseEntity = chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(userMessage)
-                    .call()
-                    .responseEntity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
-                    });
-            anthropicUsageRecorder.record(sessionId, responseEntity.response());
-            return responseEntity.entity().stream().map(this::toDraft).toList();
+            return aiCallMetrics.record(AiCallStage.PROBE_CANDIDATE, () -> {
+                ResponseEntity<ChatResponse, List<ProbeCandidateLlmEntry>> responseEntity = chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(userMessage)
+                        .call()
+                        .responseEntity(new ParameterizedTypeReference<List<ProbeCandidateLlmEntry>>() {
+                        });
+                anthropicUsageRecorder.record(sessionId, responseEntity.response());
+                return responseEntity.entity().stream().map(this::toDraft).toList();
+            });
         } catch (Exception e) {
             log.error("[PROBE CANDIDATE EXTRACT] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("캐물지점 추출에 실패했어요.", e);

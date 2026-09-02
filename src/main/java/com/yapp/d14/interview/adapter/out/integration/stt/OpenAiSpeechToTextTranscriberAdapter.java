@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.stt;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.command.AiUsageRecordCommand;
 import com.yapp.d14.interview.application.port.in.AiUsageRecordUseCase;
 import com.yapp.d14.interview.application.port.out.SpeechToTextTranscriber;
@@ -28,36 +30,39 @@ class OpenAiSpeechToTextTranscriberAdapter implements SpeechToTextTranscriber {
     private final OpenAiAudioApi openAiAudioApi;
     private final OpenAiAudioTranscriptionProperties transcriptionProperties;
     private final AiUsageRecordUseCase aiUsageRecordUseCase;
+    private final AiCallMetrics aiCallMetrics;
 
     @Override
     public TranscriptionResult transcribe(Long sessionId, byte[] audioContent) {
         try {
-            // verbose_json은 별도 옵션 없이 발화 세그먼트(start/end/text/no_speech_prob)를 반환한다 —
-            // 실패율 계산(no_speech_prob)과 문장 단위 발화 시각 매핑(#78)에 모두 이 세그먼트를 쓴다.
-            OpenAiAudioApi.TranscriptionRequest request = OpenAiAudioApi.TranscriptionRequest.builder()
-                    .file(audioContent)
-                    .fileName(AUDIO_FILENAME)
-                    .model(transcriptionProperties.getOptions().getModel())
-                    .responseFormat(OpenAiAudioApi.TranscriptResponseFormat.VERBOSE_JSON)
-                    .build();
+            return aiCallMetrics.record(AiCallStage.STT, () -> {
+                // verbose_json은 별도 옵션 없이 발화 세그먼트(start/end/text/no_speech_prob)를 반환한다 —
+                // 실패율 계산(no_speech_prob)과 문장 단위 발화 시각 매핑(#78)에 모두 이 세그먼트를 쓴다.
+                OpenAiAudioApi.TranscriptionRequest request = OpenAiAudioApi.TranscriptionRequest.builder()
+                        .file(audioContent)
+                        .fileName(AUDIO_FILENAME)
+                        .model(transcriptionProperties.getOptions().getModel())
+                        .responseFormat(OpenAiAudioApi.TranscriptResponseFormat.VERBOSE_JSON)
+                        .build();
 
-            ResponseEntity<OpenAiAudioApi.StructuredResponse> response =
-                    openAiAudioApi.createTranscription(request, OpenAiAudioApi.StructuredResponse.class);
-            OpenAiAudioApi.StructuredResponse body = response.getBody();
-            if (body == null) {
-                throw new IllegalStateException("Whisper 응답 본문이 비어있어요.");
-            }
+                ResponseEntity<OpenAiAudioApi.StructuredResponse> response =
+                        openAiAudioApi.createTranscription(request, OpenAiAudioApi.StructuredResponse.class);
+                OpenAiAudioApi.StructuredResponse body = response.getBody();
+                if (body == null) {
+                    throw new IllegalStateException("Whisper 응답 본문이 비어있어요.");
+                }
 
-            List<OpenAiAudioApi.StructuredResponse.Segment> segments =
-                    body.segments() == null ? List.of() : body.segments();
-            int failedSegmentCount = (int) segments.stream()
-                    .filter(this::isFailedSegment)
-                    .count();
+                List<OpenAiAudioApi.StructuredResponse.Segment> segments =
+                        body.segments() == null ? List.of() : body.segments();
+                int failedSegmentCount = (int) segments.stream()
+                        .filter(this::isFailedSegment)
+                        .count();
 
-            List<TranscriptSegment> transcriptSegments = toSegments(segments);
-            recordUsage(sessionId, transcriptSegments);
+                List<TranscriptSegment> transcriptSegments = toSegments(segments);
+                recordUsage(sessionId, transcriptSegments);
 
-            return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount, transcriptSegments);
+                return new TranscriptionResult(body.text(), segments.size(), failedSegmentCount, transcriptSegments);
+            });
         } catch (Exception e) {
             log.error("[STT TRANSCRIBE] OpenAI Whisper 호출 실패", e);
             throw new RuntimeException("STT 변환에 실패했어요.", e);

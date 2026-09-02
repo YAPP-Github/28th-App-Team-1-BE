@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.QuestionTextGenerator;
 import com.yapp.d14.interview.domain.JobType;
 import com.yapp.d14.interview.domain.TestType;
@@ -82,14 +84,17 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
     private final ChatClient chatClient;
     private final String openerSystemPrompt;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicQuestionTextGeneratorAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.openerSystemPrompt = OPENER_SYSTEM_PROMPT_TEMPLATE.formatted(loadAxesYaml());
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -104,15 +109,17 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
                 """.formatted(probeText, echoQuote, jobType.getLabel(), yearsOfExperience);
 
         try {
-            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
-                    .system(SYSTEM_PROMPT)
-                    .user(userMessage)
-                    .call()
-                    .chatResponse());
-            if (content == null || content.isBlank()) {
-                throw new IllegalStateException("Anthropic이 빈 질문 문장을 반환했어요.");
-            }
-            return content.strip();
+            return aiCallMetrics.record(AiCallStage.QUESTION_TEXT, () -> {
+                String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
+                        .system(SYSTEM_PROMPT)
+                        .user(userMessage)
+                        .call()
+                        .chatResponse());
+                if (content == null || content.isBlank()) {
+                    throw new IllegalStateException("Anthropic이 빈 질문 문장을 반환했어요.");
+                }
+                return content.strip();
+            });
         } catch (Exception e) {
             log.error("[QUESTION TEXT GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("질문 문장 생성에 실패했어요.", e);
@@ -129,15 +136,17 @@ class AnthropicQuestionTextGeneratorAdapter implements QuestionTextGenerator {
         );
 
         try {
-            String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
-                    .system(openerSystemPrompt)
-                    .user(userMessage)
-                    .call()
-                    .chatResponse());
-            if (content == null || content.isBlank()) {
-                throw new IllegalStateException("Anthropic이 빈 여는 질문을 반환했어요.");
-            }
-            return content.strip();
+            return aiCallMetrics.record(AiCallStage.QUESTION_OPENER, () -> {
+                String content = anthropicUsageRecorder.recordAndText(sessionId, chatClient.prompt()
+                        .system(openerSystemPrompt)
+                        .user(userMessage)
+                        .call()
+                        .chatResponse());
+                if (content == null || content.isBlank()) {
+                    throw new IllegalStateException("Anthropic이 빈 여는 질문을 반환했어요.");
+                }
+                return content.strip();
+            });
         } catch (Exception e) {
             log.error("[QUESTION TEXT GENERATE] 여는 질문(opener) Anthropic 호출/파싱 실패: axis={}", axis, e);
             throw new RuntimeException("여는 질문 생성에 실패했어요.", e);

@@ -1,6 +1,8 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.CeilingAssessment;
 import com.yapp.d14.interview.application.port.out.LiveTurnAnalyzer;
 import com.yapp.d14.interview.application.port.out.LiveTurnResult;
@@ -130,12 +132,14 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
     private final PortfolioChunkSearchUseCase portfolioChunkSearchUseCase;
     private final PriorQaCache priorQaCache;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicLiveTurnAnalyzerAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
             PortfolioChunkSearchUseCase portfolioChunkSearchUseCase,
             PriorQaCache priorQaCache,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(
@@ -152,6 +156,7 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         this.portfolioChunkSearchUseCase = portfolioChunkSearchUseCase;
         this.priorQaCache = priorQaCache;
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -175,27 +180,29 @@ class AnthropicLiveTurnAnalyzerAdapter implements LiveTurnAnalyzer {
         LiveTurnTools tools = new LiveTurnTools(portfolioChunkSearchUseCase, priorQaCache, sessionId, portfolioId);
 
         try {
-            ResponseEntity<ChatResponse, LiveTurnLlmResponse> responseEntity = chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(userMessage)
-                    .tools(tools)
-                    .options(cachedChatOptions)
-                    .call()
-                    .responseEntity(LiveTurnLlmResponse.class);
-            anthropicUsageRecorder.record(sessionId, responseEntity.response());
-            LiveTurnLlmResponse response = responseEntity.entity();
+            return aiCallMetrics.record(AiCallStage.LIVE_TURN, () -> {
+                ResponseEntity<ChatResponse, LiveTurnLlmResponse> responseEntity = chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(userMessage)
+                        .tools(tools)
+                        .options(cachedChatOptions)
+                        .call()
+                        .responseEntity(LiveTurnLlmResponse.class);
+                anthropicUsageRecorder.record(sessionId, responseEntity.response());
+                LiveTurnLlmResponse response = responseEntity.entity();
 
-            // 프롬프트로도 exhaustedAxes/상한을 지시하지만, 모델이 지키지 않을 수 있어 코드에서도 강제한다
-            // (AnthropicProbeCandidateExtractorAdapter의 MAX_CANDIDATES와 동일한 원칙).
-            List<ProbeCandidateDraft> newProbes = response.newProbes().stream()
-                    .map(this::toDraft)
-                    .filter(draft -> !exhaustedAxes.contains(draft.testType()))
-                    .limit(MAX_NEW_PROBES)
-                    .toList();
-            CeilingAssessment ceiling = toCeilingAssessment(currentAxis, response.ceiling());
-            List<StaleProbeUpdate> staleUpdates = toStaleUpdates(response.staleUpdates(), openProbesForAxis);
+                // 프롬프트로도 exhaustedAxes/상한을 지시하지만, 모델이 지키지 않을 수 있어 코드에서도 강제한다
+                // (AnthropicProbeCandidateExtractorAdapter의 MAX_CANDIDATES와 동일한 원칙).
+                List<ProbeCandidateDraft> newProbes = response.newProbes().stream()
+                        .map(this::toDraft)
+                        .filter(draft -> !exhaustedAxes.contains(draft.testType()))
+                        .limit(MAX_NEW_PROBES)
+                        .toList();
+                CeilingAssessment ceiling = toCeilingAssessment(currentAxis, response.ceiling());
+                List<StaleProbeUpdate> staleUpdates = toStaleUpdates(response.staleUpdates(), openProbesForAxis);
 
-            return new LiveTurnResult(newProbes, ceiling, staleUpdates);
+                return new LiveTurnResult(newProbes, ceiling, staleUpdates);
+            });
         } catch (Exception e) {
             if (isResponseParseFailure(e)) {
                 log.warn("[LIVE TURN ANALYZE] 응답 파싱 실패 - 빈 분석 결과로 진행해요. sessionId={}", sessionId, e);

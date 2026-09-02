@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.anthropic;
 
+import com.yapp.d14.common.metrics.AiCallMetrics;
+import com.yapp.d14.common.metrics.AiCallStage;
 import com.yapp.d14.interview.application.port.out.ReportCardContentContext;
 import com.yapp.d14.interview.application.port.out.ReportCardContentContext.AxisCardInput;
 import com.yapp.d14.interview.application.port.out.ReportCardContentContext.Turn;
@@ -127,14 +129,17 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
     private final ChatClient chatClient;
     private final String systemPrompt;
     private final AnthropicUsageRecorder anthropicUsageRecorder;
+    private final AiCallMetrics aiCallMetrics;
 
     AnthropicReportCardContentGeneratorAdapter(
             @Qualifier("anthropicChatModel") ChatModel chatModel,
-            AnthropicUsageRecorder anthropicUsageRecorder
+            AnthropicUsageRecorder anthropicUsageRecorder,
+            AiCallMetrics aiCallMetrics
     ) {
         this.chatClient = ChatClient.builder(chatModel).build();
         this.systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(loadPrinciplesYaml());
         this.anthropicUsageRecorder = anthropicUsageRecorder;
+        this.aiCallMetrics = aiCallMetrics;
     }
 
     @Override
@@ -143,14 +148,16 @@ class AnthropicReportCardContentGeneratorAdapter implements ReportCardContentGen
         Map<Long, TurnRef> turnRefsById = indexTurnsByQuestionId(context);
 
         try {
-            ResponseEntity<ChatResponse, List<ReportCardContentLlmEntry>> responseEntity = chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(userMessage)
-                    .call()
-                    .responseEntity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
-                    });
-            anthropicUsageRecorder.record(sessionId, responseEntity.response());
-            return toDrafts(responseEntity.entity(), turnRefsById);
+            return aiCallMetrics.record(AiCallStage.REPORT_CARD, () -> {
+                ResponseEntity<ChatResponse, List<ReportCardContentLlmEntry>> responseEntity = chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(userMessage)
+                        .call()
+                        .responseEntity(new ParameterizedTypeReference<List<ReportCardContentLlmEntry>>() {
+                        });
+                anthropicUsageRecorder.record(sessionId, responseEntity.response());
+                return toDrafts(responseEntity.entity(), turnRefsById);
+            });
         } catch (Exception e) {
             log.error("[REPORT CARD CONTENT GENERATE] Anthropic 호출/파싱 실패", e);
             throw new RuntimeException("리포트 카드 생성에 실패했어요.", e);
