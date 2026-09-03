@@ -1,9 +1,11 @@
 package com.yapp.d14.interview.adapter.out.integration.media;
 
+import com.yapp.d14.common.metrics.VideoCompositeMetrics;
 import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor;
 import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -37,10 +39,12 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;
+    private final VideoCompositeMetrics videoCompositeMetrics;
 
     @Override
     public void compose(UUID userId, Long sessionId, List<AudioTrack> tracks) {
         Path workDir = null;
+        Timer.Sample sample = videoCompositeMetrics.start();
         try {
             workDir = Files.createTempDirectory("composite-%s-".formatted(sessionId));
 
@@ -64,7 +68,7 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
             }
             if (availableTracks.isEmpty()) {
                 // 질문 TTS까지 하나도 못 받은 경우 — 무음 영상을 만드느니 실패로 두어 composited=false(videoUrl null)를 유지한다.
-                throw new IllegalStateException(
+                throw new VideoCompositeFailedException("no_audio_track",
                         "[COMPOSITE] 합성할 오디오 트랙을 하나도 받지 못함: sessionId=%d".formatted(sessionId));
             }
 
@@ -72,11 +76,20 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
             runFfmpeg(rawVideo, audioFiles, availableTracks, output, workDir.resolve("ffmpeg.log"));
 
             upload(S3KeyGenerator.interviewCompositeKey(userId, sessionId), output);
+            videoCompositeMetrics.success(sample);
         } catch (IOException e) {
+            videoCompositeMetrics.failure(sample, "io");
             throw new UncheckedIOException("[COMPOSITE] 임시파일 처리 실패: sessionId=%d".formatted(sessionId), e);
         } catch (InterruptedException e) {
+            videoCompositeMetrics.failure(sample, "interrupted");
             Thread.currentThread().interrupt();
             throw new IllegalStateException("[COMPOSITE] 합성이 중단됨: sessionId=%d".formatted(sessionId), e);
+        } catch (VideoCompositeFailedException e) {
+            videoCompositeMetrics.failure(sample, e.reason());
+            throw e;
+        } catch (RuntimeException e) {
+            videoCompositeMetrics.failure(sample, "other");
+            throw e;
         } finally {
             cleanup(workDir);
         }
@@ -116,10 +129,11 @@ class FfmpegInterviewVideoCompositorAdapter implements InterviewVideoCompositor 
         boolean finished = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         if (!finished) {
             process.destroyForcibly();
-            throw new IllegalStateException("[COMPOSITE] ffmpeg 타임아웃(%ds 초과)".formatted(PROCESS_TIMEOUT_SECONDS));
+            throw new VideoCompositeFailedException("timeout",
+                    "[COMPOSITE] ffmpeg 타임아웃(%ds 초과)".formatted(PROCESS_TIMEOUT_SECONDS));
         }
         if (process.exitValue() != 0) {
-            throw new IllegalStateException(
+            throw new VideoCompositeFailedException("exit_code",
                     "[COMPOSITE] ffmpeg 종료코드 %d, log:%n%s".formatted(process.exitValue(), tail(ffmpegLog)));
         }
     }

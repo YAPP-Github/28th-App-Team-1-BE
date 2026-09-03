@@ -15,6 +15,7 @@ import com.yapp.d14.interview.application.port.out.PriorQaCache;
 import com.yapp.d14.interview.application.port.out.PriorQuestionCache;
 import com.yapp.d14.interview.application.port.out.PriorTurn;
 import com.yapp.d14.interview.application.port.out.ProbeCandidateDraft;
+import com.yapp.d14.interview.application.port.out.ProbeSelectionRecorder;
 import com.yapp.d14.interview.application.port.out.QuestionCandidateRepository;
 import com.yapp.d14.interview.application.port.out.QuestionRepository;
 import com.yapp.d14.interview.application.port.out.QuestionTextGenerator;
@@ -133,6 +134,9 @@ class InterviewAnswerSubmitServiceTest {
 
     @Mock
     private UtteranceSegmentRepository utteranceSegmentRepository;
+
+    @Mock
+    private ProbeSelectionRecorder probeSelectionRecorder;
 
     @InjectMocks
     private InterviewAnswerSubmitService service;

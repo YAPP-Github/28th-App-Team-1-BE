@@ -55,6 +55,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
     private final TextToSpeechSynthesizer textToSpeechSynthesizer;
     private final InterviewVoiceStorage interviewVoiceStorage;
     private final UtteranceSegmentRepository utteranceSegmentRepository;
+    private final ProbeSelectionRecorder probeSelectionRecorder;
 
     @Override
     public InterviewAnswerSubmitResult submit(UUID userId, InterviewAnswerSubmitCommand command) {
@@ -614,6 +615,7 @@ class InterviewAnswerSubmitService implements InterviewAnswerSubmitUseCase {
                 .filter(candidate -> candidate.getTestType() == axis)
                 .forEach(candidatePool::add);
 
+        probeSelectionRecorder.recordPoolSize(candidatePool.size());
         log.debug("[PROBE SELECT] sessionId={}, axis={}, poolSize={}", sessionId, axis, candidatePool.size());
         for (QuestionCandidate candidate : candidatePool) {
             log.debug("[PROBE SELECT] 후보 풀: sessionId={}, axis={}, strength={}, status={}, probeText={}",

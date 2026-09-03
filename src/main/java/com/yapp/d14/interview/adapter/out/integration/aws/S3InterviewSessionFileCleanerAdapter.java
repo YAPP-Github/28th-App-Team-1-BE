@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.aws;
 
+import com.yapp.d14.common.metrics.S3Call;
+import com.yapp.d14.common.metrics.S3Metrics;
 import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewSessionFileCleaner;
@@ -23,10 +25,15 @@ class S3InterviewSessionFileCleanerAdapter implements InterviewSessionFileCleane
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;
+    private final S3Metrics s3Metrics;
 
     @Override
     public int deleteSessionFiles(UUID userId, Long sessionId) {
         String prefix = S3KeyGenerator.interviewSessionPrefix(userId, sessionId);
+        return s3Metrics.record(S3Call.SESSION_DELETE, () -> deleteByPrefix(prefix));
+    }
+
+    private int deleteByPrefix(String prefix) {
         ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
                 .bucket(s3Properties.getBucket())
                 .prefix(prefix)
