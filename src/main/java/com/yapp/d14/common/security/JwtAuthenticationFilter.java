@@ -2,6 +2,7 @@ package com.yapp.d14.common.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.common.response.ErrorResponse;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,9 +26,11 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String USER_ID_MDC_KEY = "userId";
+    private static final String AUTH_FAILURE_METRIC = "auth.failure";
 
     private final TokenParser tokenParser;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
 
     @Override
     protected void doFilterInternal(
@@ -49,10 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(userId, null, List.of());
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (TokenParseException e) {
+            // code는 AuthErrorCode enum에서 오므로 태그로 써도 카디널리티가 늘지 않는다.
+            meterRegistry.counter(AUTH_FAILURE_METRIC, "reason", e.getCode()).increment();
             SecurityContextHolder.clearContext();
             writeErrorResponse(response, e.getStatus(), e.getCode(), e.getMessage());
             return;
         } catch (Exception e) {
+            meterRegistry.counter(AUTH_FAILURE_METRIC, "reason", "unexpected").increment();
             log.error("[JwtFilter] 예상치 못한 오류: {}", e.getMessage());
             SecurityContextHolder.clearContext();
             writeErrorResponse(response, 401, "INVALID_TOKEN", "유효하지 않은 토큰입니다.");

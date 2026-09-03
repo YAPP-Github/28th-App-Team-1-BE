@@ -1,8 +1,10 @@
 package com.yapp.d14.interview.adapter.out.integration.media;
 
+import com.yapp.d14.common.metrics.VideoCompositeMetrics;
 import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor.AudioTrack;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -99,7 +101,8 @@ class FfmpegInterviewVideoCompositorAdapterSmokeTest {
         s3Properties.setBucket("smoke-test-bucket");
 
         FfmpegInterviewVideoCompositorAdapter adapter =
-                new FfmpegInterviewVideoCompositorAdapter(s3Client, s3Properties);
+                new FfmpegInterviewVideoCompositorAdapter(s3Client, s3Properties,
+                        new VideoCompositeMetrics(new SimpleMeterRegistry()));
 
         // 질문 1s, 답변 4s 지점에서 시작(녹화 타임라인). 두 트랙을 adelay 후 amix.
         adapter.compose(USER_ID, SESSION_ID, List.of(

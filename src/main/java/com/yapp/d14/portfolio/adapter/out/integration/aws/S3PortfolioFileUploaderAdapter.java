@@ -1,5 +1,7 @@
 package com.yapp.d14.portfolio.adapter.out.integration.aws;
 
+import com.yapp.d14.common.metrics.S3Call;
+import com.yapp.d14.common.metrics.S3Metrics;
 import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.portfolio.application.port.out.PortfolioFileUploader;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final S3Properties s3Properties;
+    private final S3Metrics s3Metrics;
 
     @Override
     public void upload(String key, byte[] content, String contentType) {
@@ -44,7 +47,7 @@ class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
         SdkException lastException = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                s3Client.putObject(request, requestBody);
+                s3Metrics.run(S3Call.PORTFOLIO_PUT, () -> s3Client.putObject(request, requestBody));
                 return;
             } catch (SdkException e) {
                 lastException = e;
@@ -57,10 +60,10 @@ class S3PortfolioFileUploaderAdapter implements PortfolioFileUploader {
     @Override
     public void delete(String key) {
         try {
-            s3Client.deleteObject(DeleteObjectRequest.builder()
+            s3Metrics.run(S3Call.PORTFOLIO_DELETE, () -> s3Client.deleteObject(DeleteObjectRequest.builder()
                     .bucket(s3Properties.getBucket())
                     .key(key)
-                    .build());
+                    .build()));
         } catch (SdkException e) {
             log.error("[S3 DELETE] 삭제 실패, 고아 파일로 남을 수 있음: key={}", key, e);
         }

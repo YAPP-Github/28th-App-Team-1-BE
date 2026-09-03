@@ -1,6 +1,8 @@
 package com.yapp.d14.interview.adapter.out.integration.media;
 
+import com.yapp.d14.common.metrics.VideoCompositeMetrics;
 import com.yapp.d14.interview.application.port.out.InterviewVideoCompositor.AudioTrack;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -15,7 +17,8 @@ class FfmpegInterviewVideoCompositorAdapterTest {
 
     // S3 의존성은 buildAudioFilter에서 쓰지 않으므로 null로 둔다.
     private final FfmpegInterviewVideoCompositorAdapter adapter =
-            new FfmpegInterviewVideoCompositorAdapter(null, null);
+            new FfmpegInterviewVideoCompositorAdapter(null, null,
+                    new VideoCompositeMetrics(new SimpleMeterRegistry()));
 
     @Test
     void 트랙이_하나면_amix_없이_지연_결과를_바로_aout으로_쓴다() {

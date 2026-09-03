@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yapp.d14.common.security.TokenParser;
 import com.yapp.d14.feedback.application.port.in.GuestFeedbackEntryUseCase;
 import com.yapp.d14.feedback.application.port.in.GuestFeedbackSubmitUseCase;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -41,6 +42,10 @@ class GuestFeedbackControllerWebTest {
 
     @MockitoBean
     private TokenParser tokenParser;
+
+    // JwtAuthenticationFilter 가 주입받는다. addFilters=false 라 실제로 호출되지는 않는다.
+    @MockitoBean
+    private MeterRegistry meterRegistry;
 
     private String body(List<Map<String, Object>> ratings) throws Exception {
         return objectMapper.writeValueAsString(Map.of("nickname", "재원", "ratings", ratings));

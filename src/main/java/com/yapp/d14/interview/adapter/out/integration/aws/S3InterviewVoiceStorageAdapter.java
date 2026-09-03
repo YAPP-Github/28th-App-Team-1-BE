@@ -1,5 +1,7 @@
 package com.yapp.d14.interview.adapter.out.integration.aws;
 
+import com.yapp.d14.common.metrics.S3Call;
+import com.yapp.d14.common.metrics.S3Metrics;
 import com.yapp.d14.common.properties.S3Properties;
 import com.yapp.d14.common.util.S3KeyGenerator;
 import com.yapp.d14.interview.application.port.out.InterviewVoiceStorage;
@@ -36,6 +38,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
     private final S3Client s3Client;
     private final S3Properties s3Properties;
+    private final S3Metrics s3Metrics;
 
     @Override
     public String upload(UUID userId, Long sessionId, int turnLevel, byte[] audioContent) {
@@ -54,7 +57,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
         SdkException lastException = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                s3Client.putObject(request, requestBody);
+                s3Metrics.run(S3Call.VOICE_PUT, () -> s3Client.putObject(request, requestBody));
                 return key;
             } catch (SdkException e) {
                 lastException = e;
@@ -81,7 +84,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                s3Client.putObject(request, requestBody);
+                s3Metrics.run(S3Call.VOICE_PUT, () -> s3Client.putObject(request, requestBody));
                 return;
             } catch (SdkException e) {
                 log.warn("[INTERVIEW VOICE UPLOAD ASYNC] {}번째 시도 실패: key={}", attempt, key, e);
@@ -90,6 +93,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
                 }
             }
         }
+        s3Metrics.abandoned(S3Call.VOICE_PUT);
         log.error("[INTERVIEW VOICE UPLOAD ASYNC] 재시도 소진, 업로드 실패: key={}", key);
     }
 
@@ -109,7 +113,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                s3Client.putObject(request, requestBody);
+                s3Metrics.run(S3Call.ANSWER_PUT, () -> s3Client.putObject(request, requestBody));
                 return;
             } catch (SdkException e) {
                 log.warn("[INTERVIEW ANSWER UPLOAD] {}번째 시도 실패: key={}", attempt, key, e);
@@ -118,6 +122,7 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
                 }
             }
         }
+        s3Metrics.abandoned(S3Call.ANSWER_PUT);
         log.error("[INTERVIEW ANSWER UPLOAD] 재시도 소진, 업로드 실패: key={}", key);
     }
 
@@ -126,6 +131,10 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
     @Override
     public int deleteAnswerAudio(UUID userId, Long sessionId) {
         String prefix = S3KeyGenerator.interviewAnswerPrefix(userId, sessionId);
+        return s3Metrics.record(S3Call.ANSWER_DELETE, () -> deleteByPrefix(prefix));
+    }
+
+    private int deleteByPrefix(String prefix) {
         ListObjectsV2Request listRequest = ListObjectsV2Request.builder()
                 .bucket(s3Properties.getBucket())
                 .prefix(prefix)
@@ -171,11 +180,12 @@ class S3InterviewVoiceStorageAdapter implements InterviewVoiceStorage {
     @Override
     public String readBase64(String s3Key) {
         try {
-            byte[] content = s3Client.getObjectAsBytes(GetObjectRequest.builder()
+            byte[] content = s3Metrics.record(S3Call.VOICE_GET,
+                    () -> s3Client.getObjectAsBytes(GetObjectRequest.builder()
                             .bucket(s3Properties.getBucket())
                             .key(s3Key)
                             .build())
-                    .asByteArray();
+                    .asByteArray());
             return Base64.getEncoder().encodeToString(content);
         } catch (SdkException e) {
             log.warn("[INTERVIEW VOICE READ] S3 조회 실패: key={}", s3Key, e);
