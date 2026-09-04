@@ -42,8 +42,8 @@
 | **AI** | Spring AI — OpenAI(임베딩 · JD 추출 · 키워드 · TTS), Anthropic(면접 질문 생성 · 채점) |
 | **인증** | JWT(jjwt), 카카오 · 애플 소셜 로그인 |
 | **파일 처리** | PDFBox · Tika(PDF 텍스트 추출), Jsoup(JD 크롤링), ffmpeg(면접 영상 합성) |
-| **인프라** | AWS EC2 · S3 · ECR · CloudWatch, Docker Compose, Caddy(TLS · 리버스 프록시), Terraform |
-| **CI/CD** | GitHub Actions — `main` push 시 테스트 → ECR 푸시 → 블루-그린 무중단 배포 |
+| **인프라** | AWS S3 · ECR · CloudWatch, k3s + ArgoCD(GitOps), Caddy(TLS · 리버스 프록시), Terraform |
+| **CI/CD** | GitHub Actions — 릴리즈 태그 발행 시 ECR 푸시 → GitOps(Hilit-GitOps) 이미지 태그 write-back → ArgoCD 배포 |
 
 ---
 
@@ -200,7 +200,6 @@ src/main/java/com/yapp/d14/{module}/
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | 헥사고날 아키텍처 규칙, 패키지 구조, 네이밍, 금지 패턴 |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 브랜치 전략, 커밋 컨벤션, PR 규칙 |
 | [docs/policy/s3-policy.md](./docs/policy/s3-policy.md) | S3 저장 경로 규칙 · 만료 · 삭제 정책 |
-| [scripts/deploy.sh](./scripts/deploy.sh) | 블루-그린 무중단 배포 오케스트레이션 |
 
 ---
 

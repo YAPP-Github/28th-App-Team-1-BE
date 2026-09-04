@@ -1,7 +1,7 @@
-# 블루-그린 무중단 배포 구성.
-# postgres/redis/caddy 는 상시 실행(프로파일 없음)이고, app 은 app-blue/app-green 두 벌을
-# compose profiles 로 선택 기동한다. 배포 스크립트가 비활성 색을 새 이미지로 띄우고 /health 통과 후
-# Caddy 업스트림을 전환(reload)한 뒤 구 버전을 내린다. 자세한 흐름은 scripts/deploy.sh 참고.
+# 로컬 개발 인프라(Postgres+pgvector, Redis).
+# 앱은 이 컴포즈로 띄우지 않는다 — `./gradlew bootRun` 으로 로컬 실행하고, DB/Redis만 여기서 기동한다.
+#   docker compose up -d postgres redis
+# 프로덕션 배포는 k3s + ArgoCD(GitOps) 가 담당한다(이 파일과 무관). Hilit-GitOps 레포 참고.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -15,14 +15,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TZ: Asia/Seoul
       PGTZ: Asia/Seoul
-    command:
-      - postgres
-      - -c
-      - shared_buffers=128MB
-      - -c
-      - max_connections=20
-      - -c
-      - work_mem=4MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -49,101 +41,8 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── app 공통 설정 (blue/green 이 공유) ──────────────────────────────
-  # blue/green 은 container_name·profiles·로그 스트림만 다르고 나머지는 동일하다.
-  # 호스트 포트는 노출하지 않는다 — 외부 진입은 Caddy(80/443)만 담당하며, 두 색이 같은
-  # 8080 을 동시에 바인딩할 수 없으므로 컨테이너 간 통신은 d14-net 내부 8080 으로만 한다.
-  app-blue:
-    <<: &app-common
-      image: ${ECR_REPOSITORY_URL}:${IMAGE_TAG:-latest}
-      restart: unless-stopped
-      # 구 버전을 내릴 때 SIGTERM 후 이 시간까지 기다렸다가 SIGKILL 한다.
-      # app 의 graceful shutdown(timeout-per-shutdown-phase=60s)이 끝날 여유를 주려면 그보다 커야 한다.
-      stop_grace_period: 70s
-      # 배포 과도기에 blue/green 두 벌이 겹쳐 뜨므로(1GB RAM + 2GB swap) 각 컨테이너 메모리를 제한한다.
-      # -Xmx400m(힙) + 논힙 + ffmpeg 서브프로세스 여유. memswap 기본값(2x)으로 초과분은 swap 으로 흡수한다.
-      mem_limit: 750m
-      environment:
-        SPRING_PROFILES_ACTIVE: dev
-        POSTGRES_HOST: postgres
-        POSTGRES_PORT: 5432
-        POSTGRES_DB: ${POSTGRES_DB}
-        POSTGRES_USER: ${POSTGRES_USER}
-        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-        REDIS_HOST: redis
-        REDIS_PORT: 6379
-        JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-        JWT_ACCESS_TOKEN_EXPIRY_MS: ${JWT_ACCESS_TOKEN_EXPIRY_MS:-10800000}
-        JWT_REFRESH_TOKEN_EXPIRY_MS: ${JWT_REFRESH_TOKEN_EXPIRY_MS:-604800000}
-        AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-        AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-        AWS_S3_BUCKET: ${AWS_S3_BUCKET}
-        OPENAI_API_KEY: ${OPENAI_API_KEY}
-        ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-        APPLE_CLIENT_ID: ${APPLE_CLIENT_ID}
-        APPLE_TEAM_ID: ${APPLE_TEAM_ID}
-        APPLE_KEY_ID: ${APPLE_KEY_ID}
-        APPLE_PRIVATE_KEY: ${APPLE_PRIVATE_KEY}
-        KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY}
-        TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY}
-        DEMO_LOGIN_ENABLED: ${DEMO_LOGIN_ENABLED:-true}
-        DEMO_LOGIN_CREDENTIAL: ${DEMO_LOGIN_CREDENTIAL}
-        DEMO_LOGIN_USER_ID: ${DEMO_LOGIN_USER_ID}
-      depends_on:
-        postgres:
-          condition: service_healthy
-        redis:
-          condition: service_healthy
-      networks:
-        - d14-net
-      # 배포 스크립트가 새 버전 기동 완료를 판별하는 근거. curl 은 런타임 이미지에 설치돼 있다.
-      healthcheck:
-        test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
-        interval: 5s
-        timeout: 3s
-        retries: 5
-        start_period: 60s
-    container_name: d14-app-blue
-    profiles: ["blue"]
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: ap-northeast-2
-        awslogs-group: /d14/app
-        awslogs-stream: app-blue
-
-  app-green:
-    <<: *app-common
-    container_name: d14-app-green
-    profiles: ["green"]
-    logging:
-      driver: awslogs
-      options:
-        awslogs-region: ap-northeast-2
-        awslogs-group: /d14/app
-        awslogs-stream: app-green
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: d14-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      # 배포 스크립트가 활성 색으로 렌더링해 둔 Caddyfile. 전환은 파일 교체 후 caddy reload 로 이뤄진다.
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data      # 발급받은 TLS 인증서 영구 보관 — 재배포 시 재발급(rate limit) 방지
-      - caddy_config:/config
-    networks:
-      - d14-net
-
 volumes:
   postgres_data:
-    driver: local
-  caddy_data:
-    driver: local
-  caddy_config:
     driver: local
 
 networks:

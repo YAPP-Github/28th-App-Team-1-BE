@@ -1,0 +1,102 @@
+name: Deploy (dev)
+
+# 개발 중인 브랜치를 수동으로 dev 환경에 배포한다.
+#   Actions 탭 → "Deploy (dev)" → Run workflow → 배포할 브랜치 선택 → Run
+# 흐름:
+#   1) 선택한 브랜치를 빌드해 ECR 에 push (태그 :dev-<short_sha> — prod 의 vX.Y.Z 와 구분)
+#   2) Hilit-GitOps 의 charts/backend/values-dev.yaml image.tag 를 그 태그로 커밋(write-back)
+#   3) ArgoCD 가 backend-dev Application 을 자동 sync → k3s dev 네임스페이스로 배포
+# 프로덕션(vX.Y.Z 태그) 배포는 deploy.yml 이 담당한다. 시크릿은 GitOps 의 SealedSecret(dev)이 담당.
+#
+# ⚠️ 이 파일이 Actions UI 의 "Run workflow" 에 뜨려면 먼저 default 브랜치(main)에 머지돼야 한다.
+#    이후 실행 시점에 원하는 개발 브랜치를 골라 그 브랜치 HEAD 를 빌드한다.
+on:
+  workflow_dispatch:
+
+# 여러 dev 배포가 겹쳐 GitOps 레포 push 가 충돌하지 않도록 직렬화한다.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY_URL: ${{ secrets.ECR_REPOSITORY_URL }}
+
+jobs:
+  build-and-push:
+    name: Build & Push to ECR (dev)
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Compute image tag
+        id: meta
+        # 실행한 브랜치 HEAD 의 short_sha. dev- 접두로 prod 릴리즈 태그와 ECR 에서 구분된다.
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "image_tag=dev-$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # dev 는 latest 를 건드리지 않는다(운영 관례상 latest 는 prod 쪽 편의 태그).
+          tags: |
+            ${{ env.ECR_REPOSITORY_URL }}:${{ steps.meta.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  bump-gitops:
+    name: Bump dev image tag in GitOps
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: Team-Hilit/Hilit-GitOps
+          token: ${{ secrets.GITOPS_TOKEN }}
+          ref: main
+
+      - name: Update backend dev image tag
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          yq -i '.image.tag = strenv(IMAGE_TAG)' charts/backend/values-dev.yaml
+
+      - name: Commit & push
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          SRC_REF: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git config user.name "hilit-ci[bot]"
+          git config user.email "hilit-ci@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "이미 ${IMAGE_TAG} 로 반영돼 있음 — 커밋 생략"
+            exit 0
+          fi
+          git add charts/backend/values-dev.yaml
+          git commit -m "chore: bump backend(dev) image to ${IMAGE_TAG} (from ${SRC_REF})"
+          git push origin main
