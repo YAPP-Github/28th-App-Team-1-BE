@@ -3,8 +3,15 @@ name: Deploy
 # 릴리즈 태그(vX.Y.Z) 발행 시에만 빌드·배포한다.
 # - push(tags): release-please(PAT) 가 만든 태그, 또는 사람이 직접 민 태그
 #   (수동 릴리즈·롤백 re-tag)로 배포
-# - workflow_dispatch: 수동 실행
+# - workflow_dispatch: 수동 실행(태그 아닌 브랜치에서 실행 시 short_sha 로 빌드만)
 # 단위 테스트 게이트는 ci.yml 이 PR/main push 에서 담당한다.
+#
+# 배포 방식은 GitOps(ArgoCD) 다:
+#   1) 이미지를 ECR 에 push
+#   2) Hilit-GitOps 레포의 charts/backend/values-prod.yaml image.tag 를 이 태그로 커밋(write-back)
+#   3) ArgoCD 가 GitOps 레포 변경을 감지해 k3s prod 네임스페이스로 롤링 배포(자동 sync)
+# EC2 SSH·docker-compose·블루그린은 더 이상 쓰지 않는다. 환경변수(시크릿)는 GitOps 레포의
+# SealedSecret(secrets/prod/backend-secret.yaml)이 담당하므로 이 워크플로우는 시크릿을 주입하지 않는다.
 on:
   push:
     tags:
@@ -23,7 +30,7 @@ jobs:
     name: Build & Push to ECR
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.meta.outputs.short_sha }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
 
     steps:
       - name: Checkout
@@ -42,9 +49,15 @@ jobs:
 
       - name: Compute image tag
         id: meta
+        # 릴리즈 태그 push 면 그 버전(vX.Y.Z)을, 수동(workflow_dispatch)이면 short_sha 를 태그로 쓴다.
+        # 이 값이 그대로 ECR 태그이자 GitOps values-prod.yaml image.tag 가 된다(불변·추적 가능).
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            IMAGE_TAG="${{ github.ref_name }}"
+          else
+            IMAGE_TAG=$(echo "${{ github.sha }}" | cut -c1-7)
+          fi
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -55,80 +68,52 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.ECR_REPOSITORY_URL }}:${{ steps.meta.outputs.short_sha }}
+            ${{ env.ECR_REPOSITORY_URL }}:${{ steps.meta.outputs.image_tag }}
             ${{ env.ECR_REPOSITORY_URL }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   # ──────────────────────────────────────────────────────────────
-  # Job 2: Deploy to EC2
+  # Job 2: Bump image tag in GitOps repo (ArgoCD write-back)
   # ──────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to EC2
+  # 릴리즈 태그 push 일 때만 prod 를 갱신한다. 수동 dispatch(브랜치)는 빌드/푸시까지만.
+  bump-gitops:
+    name: Bump prod image tag in GitOps
     runs-on: ubuntu-latest
     needs: build-and-push
+    if: github.ref_type == 'tag'
 
     steps:
-      - name: Checkout
+      - name: Checkout GitOps repo
         uses: actions/checkout@v4
-
-      - name: Write .env file on EC2
-        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          port: 22
-          script: |
-            set -euo pipefail
-            mkdir -p /opt/d14
-            cat > /opt/d14/.env << ENVEOF
-            ECR_REPOSITORY_URL=${{ secrets.ECR_REPOSITORY_URL }}
-            IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            JWT_ACCESS_TOKEN_EXPIRY_MS=${{ secrets.JWT_ACCESS_TOKEN_EXPIRY_MS }}
-            JWT_REFRESH_TOKEN_EXPIRY_MS=${{ secrets.JWT_REFRESH_TOKEN_EXPIRY_MS }}
-            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
-            APPLE_CLIENT_ID=${{ secrets.APPLE_CLIENT_ID }}
-            APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}
-            APPLE_KEY_ID=${{ secrets.APPLE_KEY_ID }}
-            APPLE_PRIVATE_KEY=${{ secrets.APPLE_PRIVATE_KEY }}
-            KAKAO_ADMIN_KEY=${{ secrets.KAKAO_ADMIN_KEY }}
-            DEMO_LOGIN_CREDENTIAL=${{ secrets.DEMO_LOGIN_CREDENTIAL }}
-            DEMO_LOGIN_USER_ID=${{ secrets.DEMO_LOGIN_USER_ID }}
-            TOKEN_ENCRYPTION_KEY=${{ secrets.TOKEN_ENCRYPTION_KEY }}
-            ENVEOF
-            chmod 600 /opt/d14/.env
+          repository: Team-Hilit/Hilit-GitOps
+          # Hilit-GitOps 에 contents:write 권한이 있는 fine-grained PAT.
+          # bootstrap 용 read-only PAT 로는 push 못 한다 — 별도 시크릿을 등록해야 한다.
+          token: ${{ secrets.GITOPS_TOKEN }}
+          ref: main
 
-      - name: Copy docker-compose.yml to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          port: 22
-          source: "docker-compose.yml,Caddyfile.template,scripts/deploy.sh"
-          target: "/opt/d14/"
+      - name: Update backend prod image tag
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          yq -i '.image.tag = strenv(IMAGE_TAG)' charts/backend/values-prod.yaml
 
-      - name: Blue-green deploy on EC2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          port: 22
-          # 실제 블루-그린 전환(신 버전 기동 → /health 대기 → caddy reload → 구 버전 graceful 종료)은
-          # 리포지토리의 scripts/deploy.sh 가 담당한다. 여기서는 그 스크립트를 실행만 한다.
-          script: |
-            set -euo pipefail
-            bash /opt/d14/scripts/deploy.sh
+      - name: Commit & push
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "hilit-ci[bot]"
+          git config user.email "hilit-ci@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "이미 ${IMAGE_TAG} 로 반영돼 있음 — 커밋 생략"
+            exit 0
+          fi
+          git add charts/backend/values-prod.yaml
+          git commit -m "chore: bump backend(prod) image to ${IMAGE_TAG}"
+          git push origin main
 
   # ──────────────────────────────────────────────────────────────
   # Job 3: Notify Discord
@@ -136,25 +121,26 @@ jobs:
   notify:
     name: Notify Discord
     runs-on: ubuntu-latest
-    needs: [build-and-push, deploy]
+    needs: [build-and-push, bump-gitops]
     if: always()
 
     steps:
       - name: Determine result
         id: result
+        # bump-gitops 는 태그 push 가 아니면 skip 되므로(그땐 build 만) 실패로 취급하지 않는다.
         run: |
           if [[ "${{ needs.build-and-push.result }}" == "failure" ]]; then
             echo "stage=Build/Push" >> "$GITHUB_OUTPUT"
             echo "status=failure" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ needs.deploy.result }}" == "failure" ]]; then
-            echo "stage=Deploy" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ needs.bump-gitops.result }}" == "failure" ]]; then
+            echo "stage=GitOps write-back" >> "$GITHUB_OUTPUT"
             echo "status=failure" >> "$GITHUB_OUTPUT"
           elif [[ "${{ needs.build-and-push.result }}" == "cancelled" \
-               || "${{ needs.deploy.result }}" == "cancelled" ]]; then
+               || "${{ needs.bump-gitops.result }}" == "cancelled" ]]; then
             echo "stage=-" >> "$GITHUB_OUTPUT"
             echo "status=cancelled" >> "$GITHUB_OUTPUT"
           else
-            echo "stage=Deploy" >> "$GITHUB_OUTPUT"
+            echo "stage=GitOps" >> "$GITHUB_OUTPUT"
             echo "status=success" >> "$GITHUB_OUTPUT"
           fi
 
